@@ -224,7 +224,7 @@ export function CreatorChat({ gen, setGen, onGenerate, genCount, setGenCount }: 
         inFlightRequests.current.delete(idempotencyKey);
       });
       
-      eventSource.addEventListener('error', (event) => {
+      eventSource.addEventListener('error', (event: MessageEvent) => {
         const data = JSON.parse(event.data);
         setGenerationStatus(prev => ({ ...prev, ...data }));
         setIsGenerating(false);
