@@ -1,0 +1,38 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model GenerationJob {
+  id              String   @id @default(cuid())
+  userId          String?
+  idempotencyKey  String   @unique
+  status          String   @default("queued") // queued|submitted|generating|upscaling|completed|failed|timeout|canceled
+  progress        Int      @default(0)
+  mode            String   // quick|pro
+  params          Json
+  resultUrls      String[] @default([])
+  error           Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  images Image[]
+}
+
+model Image {
+  id        String   @id @default(cuid())
+  userId    String?
+  jobId     String
+  prompt    String
+  imageUrl  String
+  createdAt DateTime @default(now())
+  
+  job GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
