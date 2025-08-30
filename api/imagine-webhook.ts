@@ -386,6 +386,7 @@ function extractColorsFromParams(parameters: any): string[] {
 
 // Export session management functions for use in generate.ts
 export function addActiveSession(sessionId: string, data: any) {
+  const activeSessions = getActiveSessions();
   activeSessions.set(sessionId, {
     ...data,
     created_at: Date.now()
@@ -393,5 +394,6 @@ export function addActiveSession(sessionId: string, data: any) {
 }
 
 export function getActiveSession(sessionId: string) {
+  const activeSessions = getActiveSessions();
   return activeSessions.get(sessionId);
 }
