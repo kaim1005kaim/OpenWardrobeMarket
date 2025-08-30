@@ -1,5 +1,5 @@
 import { Asset } from '../lib/types';
-import { HeartIcon } from './Icons';
+import { Icons } from './Icons';
 import { colorToCss } from '../lib/util';
 
 interface PinCardProps {
@@ -16,17 +16,18 @@ export function PinCard({ asset, onOpen, onLike }: PinCardProps) {
         <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-2 opacity-0 group-hover:opacity-100 transition">
           <div className="flex justify-end">
             <button 
-              className="pointer-events-auto px-3 py-1.5 rounded-full bg-orange-500 text-white text-sm font-medium shadow"
+              className="pointer-events-auto px-3 py-1.5 rounded-full bg-accent text-white text-sm font-medium shadow flex items-center gap-1"
               onClick={(e) => {
                 e.stopPropagation();
               }}
             >
+              <Icons.Bookmark size={14} />
               保存
             </button>
           </div>
           <div className="flex justify-between">
             <div className="flex gap-1.5">
-              {asset.colors.slice(0, 2).map((c) => (
+              {asset.colors?.slice(0, 2).map((c) => (
                 <span key={c} title={c} className="w-3 h-3 rounded-full border shadow" style={{ background: colorToCss(c) }} />
               ))}
             </div>
@@ -38,7 +39,7 @@ export function PinCard({ asset, onOpen, onLike }: PinCardProps) {
                   onLike(asset.id);
                 }}
               >
-                <span className="inline-flex items-center gap-1"><HeartIcon className="w-4 h-4" />{asset.likes}</span>
+                <span className="inline-flex items-center gap-1"><Icons.Heart size={16} />{asset.likes || 0}</span>
               </button>
             </div>
           </div>

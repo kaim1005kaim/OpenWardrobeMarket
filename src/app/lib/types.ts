@@ -1,15 +1,24 @@
 export type Asset = {
   id: string;
   src: string;
-  w: number;
-  h: number;
+  w?: number;
+  h?: number;
   title: string;
   tags: string[];
-  colors: string[];
+  colors?: string[];
   price?: number;
   creator?: string;
-  likes: number;
+  likes?: number;
+  liked?: boolean;
   isAd?: boolean;
+  type?: 'catalog' | 'user' | 'generated';
+  createdAt?: string;
+  isPublic?: boolean;
+  prompt?: string;
+  aspect_ratio?: string;
+  blur_data_url?: string;
+  dominant_color?: string;
+  variation?: string;
 };
 
 export type GenParams = {

@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import { GenParams } from '../lib/types';
+import { GenParams, Asset } from '../lib/types';
 import { PRESETS, SIGNATURES } from '../lib/data';
 import { buildPrompt } from '../lib/prompt';
 import { v4 as uuidv4 } from 'uuid';
+import { GeneratedImageGrid } from './GeneratedImageGrid';
 
 interface CreatorChatProps {
   gen: GenParams;
   setGen: (g: GenParams) => void;
-  onGenerate: (count?: number) => void;
+  onGenerate: (images: any[], isPublic: boolean) => void;
   genCount: number;
   setGenCount: (n: number) => void;
+  onSelectVariation?: (asset: Asset) => void;
 }
 
 interface GenerationStatus {
@@ -74,32 +76,19 @@ function HScroll({ children }: { children: React.ReactNode }) {
 }
 
 // Helper functions for generation parameters
-function getGenerationParams(g: GenParams, mode: 'quick' | 'pro') {
-  const axis = g.axisCleanBold ?? 50;
-  
-  if (mode === 'quick') {
-    return {
-      s: 50 + Math.round(axis * 2.0), // 50-250
-      q: 1,
-      quality: "standard"
-    };
-  } else {
-    return {
-      s: 100 + Math.round(axis * 2.5), // 100-350  
-      q: 2,
-      quality: "high"
-    };
-  }
-}
 
-export function CreatorChat({ gen, setGen, onGenerate, genCount, setGenCount }: CreatorChatProps) {
+export function CreatorChat({ gen, setGen, onGenerate, genCount, setGenCount, onSelectVariation }: CreatorChatProps) {
   const [step, setStep] = useState<number>(1);
-  const total = 4;
+  const total = 5; // Added one step for privacy settings
+  const [isPublic, setIsPublic] = useState<boolean>(false);
+  const [aspectRatio, setAspectRatio] = useState('2:3');  // Fashion portrait default
+  const [negativePrompt] = useState('multiple people, group photo');  // Prevent multiple models
   
   // API state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>({});
   const [todayPresets, setTodayPresets] = useState<TodayPreset[]>([]);
+  const [lastGeneratedImage, setLastGeneratedImage] = useState<{ url: string; variations: Asset[] } | null>(null);
   
   // Long press state
   const lpTimer = useRef<number | null>(null);
@@ -110,7 +99,7 @@ export function CreatorChat({ gen, setGen, onGenerate, genCount, setGenCount }: 
 
   // Load today's presets on mount
   useEffect(() => {
-    fetch('http://localhost:3001/api/trends')
+    fetch('/api/trends')
       .then(res => res.json())
       .then(data => setTodayPresets(data))
       .catch(err => console.error("Failed to load today's presets:", err));
@@ -172,73 +161,87 @@ export function CreatorChat({ gen, setGen, onGenerate, genCount, setGenCount }: 
     setGenerationStatus({ status: 'queued', progress: 0 });
     
     try {
-      // Call generation API
-      const response = await fetch('http://localhost:3001/api/generate', {
+      const prompt = buildPrompt(gen);
+      console.log('Generating with prompt (v2):', prompt);
+      
+      setGenerationStatus({ status: 'generating', progress: 10 });
+      
+      // Call our API endpoint instead of direct ImagineAPI call
+      console.log('Calling /api/generate with:', { prompt, mode, aspect_ratio: aspectRatio });
+      
+      const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          mode,
-          count: genCount,
-          params: gen,
-          aspectRatio: '3:4', // Default aspect ratio
-          idempotencyKey
+          prompt: prompt || 'fashion design, minimal style, high quality',
+          mode: mode,
+          aspect_ratio: aspectRatio,
+          negative_prompt: negativePrompt,
+          user_id: 'test-user'  // TODO: Get from auth context
         })
       });
       
+      console.log('API response status:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error(`Generation failed: ${response.statusText}`);
+        const responseText = await response.text();
+        console.error('API error response:', responseText);
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error || `API request failed: ${response.statusText}`);
+        } catch (parseError) {
+          throw new Error(`API request failed: ${response.statusText} - ${responseText}`);
+        }
       }
       
-      const { jobId } = await response.json();
-      setGenerationStatus({ jobId, status: 'queued', progress: 0 });
+      const result = await response.json();
+      console.log('Generation API response:', result);
       
-      // Start SSE connection for progress updates
-      const eventSource = new EventSource(`http://localhost:3001/api/status/stream?id=${jobId}`);
-      
-      eventSource.onmessage = (event) => {
-        console.log('SSE message:', event.data);
-      };
-      
-      eventSource.addEventListener('connect', (event) => {
-        console.log('SSE connected:', event.data);
+      setGenerationStatus({ 
+        status: 'completed', 
+        progress: 100, 
+        resultUrls: result.images.map((img: any) => img.url) 
       });
       
-      eventSource.addEventListener('progress', (event) => {
-        const data = JSON.parse(event.data);
-        setGenerationStatus(prev => ({ ...prev, ...data }));
-      });
-      
-      eventSource.addEventListener('complete', (event) => {
-        const data = JSON.parse(event.data);
-        setGenerationStatus(prev => ({ ...prev, status: 'completed', resultUrls: data.urls }));
-        setIsGenerating(false);
-        eventSource.close();
+      // Convert API result to Asset format - each image as independent variation
+      if (result.images.length > 0) {
+        const generatedAssets: Asset[] = [];
         
-        // Call the original onGenerate callback with the results
-        if (data.urls?.length > 0) {
-          onGenerate(data.urls);
-        }
+        // Create variations directly from generated images
+        const variationLabels = ['Original', 'Alternative 1', 'Alternative 2', 'Alternative 3'];
         
-        inFlightRequests.current.delete(idempotencyKey);
-      });
+        result.images.forEach((img: any, index: number) => {
+          generatedAssets.push({
+            id: img.id,
+            src: img.url,
+            title: `${gen.vibe || 'Custom'} ${gen.silhouette || 'Style'} - ${variationLabels[index] || `Variation ${index + 1}`}`,
+            tags: [gen.vibe, gen.silhouette, gen.season].filter(Boolean) as string[],
+            colors: [gen.palette].filter(Boolean) as string[],
+            price: Math.floor(Math.random() * 10000) + 5000,
+            creator: 'You',
+            likes: 0,
+            type: 'generated' as const,
+            isPublic: isPublic,
+            w: 800,
+            h: 1200,
+            variation: variationLabels[index] || `Variation ${index + 1}`
+          });
+        });
+        
+        // Store the generated variations for display
+        setLastGeneratedImage({
+          url: result.images[0].url,
+          variations: generatedAssets
+        });
+        
+        console.log('Calling onGenerate with assets:', generatedAssets);
+        onGenerate(generatedAssets, isPublic);
+      }
       
-      eventSource.addEventListener('error', (event: MessageEvent) => {
-        const data = JSON.parse(event.data);
-        setGenerationStatus(prev => ({ ...prev, ...data }));
-        setIsGenerating(false);
-        eventSource.close();
-        inFlightRequests.current.delete(idempotencyKey);
-      });
-      
-      eventSource.onerror = (error) => {
-        console.error('SSE error:', error);
-        setIsGenerating(false);
-        setGenerationStatus(prev => ({ ...prev, error: 'Connection error' }));
-        eventSource.close();
-        inFlightRequests.current.delete(idempotencyKey);
-      };
+      setIsGenerating(false);
+      inFlightRequests.current.delete(idempotencyKey);
       
     } catch (error: any) {
       console.error('Generation error:', error);
@@ -248,8 +251,8 @@ export function CreatorChat({ gen, setGen, onGenerate, genCount, setGenCount }: 
     }
   };
 
-  const currentParams = getGenerationParams(gen, 'quick');
-  const proParams = getGenerationParams(gen, 'pro');
+
+
 
   return (
     <div className="space-y-4">
@@ -345,6 +348,49 @@ export function CreatorChat({ gen, setGen, onGenerate, genCount, setGenCount }: 
       )}
 
       {step === 4 && (
+        <Section title="公開設定">          <div className="space-y-4">
+            <div className="text-sm text-zinc-600 mb-3">
+              生成した画像を公開ギャラリーに表示するか選択してください
+            </div>
+            
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+                <input 
+                  type="radio" 
+                  name="visibility" 
+                  checked={!isPublic}
+                  onChange={() => setIsPublic(false)}
+                  className="mt-0.5"
+                />
+                <div>
+                  <div className="font-medium">マイギャラリーのみ（プライベート）</div>
+                  <div className="text-sm text-zinc-500 mt-1">
+                    自分だけが閲覧可能。他のユーザーには表示されません。
+                  </div>
+                </div>
+              </label>
+              
+              <label className="flex items-start gap-3 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+                <input 
+                  type="radio" 
+                  name="visibility" 
+                  checked={isPublic}
+                  onChange={() => setIsPublic(true)}
+                  className="mt-0.5"
+                />
+                <div>
+                  <div className="font-medium">公開ギャラリーに投稿</div>
+                  <div className="text-sm text-zinc-500 mt-1">
+                    他のユーザーも閲覧・いいね可能。インスピレーション共有に。
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {step === 5 && (
         <Section title="仕上げ（季節・素材・シグネチャ・フリーワード）">
           <div className="flex flex-wrap gap-2 mb-2">
             {(["ss","aw","resort","pre-fall"] as const).map((o) => (
@@ -396,24 +442,79 @@ export function CreatorChat({ gen, setGen, onGenerate, genCount, setGenCount }: 
         </Section>
       )}
 
+      {/* Display generated image grid if available */}
+      {lastGeneratedImage && (
+        <GeneratedImageGrid
+          variations={lastGeneratedImage.variations}
+          onSelectVariation={onSelectVariation || (() => {})}
+          onUpscale={(asset, index) => {
+            console.log(`[Upscale] U${index + 1} clicked for asset:`, asset.id);
+            // TODO: Implement upscale API call
+          }}
+          onVariation={(asset, index) => {
+            console.log(`[Variation] V${index + 1} clicked for asset:`, asset.id);
+            // TODO: Implement variation API call
+          }}
+        />
+      )}
+
+      {/* Aspect Ratio Selection */}
+      <Section title="アスペクト比">
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { value: '2:3', label: '縦長 (2:3)', desc: 'ファッション' },
+            { value: '1:1', label: '正方形', desc: 'インスタ' },
+            { value: '3:2', label: '横長 (3:2)', desc: 'バナー' },
+            { value: '9:16', label: '縦長 (9:16)', desc: 'ストーリー' },
+            { value: '16:9', label: '横長 (16:9)', desc: 'ワイド' },
+            { value: '4:5', label: '縦 (4:5)', desc: 'ポートレート' }
+          ].map((ratio) => (
+            <button
+              key={ratio.value}
+              onClick={() => setAspectRatio(ratio.value)}
+              className={`p-2 rounded-lg text-xs border transition ${
+                aspectRatio === ratio.value
+                  ? 'bg-black text-white border-black'
+                  : 'bg-white hover:bg-zinc-50 border-zinc-200'
+              }`}
+            >
+              <div className="font-medium">{ratio.label}</div>
+              <div className="text-[10px] opacity-70">{ratio.desc}</div>
+            </button>
+          ))}
+        </div>
+      </Section>
+
       {/* Generation Summary */}
       <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-600">
         <div className="font-medium mb-1">生成サマリー:</div>
-        <div>Quick: quality={currentParams.quality}, --s={currentParams.s}, --q={currentParams.q}</div>
-        <div>Pro: quality={proParams.quality}, --s={proParams.s}, --q={proParams.q}</div>
-        <div>Aspect: 3:4 (縦)</div>
+        <div>Prompt: {buildPrompt(gen).slice(0, 50)}...</div>
+        <div>Aspect Ratio: {aspectRatio}</div>
+        <div>Negative: {negativePrompt}</div>
       </div>
 
       {/* Sticky action bar */}
       <div className="sticky bottom-2 z-10">
         <div className="rounded-full bg-white border shadow flex items-center justify-between px-2 py-1 gap-2">
-          <button 
-            onClick={prev} 
-            disabled={isGenerating}
-            className="px-3 py-2 text-sm rounded-full hover:bg-black/5 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            戻る
-          </button>
+          {step > 1 && (
+            <button 
+              onClick={prev} 
+              disabled={isGenerating}
+              className="px-3 py-2 text-sm rounded-full hover:bg-black/5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              戻る
+            </button>
+          )}
+          
+          {step < total && (
+            <button 
+              onClick={() => setStep(s => Math.min(total, s + 1))} 
+              disabled={isGenerating}
+              className="px-3 py-2 text-sm rounded-full hover:bg-black/5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              次へ
+            </button>
+          )}
 
           {/* Count selector */}
           <div className="flex items-center gap-1 rounded-full bg-zinc-100 p-1">

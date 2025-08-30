@@ -26,6 +26,7 @@ export function buildPrompt(g: GenParams): string {
     .some((v) => typeof v === "number");
   const tones = axesProvided ? personaWords(g).map((w) => `tone:${w}`) : [];
   return safeJoin([
+    "A full-body shot of a single model wearing",
     g.vibe && `${g.vibe} fashion`,
     ...tones,
     g.silhouette && `${g.silhouette} silhouette`,
@@ -33,6 +34,7 @@ export function buildPrompt(g: GenParams): string {
     g.season && `${g.season} season`,
     g.fabric && `${g.fabric} fabric`,
     g.priceBand && `${g.priceBand} band`,
+    "dramatic lighting, stylish, well-composed, fashion photography",
     g.signature,
     g.notes
   ]);

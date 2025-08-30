@@ -1,44 +1,54 @@
+'use client';
+
+import { useState } from 'react';
+import { useAuth } from '../lib/AuthContext';
+import { AuthModal } from './AuthModal';
+import { Icons } from './Icons';
+
 interface TopBarProps {
   query: string;
   setQuery: (v: string) => void;
-  activeTab: "browse" | "trend" | "create" | "saved";
-  setActiveTab: (t: "browse" | "trend" | "create" | "saved") => void;
+  activeTab: "browse" | "trend" | "create" | "chat" | "saved" | "gallery" | "analytics";
+  setActiveTab: (t: "browse" | "trend" | "create" | "chat" | "saved" | "gallery" | "analytics") => void;
 }
 
 function TabBtn({ label, active, onClick }: { label: string; active?: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`px-3 md:px-4 py-2 rounded-full text-sm font-medium ${
-        active ? "bg-black text-white" : "hover:bg-black/5"
-      }`}
+      className={`chip ${active ? "data-[active=true]:border-accent data-[active=true]:bg-accent data-[active=true]:bg-opacity-10 data-[active=true]:text-accent" : ""}`}
+      data-active={active}
     >
       {label}
     </button>
   );
 }
 
-function IconBtn({ children, ariaLabel }: { children: React.ReactNode; ariaLabel: string }) {
-  return (
-    <button
-      aria-label={ariaLabel}
-      className="w-9 h-9 grid place-items-center rounded-full hover:bg-black/5"
-    >
-      {children}
-    </button>
-  );
-}
 
 export function TopBar({ query, setQuery, activeTab, setActiveTab }: TopBarProps) {
+  const { user, signOut, loading } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const handleAuthClick = () => {
+    if (user) {
+      signOut();
+    } else {
+      setShowAuthModal(true);
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b">
-      <div className="max-w-[1600px] mx-auto px-2 md:px-4 py-2 flex items-center gap-2">
-        <div className="flex items-center gap-2 pr-2">
-          <div className="w-8 h-8 rounded-xl bg-black" />
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-ink-200">
+      <div className="w-full px-2 md:px-4 lg:px-6 py-3 flex items-center gap-3">
+        <div className="flex items-center gap-3 pr-3">
+          <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center">
+            <Icons.Sparkles className="text-white" size={16} />
+          </div>
           <nav className="hidden md:flex gap-1">
             <TabBtn label="ホーム" active={activeTab === "browse"} onClick={() => setActiveTab("browse")} />
             <TabBtn label="トレンド" active={activeTab === "trend"} onClick={() => setActiveTab("trend")} />
-            <TabBtn label="作成" active={activeTab === "create"} onClick={() => setActiveTab("create")} />
+            <TabBtn label="作成" active={activeTab === "chat"} onClick={() => setActiveTab("chat")} />
+            <TabBtn label="マイギャラリー" active={activeTab === "gallery"} onClick={() => setActiveTab("gallery")} />
             <TabBtn label="保存済み" active={activeTab === "saved"} onClick={() => setActiveTab("saved")} />
           </nav>
         </div>
@@ -48,18 +58,49 @@ export function TopBar({ query, setQuery, activeTab, setActiveTab }: TopBarProps
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-full bg-zinc-100 pl-11 pr-4 py-2 md:py-2.5 focus:outline-none focus:ring-2 focus:ring-black"
+              className="w-full rounded-xl bg-ink-200 bg-opacity-30 pl-10 pr-4 py-2 md:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent border border-transparent"
               placeholder="検索する"
             />
-            <span className="absolute left-4 top-1/2 -translate-y-1/2">🔎</span>
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400">
+              <Icons.Search size={16} />
+            </div>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-2 pl-2">
-          <IconBtn ariaLabel="通知">•</IconBtn>
-          <IconBtn ariaLabel="メッセージ">•</IconBtn>
-          <div className="w-8 h-8 rounded-full bg-zinc-300" title="プロフィール" />
+        <div className="hidden md:flex items-center gap-3 pl-3">
+          {loading ? (
+            <div className="w-8 h-8 rounded-full bg-ink-200 animate-pulse" />
+          ) : user ? (
+            <div className="flex items-center gap-2">
+              <img
+                src={user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${user.email}`}
+                alt="Profile"
+                className="w-8 h-8 rounded-full border border-ink-200"
+              />
+              <span className="text-sm font-medium text-ink-900 hidden lg:block">
+                {user.user_metadata?.name || user.email?.split('@')[0] || 'User'}
+              </span>
+              <button
+                onClick={handleAuthClick}
+                className="text-xs text-ink-400 hover:text-ink-700 px-2 py-1 rounded-lg transition-colors"
+              >
+                ログアウト
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleAuthClick}
+              className="btn bg-accent text-white border-accent"
+            >
+              ログイン
+            </button>
+          )}
         </div>
+        
+        <AuthModal 
+          isOpen={showAuthModal} 
+          onClose={() => setShowAuthModal(false)} 
+        />
       </div>
     </header>
   );

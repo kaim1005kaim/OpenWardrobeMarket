@@ -19,3 +19,8 @@ export const colorToCss = (c: string) => {
     default: return c;
   }
 };
+
+export const randomPrice = () => {
+  const prices = [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 11000, 12000, 13000, 14000, 15000];
+  return prices[Math.floor(Math.random() * prices.length)];
+};

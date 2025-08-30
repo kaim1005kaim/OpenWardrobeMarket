@@ -1,6 +1,8 @@
+import { Icons } from './Icons';
+
 interface LeftRailProps {
-  activeTab: "browse" | "trend" | "create" | "saved";
-  setActiveTab: (t: "browse" | "trend" | "create" | "saved") => void;
+  activeTab: "browse" | "trend" | "create" | "chat" | "saved" | "gallery" | "analytics";
+  setActiveTab: (t: "browse" | "trend" | "create" | "chat" | "saved" | "gallery" | "analytics") => void;
 }
 
 function RailIcon({ children, label, active, onClick }: { 
@@ -12,8 +14,8 @@ function RailIcon({ children, label, active, onClick }: {
   return (
     <button
       onClick={onClick}
-      className={`w-11 h-11 grid place-items-center rounded-full border text-base ${
-        active ? "bg-black text-white border-black" : "hover:bg-black/5"
+      className={`w-11 h-11 grid place-items-center rounded-xl border border-ink-200 text-ink-400 hover:text-ink-700 hover:border-ink-300 transition-all ${
+        active ? "bg-accent text-white border-accent" : "hover:bg-ink-200 hover:bg-opacity-20"
       }`}
       title={label}
       aria-label={label}
@@ -26,12 +28,30 @@ function RailIcon({ children, label, active, onClick }: {
 export function LeftRail({ activeTab, setActiveTab }: LeftRailProps) {
   return (
     <aside className="hidden lg:flex lg:sticky lg:top-16 flex-col items-center gap-3 pt-6 w-14 shrink-0">
-      <RailIcon label="ホーム" active={activeTab === "browse"} onClick={() => setActiveTab("browse")}>●</RailIcon>
-      <RailIcon label="トレンド" active={activeTab === "trend"} onClick={() => setActiveTab("trend")}>★</RailIcon>
-      <RailIcon label="作成" active={activeTab === "create"} onClick={() => setActiveTab("create")}>＋</RailIcon>
-      <RailIcon label="保存" active={activeTab === "saved"} onClick={() => setActiveTab("saved")}>⎙</RailIcon>
-      <RailIcon label="プロフィール">○</RailIcon>
-      <RailIcon label="設定">⚙</RailIcon>
+      <RailIcon label="ホーム" active={activeTab === "browse"} onClick={() => setActiveTab("browse")}>
+        <Icons.Home size={18} />
+      </RailIcon>
+      <RailIcon label="トレンド" active={activeTab === "trend"} onClick={() => setActiveTab("trend")}>
+        <Icons.Trending size={18} />
+      </RailIcon>
+      <RailIcon label="作成" active={activeTab === "chat"} onClick={() => setActiveTab("chat")}>
+        <Icons.Plus size={18} />
+      </RailIcon>
+      <RailIcon label="マイギャラリー" active={activeTab === "gallery"} onClick={() => setActiveTab("gallery")}>
+        <Icons.Gallery size={18} />
+      </RailIcon>
+      <RailIcon label="保存" active={activeTab === "saved"} onClick={() => setActiveTab("saved")}>
+        <Icons.Bookmark size={18} />
+      </RailIcon>
+      <RailIcon label="分析" active={activeTab === "analytics"} onClick={() => setActiveTab("analytics")}>
+        <Icons.BarChart size={18} />
+      </RailIcon>
+      <RailIcon label="プロフィール">
+        <Icons.User size={18} />
+      </RailIcon>
+      <RailIcon label="設定">
+        <Icons.Settings size={18} />
+      </RailIcon>
     </aside>
   );
 }
