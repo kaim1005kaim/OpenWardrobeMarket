@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { createClient } from '@supabase/supabase-js';
 
 const IMAGINE_API_TOKEN = 'imgn_suoc6eez6gfqlb2ke3jpniae2hi6akos';
 const IMAGINE_API_BASE = 'https://cl.imagineapi.dev';
@@ -28,7 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { 
     prompt, 
-    mode, 
+    mode = 'simple',  // simple, heritage, zero, mutation, reinterpret
+    heritage,         // { code: string, ratio: number }
+    subtractor,       // { code: string, ratio: number }
+    constraints,      // string[] for mutation mode
+    materials,        // string[] for mutation mode
     count = 1,
     aspect_ratio = '2:3',  // Fashion portrait ratio
     style = 'NATURAL',
@@ -38,6 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     weird,
     seed,
     user_id,
+    source = 'chat',   // 'chat' or 'creator'
     negative_prompt
   } = req.body;
 
@@ -127,6 +133,96 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const imageId = generateResult.data.id;
     console.log(`[Generate] Started generation with ID: ${imageId}`);
 
+    // Save to generation_history for webhook tracking
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false
+            }
+          }
+        );
+
+        const generationData = {
+          job_id: ref,  // This is what webhook will look for
+          image_id: imageId,  // ImagineAPI task ID
+          prompt: fullPrompt,
+          mode: mode,
+          parameters: { 
+            aspect_ratio, style, chaos, quality, stylize, weird, seed,
+            heritage, subtractor, constraints, materials
+          },
+          session_id: requestId,
+          source: source
+        };
+
+        // CRITICAL: Save image_id <-> job_id mapping for webhook to find
+        const { error: mappingError } = await supabase
+          .from('imagine_task_map')
+          .upsert({
+            task_id: imageId,  // ImagineAPI's ID (will come as evt.id in webhook)
+            job_id: ref        // Our job ID (user_id:requestId format)
+          });
+
+        if (mappingError) {
+          console.error('[Generate] Failed to save task mapping:', mappingError);
+        } else {
+          console.log('[Generate] Saved task mapping:', { task_id: imageId, job_id: ref });
+        }
+
+        // Also save to generation_history for backward compatibility
+        const { error: insertError } = await supabase
+          .from('generation_history')
+          .insert({
+            user_id: user_id || null,
+            generation_data: generationData,
+            completion_status: 'processing'
+          });
+
+        if (insertError) {
+          console.error('[Generate] Failed to save generation history:', insertError);
+        } else {
+          console.log('[Generate] Saved generation history with job_id:', ref);
+        }
+      } catch (dbError) {
+        console.error('[Generate] Database error:', dbError);
+        // Continue anyway - generation is more important
+      }
+    } else {
+      console.log('[Generate] Skipping generation_history save - database not configured');
+    }
+
+    // Save generation metadata for mode-specific features
+    if (mode !== 'simple' && user_id) {
+      try {
+        // Prepare recipe params
+        const recipeParams: any = { mode };
+        if (heritage) recipeParams.heritage = heritage;
+        if (subtractor) recipeParams.subtractor = subtractor;
+        if (constraints) recipeParams.constraints = constraints;
+        if (materials) recipeParams.materials = materials;
+        
+        // Store in session data for webhook to access
+        if (global.activeSessions) {
+          const sessionData = global.activeSessions.get(requestId);
+          if (sessionData) {
+            sessionData.generation_mode = mode;
+            sessionData.recipe_params = recipeParams;
+            global.activeSessions.set(requestId, sessionData);
+          }
+        }
+        
+        console.log(`[Generate] Stored mode-specific data for ${mode} generation`);
+      } catch (dbError) {
+        console.error('[Generate] Failed to store mode metadata:', dbError);
+        // Continue anyway - generation is more important
+      }
+    }
+
     // Return immediately - webhook will handle the completion
     res.status(202).json({
       success: true,
@@ -134,7 +230,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       image_id: imageId,
       ref: ref,
       session_id: requestId,
+      job_id: ref,  // Add job_id for new SSE system
       message: 'Generation started - results will be delivered via webhook',
+      mode: mode,    // Include mode in response
       // For backward compatibility, provide polling endpoint
       poll_url: `/api/generate-status/${imageId}`,
       sse_url: `/api/sse/${requestId}`
