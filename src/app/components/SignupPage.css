@@ -41,21 +41,18 @@
   border: none;
   border-bottom: 1px solid white;
   padding: 10px 0;
-  font-family: 'Cinzel', serif;
+  font-family: 'Forum', cursive;
   font-size: 14px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
   color: white;
   outline: none;
-  text-transform: none !important;
-  -webkit-text-transform: none !important;
-  -moz-text-transform: none !important;
-  -ms-text-transform: none !important;
 }
 
 .signup-input::placeholder {
   color: rgba(255, 255, 255, 0.7);
   font-family: 'Cinzel', serif;
   letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .signup-submit-button {

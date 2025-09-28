@@ -91,7 +91,6 @@ export function SignupPage() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           className="signup-input"
-          style={{ textTransform: 'none' }}
           disabled={isLoading}
           required
         />
@@ -101,7 +100,6 @@ export function SignupPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="signup-input"
-          style={{ textTransform: 'none' }}
           disabled={isLoading}
           required
         />
@@ -111,7 +109,6 @@ export function SignupPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="signup-input"
-          style={{ textTransform: 'none' }}
           disabled={isLoading}
           required
         />
@@ -121,7 +118,6 @@ export function SignupPage() {
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           className="signup-input"
-          style={{ textTransform: 'none' }}
           disabled={isLoading}
           required
         />

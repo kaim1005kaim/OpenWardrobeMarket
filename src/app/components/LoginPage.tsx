@@ -67,7 +67,6 @@ export function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="login-input"
-          style={{ textTransform: 'none' }}
           disabled={isLoading}
         />
         <input
@@ -76,7 +75,6 @@ export function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="login-input"
-          style={{ textTransform: 'none' }}
           disabled={isLoading}
         />
         <button
