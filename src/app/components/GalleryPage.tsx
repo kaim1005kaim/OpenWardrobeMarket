@@ -19,7 +19,12 @@ export function GalleryPage() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [scrollLeft, setScrollLeft] = useState(0)
+  const [velocity, setVelocity] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const animationRef = useRef<number>()
 
   useEffect(() => {
     fetchAssets()
@@ -43,6 +48,79 @@ export function GalleryPage() {
     }
   }, [])
 
+  // ドラッグ＆スワイプ機能
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return
+    setIsDragging(true)
+    setStartX(e.pageX - scrollContainerRef.current.offsetLeft)
+    setScrollLeft(scrollContainerRef.current.scrollLeft)
+    setVelocity(0)
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!scrollContainerRef.current) return
+    setIsDragging(true)
+    setStartX(e.touches[0].pageX - scrollContainerRef.current.offsetLeft)
+    setScrollLeft(scrollContainerRef.current.scrollLeft)
+    setVelocity(0)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollContainerRef.current) return
+    e.preventDefault()
+    const x = e.pageX - scrollContainerRef.current.offsetLeft
+    const walk = (x - startX) * 2
+    const newScrollLeft = scrollLeft - walk
+    scrollContainerRef.current.scrollLeft = newScrollLeft
+    setVelocity(walk)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || !scrollContainerRef.current) return
+    const x = e.touches[0].pageX - scrollContainerRef.current.offsetLeft
+    const walk = (x - startX) * 2
+    const newScrollLeft = scrollLeft - walk
+    scrollContainerRef.current.scrollLeft = newScrollLeft
+    setVelocity(walk)
+  }
+
+  const handleMouseUp = () => {
+    if (!isDragging) return
+    setIsDragging(false)
+    applyMomentum()
+  }
+
+  const handleTouchEnd = () => {
+    if (!isDragging) return
+    setIsDragging(false)
+    applyMomentum()
+  }
+
+  const applyMomentum = () => {
+    if (!scrollContainerRef.current) return
+    let currentVelocity = velocity
+    const friction = 0.95
+    const minVelocity = 0.5
+
+    const animate = () => {
+      if (!scrollContainerRef.current) return
+      currentVelocity *= friction
+      if (Math.abs(currentVelocity) > minVelocity) {
+        scrollContainerRef.current.scrollLeft -= currentVelocity
+        animationRef.current = requestAnimationFrame(animate)
+      }
+    }
+    animate()
+  }
+
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [])
+
   // キーボードの矢印キーでスクロール
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -62,12 +140,12 @@ export function GalleryPage() {
   }, [])
 
   // 矢印ボタンでスクロール
-  const scrollLeft = () => {
+  const scrollToLeft = () => {
     if (!scrollContainerRef.current) return
     scrollContainerRef.current.scrollBy({ left: -400, behavior: 'smooth' })
   }
 
-  const scrollRight = () => {
+  const scrollToRight = () => {
     if (!scrollContainerRef.current) return
     scrollContainerRef.current.scrollBy({ left: 400, behavior: 'smooth' })
   }
@@ -83,7 +161,7 @@ export function GalleryPage() {
       if (catalogResponse.ok) {
         const catalogData = await catalogResponse.json()
         if (catalogData.images && catalogData.images.length > 0) {
-          // カタログ画像をAsset形式に変換
+          // カタログ画像をAsset形式に変換（全データ取得）
           const catalogAssets = catalogData.images.map((img: any) => ({
             id: img.id,
             src: img.src,
@@ -98,15 +176,8 @@ export function GalleryPage() {
             type: 'catalog'
           }))
 
-          if (append) {
-            setAssets(prev => {
-              const existingIds = new Set(prev.map(a => a.id))
-              const newAssets = catalogAssets.filter(a => !existingIds.has(a.id))
-              return [...prev, ...newAssets]
-            })
-          } else {
-            setAssets(catalogAssets) // 全データを一度に取得
-          }
+          // 全データを設定（appendは無視して全件取得）
+          setAssets(catalogAssets)
           setLoading(false)
           setIsLoadingMore(false)
           return
@@ -118,7 +189,7 @@ export function GalleryPage() {
         .from('published_items')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100)
+        .limit(10000)
 
       if (error) throw error
       setAssets(data || [])
@@ -167,7 +238,16 @@ export function GalleryPage() {
 
       {/* Horizontal scroll container */}
       <div className="gallery-scroll-wrapper">
-        <div className="gallery-scroll-container" ref={scrollContainerRef}>
+        <div
+          className={`gallery-scroll-container ${isDragging ? 'dragging' : ''}`}
+          ref={scrollContainerRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}>
           <div className="gallery-horizontal">
             {assets.map((asset, index) => {
               const template = posterTemplates[index % posterTemplates.length]
@@ -213,8 +293,8 @@ export function GalleryPage() {
         </div>
 
         {/* Scroll indicators */}
-        <div className="scroll-hint-left" onClick={scrollLeft}>←</div>
-        <div className="scroll-hint-right" onClick={scrollRight}>→</div>
+        <div className="scroll-hint-left" onClick={scrollToLeft}>←</div>
+        <div className="scroll-hint-right" onClick={scrollToRight}>→</div>
       </div>
 
       {/* Bottom white line */}
