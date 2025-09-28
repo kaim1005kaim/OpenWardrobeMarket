@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { Asset } from '../lib/types'
 import './GalleryPage.css'
@@ -18,14 +18,20 @@ const posterTemplates = [
 export function GalleryPage() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchAssets()
   }, [])
 
-  const fetchAssets = async () => {
+  const fetchAssets = async (append = false) => {
+    if (isLoadingMore && append) return
+
+    if (append) setIsLoadingMore(true)
+
     try {
-      // まずカタログAPIからデータを取得
+      // カタログAPIからデータを取得
       const catalogResponse = await fetch('/api/catalog')
       if (catalogResponse.ok) {
         const catalogData = await catalogResponse.json()
@@ -37,15 +43,25 @@ export function GalleryPage() {
             title: img.title || 'Fashion Design',
             tags: img.tags || [],
             colors: [],
-            price: Math.floor(Math.random() * 30000) + 10000, // ランダム価格
+            price: Math.floor(Math.random() * 30000) + 10000,
             creator: 'OWM Catalog',
             likes: Math.floor(Math.random() * 100),
             w: 400,
             h: 600,
             type: 'catalog'
           }))
-          setAssets(catalogAssets.slice(0, 16)) // 最初の16件を表示
+
+          if (append) {
+            setAssets(prev => {
+              const existingIds = new Set(prev.map(a => a.id))
+              const newAssets = catalogAssets.filter(a => !existingIds.has(a.id))
+              return [...prev, ...newAssets]
+            })
+          } else {
+            setAssets(catalogAssets) // 全データを一度に取得
+          }
           setLoading(false)
+          setIsLoadingMore(false)
           return
         }
       }
@@ -55,7 +71,7 @@ export function GalleryPage() {
         .from('published_items')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(16)
+        .limit(100)
 
       if (error) throw error
       setAssets(data || [])
@@ -63,8 +79,30 @@ export function GalleryPage() {
       console.error('Error fetching assets:', error)
     } finally {
       setLoading(false)
+      setIsLoadingMore(false)
     }
   }
+
+  // 横スクロール検知
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!scrollContainerRef.current) return
+
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
+      const scrollPercentage = (scrollLeft + clientWidth) / scrollWidth
+
+      // 80%までスクロールしたら追加データを読み込み
+      if (scrollPercentage > 0.8 && !isLoadingMore) {
+        fetchAssets(true)
+      }
+    }
+
+    const container = scrollContainerRef.current
+    if (container) {
+      container.addEventListener('scroll', handleScroll)
+      return () => container.removeEventListener('scroll', handleScroll)
+    }
+  }, [isLoadingMore])
 
   const createPosterImage = (asset: Asset, template: any) => {
     // ポスターテンプレートに画像を配置する処理
@@ -80,34 +118,56 @@ export function GalleryPage() {
       {/* Top white line */}
       <div className="top-line"></div>
 
-      <div className="gallery-grid">
-        {assets.map((asset, index) => {
-          const template = posterTemplates[index % posterTemplates.length]
-          return (
-            <div key={asset.id} className="poster-item" style={{ backgroundColor: template.bgColor }}>
-              <div className="poster-header">
-                <span className="poster-brand" style={{ color: template.textColor }}>
-                  {index % 2 === 0 ? 'VERY PORTLAND' : 'form'}
-                </span>
-                <span className="poster-number" style={{ color: template.textColor }}>
-                  265
-                </span>
-              </div>
-              <div className="poster-image">
-                <img src={asset.src} alt={asset.title} />
-              </div>
-              <div className="poster-footer">
-                <div className="poster-title" style={{ color: template.textColor }}>
-                  {asset.title || 'Untitled'}
+      {/* Horizontal scroll container */}
+      <div className="gallery-scroll-wrapper">
+        <div className="gallery-scroll-container" ref={scrollContainerRef}>
+          <div className="gallery-horizontal">
+            {assets.map((asset, index) => {
+              const template = posterTemplates[index % posterTemplates.length]
+              return (
+                <div key={asset.id} className="poster-item-horizontal" style={{ backgroundColor: template.bgColor }}>
+                  <div className="poster-header">
+                    <span className="poster-brand" style={{ color: template.textColor }}>
+                      {index % 2 === 0 ? 'VERY PORTLAND' : 'form'}
+                    </span>
+                    <span className="poster-number" style={{ color: template.textColor }}>
+                      {String(index + 1).padStart(3, '0')}
+                    </span>
+                  </div>
+                  <div className="poster-image">
+                    <img
+                      src={asset.src}
+                      alt={asset.title}
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = 'https://via.placeholder.com/400x600/333/999?text=Fashion'
+                      }}
+                    />
+                  </div>
+                  <div className="poster-footer">
+                    <div className="poster-title" style={{ color: template.textColor }}>
+                      {asset.title || 'Untitled'}
+                    </div>
+                    <div className="poster-meta" style={{ color: template.textColor }}>
+                      <span>{asset.creator || 'Anonymous'}</span>
+                      <span>¥{asset.price?.toLocaleString() || '---'}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="poster-meta" style={{ color: template.textColor }}>
-                  <span>{asset.creator || 'Anonymous'}</span>
-                  <span>{new Date(asset.createdAt || '').toLocaleDateString()}</span>
-                </div>
+              )
+            })}
+            {isLoadingMore && (
+              <div className="loading-more">
+                <div className="loading-spinner"></div>
               </div>
-            </div>
-          )
-        })}
+            )}
+          </div>
+        </div>
+
+        {/* Scroll indicators */}
+        <div className="scroll-hint-left">←</div>
+        <div className="scroll-hint-right">→</div>
       </div>
 
       {/* Bottom white line */}
