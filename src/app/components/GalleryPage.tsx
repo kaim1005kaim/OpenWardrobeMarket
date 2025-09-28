@@ -183,8 +183,6 @@ export function GalleryPage() {
         )}
       </div>
 
-      {/* Bottom white line */}
-      <div className="bottom-line"></div>
     </div>
   )
 }
