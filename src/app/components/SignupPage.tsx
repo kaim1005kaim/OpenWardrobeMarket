@@ -41,24 +41,19 @@ export function SignupPage() {
 
       if (authError) throw authError
 
-      // Create user profile (optional - skip if table doesn't exist)
+      // Create user profile
       if (authData.user) {
-        try {
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: authData.user.id,
-              username: username,
-              email: email,
-              created_at: new Date().toISOString()
-            })
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: authData.user.id,
+            username: username,
+            email: email,
+            created_at: new Date().toISOString()
+          })
 
-          if (profileError && !profileError.message.includes('user_profiles')) {
-            console.warn('Profile creation failed:', profileError)
-            // Continue anyway - auth was successful
-          }
-        } catch (profileErr) {
-          console.warn('Profile table may not exist:', profileErr)
+        if (profileError) {
+          console.error('Profile creation error:', profileError)
           // Continue anyway - auth was successful
         }
       }
