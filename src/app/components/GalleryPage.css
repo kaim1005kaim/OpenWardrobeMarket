@@ -72,10 +72,10 @@
 
 /* Masonry Grid Layout */
 .gallery-masonry-wrapper {
-  padding: 80px 30px 120px;
+  padding: 80px 10px 120px;
   width: 100%;
-  max-width: 1800px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
 }
 
 .gallery-masonry-grid {
@@ -219,7 +219,7 @@
   }
 
   .gallery-masonry-wrapper {
-    max-width: 1200px;
+    max-width: 100%;
   }
 }
 
@@ -252,7 +252,7 @@
   }
 
   .gallery-masonry-wrapper {
-    padding: 80px 15px 120px;
+    padding: 80px 8px 120px;
   }
 
   .masonry-item {
