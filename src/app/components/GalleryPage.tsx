@@ -110,12 +110,14 @@ export function GalleryPage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isLoadingMore])
 
-  // アスペクト比を決定（正方形、4:3、9:16の3種類）
+  // アスペクト比を決定（正方形、縦長の2種類）
   const getAspectRatio = (index: number) => {
     const ratios = [
-      { type: 'square', height: 280 },      // 1:1
-      { type: 'landscape', height: 210 },   // 4:3
-      { type: 'portrait', height: 500 },    // 9:16
+      { type: 'square', height: 260 },      // 1:1
+      { type: 'portrait', height: 460 },    // 9:16
+      { type: 'square', height: 260 },      // 1:1
+      { type: 'portrait', height: 460 },    // 9:16
+      { type: 'portrait', height: 460 },    // 9:16
     ]
     return ratios[index % ratios.length]
   }
