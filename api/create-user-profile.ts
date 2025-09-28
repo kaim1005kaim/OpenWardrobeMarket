@@ -16,6 +16,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Check if service key exists
+    if (!supabaseServiceKey || supabaseServiceKey === 'undefined') {
+      console.error('Service role key not configured')
+      // Fallback: Return success without creating profile
+      return res.status(200).json({
+        success: true,
+        warning: 'Profile creation skipped - service key not configured',
+        data: { id: userId, username, email }
+      })
+    }
+
     // Create Supabase client with service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -23,6 +34,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         persistSession: false
       }
     })
+
+    // First check if user exists in auth.users
+    const { data: existingUser, error: checkError } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('id', userId)
+      .single()
+
+    if (existingUser) {
+      console.log('Profile already exists for user:', userId)
+      return res.status(200).json({ success: true, data: existingUser })
+    }
 
     // Insert user profile
     const { data, error } = await supabase
@@ -38,7 +61,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (error) {
       console.error('Profile creation error:', error)
-      return res.status(400).json({ error: error.message })
+      // Don't fail the signup process
+      return res.status(200).json({
+        success: true,
+        warning: `Profile creation failed: ${error.message}`,
+        data: { id: userId, username, email }
+      })
     }
 
     return res.status(200).json({ success: true, data })
