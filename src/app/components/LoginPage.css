@@ -71,6 +71,29 @@
   letter-spacing: 0.1em;
 }
 
+.login-submit-button {
+  margin-top: 20px;
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  letter-spacing: 0.15em;
+  padding: 12px 40px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.login-submit-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.login-submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .bottom-section {
   position: absolute;
   bottom: 40px;

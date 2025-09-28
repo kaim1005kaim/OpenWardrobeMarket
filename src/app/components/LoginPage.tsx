@@ -77,6 +77,13 @@ export function LoginPage() {
           className="login-input"
           disabled={isLoading}
         />
+        <button
+          type="submit"
+          className="login-submit-button"
+          disabled={isLoading}
+        >
+          LOGIN
+        </button>
       </form>
 
       {/* Bottom section */}

@@ -1,0 +1,78 @@
+.signup-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background-image: url('/web_TOP_BG.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.error-message {
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.5);
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  margin-bottom: 20px;
+}
+
+.signup-form {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 350px;
+  z-index: 10;
+}
+
+.signup-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid white;
+  padding: 10px 0;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  color: white;
+  outline: none;
+}
+
+.signup-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.1em;
+}
+
+.signup-submit-button {
+  margin-top: 20px;
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  letter-spacing: 0.15em;
+  padding: 12px 40px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.signup-submit-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.signup-submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
