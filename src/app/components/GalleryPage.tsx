@@ -110,7 +110,7 @@ export function GalleryPage() {
 
   // ランダムな高さを生成（Pinterest風のレイアウト用）
   const getRandomHeight = (index: number) => {
-    const heights = [250, 300, 350, 400, 320, 280, 360]
+    const heights = [320, 380, 420, 480, 400, 350, 440, 360, 410, 390]
     return heights[index % heights.length]
   }
 
@@ -142,23 +142,34 @@ export function GalleryPage() {
                   height: `${getRandomHeight(index)}px`
                 }}
               >
-                <div className="masonry-image">
-                  <img
-                    src={asset.src}
-                    alt={asset.title}
-                    loading="lazy"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      target.src = 'https://via.placeholder.com/400x600/333/999?text=Fashion'
-                    }}
-                  />
-                </div>
-                <div className="masonry-overlay">
-                  <div className="masonry-title" style={{ color: template.textColor }}>
-                    {asset.title || 'Untitled'}
+                <div className="poster-frame">
+                  <div className="poster-header">
+                    <span className="poster-brand" style={{ color: template.textColor }}>
+                      {index % 2 === 0 ? 'VERY PORTLAND' : 'form'}
+                    </span>
+                    <span className="poster-number" style={{ color: template.textColor }}>
+                      {String(index + 1).padStart(3, '0')}
+                    </span>
                   </div>
-                  <div className="masonry-meta" style={{ color: template.textColor }}>
-                    <span>{asset.creator || 'Anonymous'}</span>
+                  <div className="poster-image">
+                    <img
+                      src={asset.src}
+                      alt={asset.title}
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = 'https://via.placeholder.com/400x600/333/999?text=Fashion'
+                      }}
+                    />
+                  </div>
+                  <div className="poster-footer">
+                    <div className="poster-title" style={{ color: template.textColor }}>
+                      {asset.title || 'Untitled'}
+                    </div>
+                    <div className="poster-meta" style={{ color: template.textColor }}>
+                      <span>{asset.creator || 'Anonymous'}</span>
+                      <span>¥{asset.price?.toLocaleString() || '---'}</span>
+                    </div>
                   </div>
                 </div>
               </div>
