@@ -25,6 +25,53 @@ export function GalleryPage() {
     fetchAssets()
   }, [])
 
+  // マウスホイールで横スクロール
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (!scrollContainerRef.current) return
+
+      e.preventDefault()
+      // deltaYが大きい場合（通常の縦スクロール）を横スクロールに変換
+      const scrollAmount = e.deltaY !== 0 ? e.deltaY : e.deltaX
+      scrollContainerRef.current.scrollLeft += scrollAmount
+    }
+
+    const container = scrollContainerRef.current
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: false })
+      return () => container.removeEventListener('wheel', handleWheel)
+    }
+  }, [])
+
+  // キーボードの矢印キーでスクロール
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!scrollContainerRef.current) return
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        scrollContainerRef.current.scrollBy({ left: -400, behavior: 'smooth' })
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        scrollContainerRef.current.scrollBy({ left: 400, behavior: 'smooth' })
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // 矢印ボタンでスクロール
+  const scrollLeft = () => {
+    if (!scrollContainerRef.current) return
+    scrollContainerRef.current.scrollBy({ left: -400, behavior: 'smooth' })
+  }
+
+  const scrollRight = () => {
+    if (!scrollContainerRef.current) return
+    scrollContainerRef.current.scrollBy({ left: 400, behavior: 'smooth' })
+  }
+
   const fetchAssets = async (append = false) => {
     if (isLoadingMore && append) return
 
@@ -166,8 +213,8 @@ export function GalleryPage() {
         </div>
 
         {/* Scroll indicators */}
-        <div className="scroll-hint-left">←</div>
-        <div className="scroll-hint-right">→</div>
+        <div className="scroll-hint-left" onClick={scrollLeft}>←</div>
+        <div className="scroll-hint-right" onClick={scrollRight}>→</div>
       </div>
 
       {/* Bottom white line */}
