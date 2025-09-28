@@ -110,10 +110,14 @@ export function GalleryPage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isLoadingMore])
 
-  // ランダムな高さを生成（Pinterest風のレイアウト用）
-  const getRandomHeight = (index: number) => {
-    const heights = [320, 380, 420, 480, 400, 350, 440, 360, 410, 390]
-    return heights[index % heights.length]
+  // アスペクト比を決定（正方形、4:3、9:16の3種類）
+  const getAspectRatio = (index: number) => {
+    const ratios = [
+      { type: 'square', height: 280 },      // 1:1
+      { type: 'landscape', height: 210 },   // 4:3
+      { type: 'portrait', height: 500 },    // 9:16
+    ]
+    return ratios[index % ratios.length]
   }
 
   return (
@@ -151,13 +155,14 @@ export function GalleryPage() {
         <div className="gallery-masonry-grid">
           {assets.map((asset, index) => {
             const template = posterTemplates[index % posterTemplates.length]
+            const aspectRatio = getAspectRatio(index)
             return (
               <div
                 key={asset.id}
-                className="masonry-item"
+                className={`masonry-item ${aspectRatio.type}`}
                 style={{
                   backgroundColor: template.bgColor,
-                  height: `${getRandomHeight(index)}px`
+                  height: `${aspectRatio.height}px`
                 }}
               >
                 <div className="poster-frame" onClick={() => setSelectedAsset(asset)}>

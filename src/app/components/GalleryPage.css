@@ -174,6 +174,19 @@
   background: white;
 }
 
+/* Aspect ratio specific styles */
+.masonry-item.square {
+  aspect-ratio: 1 / 1;
+}
+
+.masonry-item.landscape {
+  aspect-ratio: 4 / 3;
+}
+
+.masonry-item.portrait {
+  aspect-ratio: 9 / 16;
+}
+
 .masonry-item:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
@@ -218,6 +231,7 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 10px;
+  min-height: 0;
 }
 
 .poster-image img {
@@ -226,6 +240,19 @@
   object-fit: cover;
   display: block;
   transition: transform 0.3s ease;
+}
+
+/* Adjust image sizing for different aspect ratios */
+.masonry-item.square .poster-image img {
+  object-fit: cover;
+}
+
+.masonry-item.landscape .poster-image img {
+  object-fit: cover;
+}
+
+.masonry-item.portrait .poster-image img {
+  object-fit: cover;
 }
 
 .masonry-item:hover .poster-image img {
