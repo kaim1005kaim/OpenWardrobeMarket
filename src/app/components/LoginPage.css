@@ -2,11 +2,26 @@
   position: relative;
   width: 100vw;
   height: 100vh;
-  background: url('/images/backgrounds/login-bg.jpg') center center / cover no-repeat;
+  background: linear-gradient(135deg, #2c3e50 0%, #3c5064 50%, #4a5f7a 100%),
+              url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyMCIgaGVpZ2h0PSIxMDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxOTIwIiBoZWlnaHQ9IjEwODAiIGZpbGw9IiMyYzNlNTAiLz48L3N2Zz4=');
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: overlay;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   overflow: hidden;
+}
+
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
 
 .top-line {
@@ -16,6 +31,7 @@
   right: 40px;
   height: 1px;
   background: white;
+  z-index: 10;
 }
 
 .brand-title {
@@ -30,6 +46,7 @@
   letter-spacing: 0.02em;
   color: white;
   text-align: left;
+  z-index: 10;
 }
 
 .brand-title div {
@@ -45,6 +62,7 @@
   flex-direction: column;
   gap: 20px;
   width: 300px;
+  z-index: 10;
 }
 
 .login-input {
@@ -70,6 +88,7 @@
   bottom: 40px;
   left: 40px;
   right: 40px;
+  z-index: 10;
 }
 
 .bottom-line {
