@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  /* New button and chip utilities */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl border border-accent
+           px-3 py-2 text-sm text-ink-900 transition-colors duration-200
+           hover:bg-accent hover:bg-opacity-10 active:bg-accent active:bg-opacity-20 
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .chip {
+    @apply px-3 py-1.5 rounded-full border border-ink-200 text-sm text-ink-700 
+           transition-colors duration-200 cursor-pointer
+           hover:border-ink-400 data-[active=true]:border-accent 
+           data-[active=true]:bg-accent data-[active=true]:bg-opacity-10 data-[active=true]:text-accent;
+  }
+
+  .iconbtn {
+    @apply p-2 rounded-lg text-ink-400 hover:bg-ink-200 hover:bg-opacity-40 hover:text-ink-700 
+           transition-colors duration-200;
+  }
+
+  .card {
+    @apply rounded-2xl border border-ink-200 bg-white shadow-sm;
+  }
+
+  /* Progress and animation utilities */
+  .progress-pulse {
+    @apply animate-pulse bg-accent bg-opacity-20;
+  }
+}
+
+/* Custom styles for masonry layout */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
