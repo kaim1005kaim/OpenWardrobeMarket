@@ -21,6 +21,8 @@ export function GalleryPage() {
   const [loading, setLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [username, setUsername] = useState<string>('')
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -116,17 +118,33 @@ export function GalleryPage() {
 
   return (
     <div className="gallery-container">
-      {/* Header with logo and account info */}
+      {/* Header */}
       <div className="gallery-header">
-        <div className="logo-text">OPENWARDROBEMARKET</div>
-        <div className="account-info">
+        <button className="hamburger-menu" onClick={() => setMenuOpen(!menuOpen)}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <h1 className="gallery-title">GALLERY</h1>
+        <div className="header-spacer"></div>
+      </div>
+
+      {/* Side Menu */}
+      <div className={`side-menu ${menuOpen ? 'open' : ''}`}>
+        <div className="menu-header">
+          <button className="close-menu" onClick={() => setMenuOpen(false)}>×</button>
+        </div>
+        <nav className="menu-nav">
+          <a href="#">HOME</a>
+          <a href="#">GALLERY</a>
+          <a href="#">CREATE</a>
+          <a href="#">PROFILE</a>
+        </nav>
+        <div className="menu-footer">
           <span className="username">{username}</span>
           <button className="logout-btn" onClick={handleLogout}>LOGOUT</button>
         </div>
       </div>
-
-      {/* Top white line */}
-      <div className="top-line"></div>
 
       {/* Masonry Grid Container */}
       <div className="gallery-masonry-wrapper">
@@ -142,7 +160,7 @@ export function GalleryPage() {
                   height: `${getRandomHeight(index)}px`
                 }}
               >
-                <div className="poster-frame">
+                <div className="poster-frame" onClick={() => setSelectedAsset(asset)}>
                   <div className="poster-header">
                     <span className="poster-brand" style={{ color: template.textColor }}>
                       {index % 2 === 0 ? 'VERY PORTLAND' : 'form'}
@@ -182,6 +200,45 @@ export function GalleryPage() {
           </div>
         )}
       </div>
+
+      {/* Detail Modal */}
+      {selectedAsset && (
+        <div className="detail-modal" onClick={() => setSelectedAsset(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-modal" onClick={() => setSelectedAsset(null)}>×</button>
+            <div className="modal-image">
+              <img src={selectedAsset.src} alt={selectedAsset.title} />
+            </div>
+            <div className="modal-info">
+              <h2 className="modal-title">{selectedAsset.title || 'Untitled'}</h2>
+              <div className="modal-meta">
+                <p className="modal-description">
+                  2000S A FULL-BODY SHOT OF<br />
+                  GARETH PUGH STYLE<br />
+                  FEATURE
+                </p>
+                <div className="modal-tags">
+                  <span>黒</span>
+                  <span>赤</span>
+                  <span>黄</span>
+                  <span>緑</span>
+                  <span>青</span>
+                </div>
+                <p className="modal-details">
+                  ゴシック / MIDJOURNEY & RUNWAY・クリエイティブ / 独特なスタイル模索中<br />
+                  フィギュア / ティーボット・アブストラクト / 抽象的でティーポットをイメージして<br />
+                  かす。
+                </p>
+              </div>
+              <div className="modal-price">
+                <span className="price-label">from<br />JOHN DEANNA</span>
+                <span className="price-amount">¥{selectedAsset.price?.toLocaleString() || '5,000'}</span>
+              </div>
+              <button className="purchase-btn">Similar designs</button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
