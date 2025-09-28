@@ -63,7 +63,10 @@
   letter-spacing: 0.1em;
   color: white;
   outline: none;
-  text-transform: none;
+  text-transform: none !important;
+  -webkit-text-transform: none !important;
+  -moz-text-transform: none !important;
+  -ms-text-transform: none !important;
 }
 
 .login-input::placeholder {
