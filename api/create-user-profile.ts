@@ -48,22 +48,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Wait a bit for auth user to be created
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise(resolve => setTimeout(resolve, 2000))
 
-    // Insert user profile with upsert to avoid conflicts
+    // Insert user profile directly (bypass RLS with service role)
     const { data, error } = await supabase
       .from('user_profiles')
-      .upsert({
+      .insert({
         id: userId,
         username: username,
         email: email,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'id'
       })
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Profile creation error:', error)
