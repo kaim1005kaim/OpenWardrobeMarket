@@ -2,11 +2,7 @@
   position: relative;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(135deg, #2c3e50 0%, #3c5064 50%, #4a5f7a 100%),
-              url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyMCIgaGVpZ2h0PSIxMDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxOTIwIiBoZWlnaHQ9IjEwODAiIGZpbGw9IiMyYzNlNTAiLz48L3N2Zz4=');
-  background-size: cover;
-  background-position: center;
-  background-blend-mode: overlay;
+  background: url('/login-bg-artistic.jpg') center center / cover no-repeat;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -20,7 +16,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.1);
   pointer-events: none;
 }
 
