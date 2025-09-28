@@ -2,7 +2,10 @@
   position: relative;
   width: 100vw;
   height: 100vh;
-  background: url('/artistic-fashion-bg.jpg') center center / cover no-repeat;
+  background-image: url('/teal-orange-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
