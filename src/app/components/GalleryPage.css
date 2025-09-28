@@ -174,13 +174,13 @@
   background: white;
 }
 
-/* Aspect ratio specific styles */
-.masonry-item.square {
+/* Aspect ratio specific styles - removed to use dynamic height */
+.masonry-item.square .poster-image {
   aspect-ratio: 1 / 1;
 }
 
-.masonry-item.portrait {
-  aspect-ratio: 9 / 16;
+.masonry-item.portrait .poster-image {
+  flex: 1;
 }
 
 .masonry-item:hover {
@@ -205,7 +205,7 @@
   font-family: 'Cinzel', serif;
   font-size: 10px;
   letter-spacing: 0.1em;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: #1a3d3c;
 }
 
@@ -226,7 +226,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   min-height: 0;
 }
 

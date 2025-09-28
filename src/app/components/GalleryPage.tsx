@@ -110,16 +110,18 @@ export function GalleryPage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isLoadingMore])
 
-  // アスペクト比を決定（正方形、縦長の2種類）
+  // アスペクト比を決定（正方形、縦長の2種類をランダムに）
   const getAspectRatio = (index: number) => {
-    const ratios = [
-      { type: 'square', height: 260 },      // 1:1
-      { type: 'portrait', height: 460 },    // 9:16
-      { type: 'square', height: 260 },      // 1:1
-      { type: 'portrait', height: 460 },    // 9:16
-      { type: 'portrait', height: 460 },    // 9:16
-    ]
-    return ratios[index % ratios.length]
+    // ランダムなパターンを生成（シードを使って再現性を持たせる）
+    const seed = index * 2654435761 % 2147483647
+    const random = (seed / 2147483647)
+
+    // 40%の確率で正方形、60%の確率で縦長
+    if (random < 0.4) {
+      return { type: 'square', height: 320 }  // 1:1 (高さを増やして画像部分を正方形に)
+    } else {
+      return { type: 'portrait', height: 460 } // 9:16
+    }
   }
 
   return (
