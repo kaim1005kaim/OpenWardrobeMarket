@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './app/App.tsx'
-import AuthCallback from './app/auth/callback/page.tsx'
+import { AuthCallback } from './app/components/AuthCallback.tsx'
 import './styles/globals.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
