@@ -41,19 +41,28 @@ export function SignupPage() {
 
       if (authError) throw authError
 
-      // Create user profile
+      // Create user profile via API endpoint
       if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: authData.user.id,
-            username: username,
-            email: email,
-            created_at: new Date().toISOString()
+        try {
+          const response = await fetch('/api/create-user-profile', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: authData.user.id,
+              username: username,
+              email: email
+            })
           })
 
-        if (profileError) {
-          console.error('Profile creation error:', profileError)
+          if (!response.ok) {
+            const error = await response.json()
+            console.error('Profile creation error:', error)
+            // Continue anyway - auth was successful
+          }
+        } catch (error) {
+          console.error('Profile API error:', error)
           // Continue anyway - auth was successful
         }
       }
