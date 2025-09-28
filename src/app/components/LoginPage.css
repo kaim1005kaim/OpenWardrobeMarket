@@ -63,6 +63,7 @@
   letter-spacing: 0.1em;
   color: white;
   outline: none;
+  text-transform: none;
 }
 
 .login-input::placeholder {
