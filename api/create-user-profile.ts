@@ -35,26 +35,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     })
 
-    // First check if user exists in auth.users
-    const { data: existingUser, error: checkError } = await supabase
+    // First check if profile already exists
+    const { data: existingProfile } = await supabase
       .from('user_profiles')
-      .select('id')
+      .select('*')
       .eq('id', userId)
-      .single()
+      .maybeSingle()
 
-    if (existingUser) {
+    if (existingProfile) {
       console.log('Profile already exists for user:', userId)
-      return res.status(200).json({ success: true, data: existingUser })
+      return res.status(200).json({ success: true, data: existingProfile })
     }
 
-    // Insert user profile
+    // Wait a bit for auth user to be created
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // Insert user profile with upsert to avoid conflicts
     const { data, error } = await supabase
       .from('user_profiles')
-      .insert({
+      .upsert({
         id: userId,
         username: username,
         email: email,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
       })
       .select()
       .single()

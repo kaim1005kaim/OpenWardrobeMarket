@@ -43,28 +43,32 @@ export function SignupPage() {
 
       // Create user profile via API endpoint
       if (authData.user) {
-        try {
-          const response = await fetch('/api/create-user-profile', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: authData.user.id,
-              username: username,
-              email: email
+        // Small delay to ensure auth user is created in database
+        setTimeout(async () => {
+          try {
+            const response = await fetch('/api/create-user-profile', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: authData.user.id,
+                username: username,
+                email: email
+              })
             })
-          })
 
-          if (!response.ok) {
-            const error = await response.json()
-            console.error('Profile creation error:', error)
-            // Continue anyway - auth was successful
+            const result = await response.json()
+            if (result.warning) {
+              console.warn('Profile creation warning:', result.warning)
+            } else if (result.success) {
+              console.log('Profile created successfully')
+            }
+          } catch (error) {
+            console.error('Profile API error:', error)
+            // Profile creation failed but auth succeeded
           }
-        } catch (error) {
-          console.error('Profile API error:', error)
-          // Continue anyway - auth was successful
-        }
+        }, 500)
       }
 
       // Success - redirect to login
