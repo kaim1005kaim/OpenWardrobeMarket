@@ -1,0 +1,81 @@
+.gallery-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #2c5f5d 0%, #1a3d3c 100%);
+  padding: 60px 40px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.poster-item {
+  aspect-ratio: 3 / 4;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.poster-item:hover {
+  transform: scale(1.05);
+}
+
+.poster-header {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  margin-bottom: 20px;
+}
+
+.poster-brand {
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.poster-number {
+  font-weight: 400;
+}
+
+.poster-image {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.poster-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.poster-footer {
+  border-top: 1px solid currentColor;
+  padding-top: 15px;
+}
+
+.poster-title {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.poster-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+}
