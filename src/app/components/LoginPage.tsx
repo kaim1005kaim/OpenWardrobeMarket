@@ -7,6 +7,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(false)
   const navigate = useNavigate()
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -18,7 +19,11 @@ export function LoginPage() {
         password,
       })
       if (error) throw error
-      navigate('/gallery')
+
+      setShowWelcome(true)
+      setTimeout(() => {
+        navigate('/gallery')
+      }, 1500)
     } catch (error) {
       console.error('Login error:', error)
     } finally {

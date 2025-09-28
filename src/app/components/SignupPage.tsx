@@ -10,6 +10,7 @@ export function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const navigate = useNavigate()
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -71,8 +72,11 @@ export function SignupPage() {
         }, 500)
       }
 
-      // Success - redirect to login
-      navigate('/')
+      // Success - show success message
+      setSuccess(true)
+      setTimeout(() => {
+        navigate('/')
+      }, 2000)
     } catch (error: any) {
       setError(error.message || 'Failed to create account')
     } finally {
@@ -95,6 +99,20 @@ export function SignupPage() {
         <div>NEW</div>
         <div>ACCOUNT</div>
       </div>
+
+      {/* Success Message Overlay */}
+      {success && (
+        <div className="success-overlay">
+          <div className="success-modal">
+            <div className="success-icon">✓</div>
+            <h2 className="success-title">ACCOUNT CREATED</h2>
+            <p className="success-message">
+              Welcome to Open Wardrobe Market!<br/>
+              Redirecting to login...
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Center signup form */}
       <form onSubmit={handleSignup} className="signup-form">
