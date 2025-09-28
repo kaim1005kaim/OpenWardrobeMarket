@@ -25,11 +25,37 @@ export function GalleryPage() {
 
   const fetchAssets = async () => {
     try {
+      // まずカタログAPIからデータを取得
+      const catalogResponse = await fetch('/api/catalog')
+      if (catalogResponse.ok) {
+        const catalogData = await catalogResponse.json()
+        if (catalogData.images && catalogData.images.length > 0) {
+          // カタログ画像をAsset形式に変換
+          const catalogAssets = catalogData.images.map((img: any) => ({
+            id: img.id,
+            src: img.src,
+            title: img.title || 'Fashion Design',
+            tags: img.tags || [],
+            colors: [],
+            price: Math.floor(Math.random() * 30000) + 10000, // ランダム価格
+            creator: 'OWM Catalog',
+            likes: Math.floor(Math.random() * 100),
+            w: 400,
+            h: 600,
+            type: 'catalog'
+          }))
+          setAssets(catalogAssets.slice(0, 16)) // 最初の16件を表示
+          setLoading(false)
+          return
+        }
+      }
+
+      // カタログが取得できない場合はpublished_itemsから取得
       const { data, error } = await supabase
         .from('published_items')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(8)
+        .limit(16)
 
       if (error) throw error
       setAssets(data || [])
@@ -51,6 +77,9 @@ export function GalleryPage() {
 
   return (
     <div className="gallery-container">
+      {/* Top white line */}
+      <div className="top-line"></div>
+
       <div className="gallery-grid">
         {assets.map((asset, index) => {
           const template = posterTemplates[index % posterTemplates.length]
@@ -80,6 +109,9 @@ export function GalleryPage() {
           )
         })}
       </div>
+
+      {/* Bottom white line */}
+      <div className="bottom-line"></div>
     </div>
   )
 }

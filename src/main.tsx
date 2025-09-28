@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { LoginPage } from './app/components/LoginPage.tsx'
 import { GalleryPage } from './app/components/GalleryPage.tsx'
 import { SignupPage } from './app/components/SignupPage.tsx'
-import { AuthCallback } from './app/components/AuthCallback.tsx'
+import { AuthCallback } from './app/pages/auth/callback.tsx'
 import { supabase } from './app/lib/supabase.ts'
 import './styles/globals.css'
 

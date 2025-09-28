@@ -13,9 +13,40 @@ export function SignupPage() {
   const [success, setSuccess] = useState(false)
   const navigate = useNavigate()
 
+  const validateEmail = (email: string): boolean => {
+    // より厳密なメールバリデーション
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+
+    // 一般的なテストメールを拒否
+    const blockedPatterns = [
+      'test@test',
+      'example@example',
+      'aaa@aaa',
+      'admin@admin',
+      'test@email'
+    ]
+
+    const emailLower = email.toLowerCase()
+
+    // ブロックパターンチェック
+    for (const pattern of blockedPatterns) {
+      if (emailLower.includes(pattern)) {
+        return false
+      }
+    }
+
+    return emailRegex.test(email)
+  }
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // メールアドレスの検証
+    if (!validateEmail(email)) {
+      setError('有効なメールアドレスを入力してください')
+      return
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match')
@@ -29,22 +60,27 @@ export function SignupPage() {
 
     setIsLoading(true)
     try {
-      // Create auth account
+      // Create auth account with email confirmation
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             username: username,
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       })
 
       if (authError) throw authError
 
-      // Create user profile via API endpoint
+      // Success - show success message immediately
+      setSuccess(true)
+      setIsLoading(false)
+
+      // Create user profile via API endpoint (in background)
       if (authData.user) {
-        // Small delay to ensure auth user is created in database
+        // Create profile after showing success
         setTimeout(async () => {
           try {
             const response = await fetch('/api/create-user-profile', {
@@ -69,17 +105,10 @@ export function SignupPage() {
             console.error('Profile API error:', error)
             // Profile creation failed but auth succeeded
           }
-        }, 500)
+        }, 1000)
       }
-
-      // Success - show success message
-      setSuccess(true)
-      setTimeout(() => {
-        navigate('/')
-      }, 2000)
     } catch (error: any) {
       setError(error.message || 'Failed to create account')
-    } finally {
       setIsLoading(false)
     }
   }
@@ -107,9 +136,25 @@ export function SignupPage() {
             <div className="success-icon">✓</div>
             <h2 className="success-title">ACCOUNT CREATED</h2>
             <p className="success-message">
-              Welcome to Open Wardrobe Market!<br/>
-              Redirecting to login...
+              アカウントが作成されました!<br/>
+              ログインページからアクセスできます。
             </p>
+            <button
+              onClick={() => navigate('/')}
+              style={{
+                marginTop: '20px',
+                padding: '10px 30px',
+                background: 'transparent',
+                border: '1px solid white',
+                color: 'white',
+                fontFamily: "'Cinzel', serif",
+                fontSize: '12px',
+                letterSpacing: '0.15em',
+                cursor: 'pointer'
+              }}
+            >
+              ログインページへ
+            </button>
           </div>
         </div>
       )}

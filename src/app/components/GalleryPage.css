@@ -1,7 +1,29 @@
 .gallery-container {
+  position: relative;
   min-height: 100vh;
   background: linear-gradient(135deg, #2c5f5d 0%, #1a3d3c 100%);
   padding: 60px 40px;
+}
+
+/* Top and bottom white lines - same as login page */
+.top-line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: white;
+  z-index: 1000;
+}
+
+.bottom-line {
+  position: fixed;
+  bottom: 100px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: white;
+  z-index: 1000;
 }
 
 .gallery-grid {
