@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { Asset } from '../lib/types'
+import { useNavigate } from 'react-router-dom'
 import './GalleryPage.css'
 
 // ポスターテンプレートの定義
@@ -22,13 +23,26 @@ export function GalleryPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [startX, setStartX] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
-  const [velocity, setVelocity] = useState(0)
+  const [username, setUsername] = useState<string>('')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const animationRef = useRef<number>()
+  const navigate = useNavigate()
 
   useEffect(() => {
     fetchAssets()
+    fetchUserData()
   }, [])
+
+  const fetchUserData = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      setUsername(user.user_metadata?.username || user.email?.split('@')[0] || 'User')
+    }
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    navigate('/login')
+  }
 
   // マウスホイールで横スクロール
   useEffect(() => {
@@ -48,13 +62,13 @@ export function GalleryPage() {
     }
   }, [])
 
-  // ドラッグ＆スワイプ機能
+  // ドラッグ＆スワイプ機能（慣性なし）
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!scrollContainerRef.current) return
+    e.preventDefault()
     setIsDragging(true)
     setStartX(e.pageX - scrollContainerRef.current.offsetLeft)
     setScrollLeft(scrollContainerRef.current.scrollLeft)
-    setVelocity(0)
   }
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -62,64 +76,30 @@ export function GalleryPage() {
     setIsDragging(true)
     setStartX(e.touches[0].pageX - scrollContainerRef.current.offsetLeft)
     setScrollLeft(scrollContainerRef.current.scrollLeft)
-    setVelocity(0)
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !scrollContainerRef.current) return
     e.preventDefault()
     const x = e.pageX - scrollContainerRef.current.offsetLeft
-    const walk = (x - startX) * 2
-    const newScrollLeft = scrollLeft - walk
-    scrollContainerRef.current.scrollLeft = newScrollLeft
-    setVelocity(walk)
+    const walk = (x - startX) * 1.5 // スムーズな移動
+    scrollContainerRef.current.scrollLeft = scrollLeft - walk
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || !scrollContainerRef.current) return
     const x = e.touches[0].pageX - scrollContainerRef.current.offsetLeft
-    const walk = (x - startX) * 2
-    const newScrollLeft = scrollLeft - walk
-    scrollContainerRef.current.scrollLeft = newScrollLeft
-    setVelocity(walk)
+    const walk = (x - startX) * 1.5
+    scrollContainerRef.current.scrollLeft = scrollLeft - walk
   }
 
   const handleMouseUp = () => {
-    if (!isDragging) return
     setIsDragging(false)
-    applyMomentum()
   }
 
   const handleTouchEnd = () => {
-    if (!isDragging) return
     setIsDragging(false)
-    applyMomentum()
   }
-
-  const applyMomentum = () => {
-    if (!scrollContainerRef.current) return
-    let currentVelocity = velocity
-    const friction = 0.95
-    const minVelocity = 0.5
-
-    const animate = () => {
-      if (!scrollContainerRef.current) return
-      currentVelocity *= friction
-      if (Math.abs(currentVelocity) > minVelocity) {
-        scrollContainerRef.current.scrollLeft -= currentVelocity
-        animationRef.current = requestAnimationFrame(animate)
-      }
-    }
-    animate()
-  }
-
-  useEffect(() => {
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
-    }
-  }, [])
 
   // キーボードの矢印キーでスクロール
   useEffect(() => {
@@ -233,6 +213,15 @@ export function GalleryPage() {
 
   return (
     <div className="gallery-container">
+      {/* Header with logo and account info */}
+      <div className="gallery-header">
+        <div className="logo-text">OPENWARDROBEMARKET</div>
+        <div className="account-info">
+          <span className="username">{username}</span>
+          <button className="logout-btn" onClick={handleLogout}>LOGOUT</button>
+        </div>
+      </div>
+
       {/* Top white line */}
       <div className="top-line"></div>
 
@@ -252,7 +241,7 @@ export function GalleryPage() {
             {assets.map((asset, index) => {
               const template = posterTemplates[index % posterTemplates.length]
               return (
-                <div key={asset.id} className="poster-item-horizontal" style={{ backgroundColor: template.bgColor }}>
+                <div key={asset.id} className="poster-item-horizontal" style={{ backgroundColor: template.bgColor }} onMouseDown={(e) => e.stopPropagation()}>
                   <div className="poster-header">
                     <span className="poster-brand" style={{ color: template.textColor }}>
                       {index % 2 === 0 ? 'VERY PORTLAND' : 'form'}

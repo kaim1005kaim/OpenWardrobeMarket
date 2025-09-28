@@ -7,10 +7,62 @@
   justify-content: center;
 }
 
+/* Header with logo and account */
+.gallery-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  z-index: 1001;
+  background: transparent;
+}
+
+.logo-text {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  letter-spacing: 0.2em;
+  color: white;
+  font-weight: 600;
+}
+
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-family: 'Forum', cursive;
+  color: white;
+  font-size: 14px;
+}
+
+.username {
+  letter-spacing: 0.05em;
+}
+
+.logout-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-family: 'Forum', cursive;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  padding: 5px 10px;
+  transition: opacity 0.3s ease;
+}
+
+.logout-btn:hover {
+  opacity: 0.7;
+}
+
 /* Top and bottom white lines - same as login page */
 .top-line {
   position: fixed;
-  top: 0;
+  top: 60px;
   left: 0;
   right: 0;
   height: 1px;
@@ -59,6 +111,10 @@
 .gallery-scroll-container.dragging {
   cursor: grabbing;
   scroll-behavior: auto;
+}
+
+.gallery-scroll-container.dragging .poster-item-horizontal {
+  pointer-events: none;
 }
 
 .gallery-horizontal {
@@ -224,6 +280,18 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .gallery-header {
+    padding: 0 20px;
+  }
+
+  .logo-text {
+    font-size: 14px;
+  }
+
+  .account-info {
+    font-size: 12px;
+  }
+
   .gallery-scroll-wrapper {
     padding: 0 20px;
   }
