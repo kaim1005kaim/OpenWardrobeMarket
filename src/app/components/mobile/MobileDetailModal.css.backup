@@ -1,34 +1,27 @@
-.detail-modal-overlay {
+.modal-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000;
-}
-
-.detail-modal-backdrop {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  z-index: 300;
 }
 
-.detail-modal-container {
-  position: absolute;
+.detail-modal {
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: white;
+  background: #FFFFFF;
+  z-index: 301;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Header */
-.detail-modal-header {
+/* Header icons */
+.modal-header {
   position: absolute;
   top: 10px;
   left: 0;
@@ -36,109 +29,120 @@
   display: flex;
   justify-content: space-between;
   padding: 0 16px;
-  z-index: 10;
+  z-index: 20;
 }
 
-.detail-close-btn,
-.detail-bookmark-btn {
+.header-icon {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
   border: none;
-  font-size: 24px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  padding: 0;
+  border-radius: 50%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Image */
-.detail-image {
+/* Content */
+.modal-content {
+  background: #FFFFFF;
+}
+
+/* Main image */
+.modal-content .modal-image {
   width: 100%;
   height: 60vh;
   background: #C4C4C4;
+  overflow: hidden;
+  position: relative;
+  margin: 0 0 24px 0;
+  padding: 0;
 }
 
-.detail-image img {
+.modal-content .modal-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
 
-/* Info */
-.detail-info {
-  padding: 24px 20px;
-}
-
-.detail-title {
+/* Title */
+.modal-content .asset-title {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 12px;
   font-weight: 400;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #000;
+  color: #000000;
   margin: 0 0 16px 0;
+  padding: 0 20px;
   line-height: 1.6;
+  text-transform: uppercase;
 }
 
-.detail-tags {
+/* Tags */
+.modal-content .tags-section {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 20px;
+  padding: 0 20px;
 }
 
-.detail-tag {
+.modal-content .tag {
   font-family: "Noto Sans JP", sans-serif;
   font-size: 10px;
-  color: #666;
-  border: 1px solid #CCC;
+  color: #666666;
+  background: transparent;
+  border: 1px solid #CCCCCC;
   padding: 4px 12px;
   border-radius: 12px;
 }
 
-.detail-creator-price {
+/* Creator and Price Row */
+.modal-content .creator-price-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
+  padding: 0 20px;
 }
 
-.detail-creator {
+.modal-content .creator-info {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.detail-from {
+.modal-content .from-label {
   font-family: "Noto Sans JP", sans-serif;
   font-size: 9px;
-  color: #999;
+  color: #999999;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.detail-creator-name {
+.modal-content .creator-name {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 11px;
   font-weight: 400;
-  color: #000;
+  color: #000000;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.detail-price {
+.modal-content .asset-price {
   font-family: "Montserrat", sans-serif;
   font-size: 20px;
   font-weight: 600;
-  color: #000;
+  color: #000000;
 }
 
-.detail-buy-btn {
-  width: 100%;
+/* Buy button */
+.modal-content .buy-button {
+  width: calc(100% - 40px);
+  margin: 0 20px 20px 20px;
   padding: 16px;
   background: #1a3d3d;
   border: none;
@@ -146,81 +150,103 @@
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.2em;
-  color: white;
+  color: #FFFFFF;
   cursor: pointer;
+  transition: all 0.3s ease;
   text-transform: uppercase;
-  margin-bottom: 20px;
 }
 
-.detail-description {
-  margin-bottom: 40px;
+.modal-content .buy-button:active {
+  background: #2a4d4d;
 }
 
-.detail-description p {
+/* Description */
+.modal-content .description {
+  margin-bottom: 32px;
+  padding: 0 20px;
+}
+
+.modal-content .description p {
   font-family: "Noto Sans JP", sans-serif;
   font-size: 11px;
   line-height: 1.8;
-  color: #333;
+  color: #333333;
   margin: 0 0 8px 0;
 }
 
-.detail-more-btn {
-  background: none;
+.modal-content .more-text-btn {
+  background: transparent;
   border: none;
   font-family: "Noto Sans JP", sans-serif;
   font-size: 11px;
-  color: #666;
-  text-decoration: underline;
+  color: #666666;
   cursor: pointer;
   padding: 0;
+  text-decoration: underline;
 }
 
-/* Similar */
-.detail-similar {
+/* Similar section - full width */
+.similar-section {
+  margin-top: 60px;
   padding: 0 0 80px 0;
+  background: #FFFFFF;
 }
 
-.detail-similar-title {
+.similar-section .section-title {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #000;
+  color: #000000;
+  margin: 0 0 -30px 0;
+  padding: 0 20px;
   text-align: center;
-  margin: 0 0 40px 0;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
 }
 
-.detail-similar-grid {
+.similar-section .similar-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  padding: 0 16px;
   margin-bottom: 16px;
+  padding: 40px 16px 0 16px;
+  position: relative;
 }
 
-.detail-similar-item {
+.similar-section .similar-card {
   aspect-ratio: 3 / 4;
   background: #F5F5F5;
   border-radius: 8px;
   overflow: hidden;
+  position: relative;
+  z-index: 2;
 }
 
-.detail-similar-item img {
+.similar-section .similar-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
 
-.detail-similar-more {
-  background: none;
+.similar-section .more-btn {
+  width: 100%;
+  padding: 10px 20px;
+  background: transparent;
   border: none;
   font-family: "Noto Sans JP", sans-serif;
   font-size: 11px;
-  color: #666;
+  color: #666666;
   cursor: pointer;
   text-align: right;
-  width: 100%;
-  padding: 0 20px;
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+  .detail-modal {
+    max-width: 428px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }

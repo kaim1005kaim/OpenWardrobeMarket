@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Asset } from '../../lib/types';
 import './MobileDetailModal.css';
 
@@ -14,17 +14,9 @@ interface MobileDetailModalProps {
 export function MobileDetailModal({
   asset,
   onClose,
-  onLike,
-  onSave,
   onPurchase,
   similarAssets = []
 }: MobileDetailModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const [startY, setStartY] = useState(0);
-  const [currentY, setCurrentY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-
-  // Body scroll prevention
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => {
@@ -32,115 +24,75 @@ export function MobileDetailModal({
     };
   }, []);
 
-  // Swipe to close
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setStartY(e.touches[0].clientY);
-    setIsDragging(true);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    const deltaY = e.touches[0].clientY - startY;
-    if (deltaY > 0) {
-      setCurrentY(deltaY);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (currentY > 150) {
-      onClose();
-    } else {
-      setCurrentY(0);
-    }
-    setIsDragging(false);
-  };
-
   return (
-    <>
-      <div className="modal-backdrop" onClick={onClose} />
+    <div className="detail-modal-overlay">
+      <div className="detail-modal-backdrop" onClick={onClose} />
 
-      <div
-        ref={modalRef}
-        className="detail-modal"
-        style={{
-          transform: `translateY(${currentY}px)`,
-          transition: isDragging ? 'none' : 'transform 0.3s ease'
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Header icons */}
-        <div className="modal-header">
-          <button className="header-icon close-icon" onClick={onClose} aria-label="Close">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M18 6L6 18M6 6L18 18" stroke="#333333" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
+      <div className="detail-modal-container">
+        {/* Header */}
+        <div className="detail-modal-header">
+          <button className="detail-close-btn" onClick={onClose}>
+            ×
           </button>
-          <button className="header-icon bookmark-icon" aria-label="Bookmark">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M5 2H15V18L10 14L5 18V2Z" stroke="#333333" strokeWidth="2" strokeLinejoin="round"/>
-            </svg>
+          <button className="detail-bookmark-btn">
+            ♡
           </button>
         </div>
 
-        {/* Content - includes image */}
-        <div className="modal-content">
-          {/* Main image */}
-          <div className="modal-image">
-            <img src={asset.src} alt={asset.title} />
-          </div>
-          {/* Title */}
-          <h2 className="asset-title">{asset.title}</h2>
+        {/* Image */}
+        <div className="detail-image">
+          <img src={asset.src} alt={asset.title} />
+        </div>
 
-          {/* Tags */}
+        {/* Info */}
+        <div className="detail-info">
+          <h2 className="detail-title">{asset.title}</h2>
+
           {asset.tags && asset.tags.length > 0 && (
-            <div className="tags-section">
+            <div className="detail-tags">
               {asset.tags.map((tag, i) => (
-                <span key={i} className="tag">{tag}</span>
+                <span key={i} className="detail-tag">{tag}</span>
               ))}
             </div>
           )}
 
-          {/* Creator and Price */}
-          <div className="creator-price-row">
-            <div className="creator-info">
-              <span className="from-label">FROM</span>
-              <span className="creator-name">{asset.creator || 'JOHN DEANNA'}</span>
+          <div className="detail-creator-price">
+            <div className="detail-creator">
+              <div className="detail-from">FROM</div>
+              <div className="detail-creator-name">{asset.creator || 'JOHN DEANNA'}</div>
             </div>
-            <div className="asset-price">¥{asset.price?.toLocaleString()}</div>
+            <div className="detail-price">¥{asset.price?.toLocaleString()}</div>
           </div>
 
-          {/* Buy button */}
-          <button className="buy-button" onClick={onPurchase}>
+          <button className="detail-buy-btn" onClick={onPurchase}>
             BUY
           </button>
 
-          {/* Description */}
-          <div className="description">
+          <div className="detail-description">
             <p>
-              コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。コンセプト
+              コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。
+              コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。
+              コンセプト・説明文が入る想定です。コンセプト
             </p>
-            <button className="more-text-btn">...詳細を見る</button>
+            <button className="detail-more-btn">...詳細を見る</button>
           </div>
-
         </div>
 
-        {/* Similar designs - full width */}
+        {/* Similar */}
         {similarAssets.length > 0 && (
-          <div className="similar-section">
-            <h3 className="section-title">SIMILAR DESIGNS</h3>
-            <div className="similar-grid">
-              {similarAssets.slice(0, 6).map((similar) => (
-                <div key={similar.id} className="similar-card">
-                  <img src={similar.src} alt={similar.title} />
+          <div className="detail-similar">
+            <h3 className="detail-similar-title">SIMILAR DESIGNS</h3>
+            <div className="detail-similar-grid">
+              {similarAssets.slice(0, 6).map((item) => (
+                <div key={item.id} className="detail-similar-item">
+                  <img src={item.src} alt={item.title} />
                 </div>
               ))}
             </div>
-            <button className="more-btn">more</button>
+            <button className="detail-similar-more">more</button>
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
