@@ -193,9 +193,9 @@
 
 /* View Toggle Button */
 .view-toggle-btn {
-  position: fixed;
-  bottom: 100px;
-  right: 20px;
+  position: absolute;
+  top: 675px;
+  right: 30px;
   background: transparent;
   border: none;
   cursor: pointer;

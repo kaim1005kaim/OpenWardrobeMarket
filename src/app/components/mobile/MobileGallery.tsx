@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Asset } from '../../lib/types';
 import { GalleryViewMode } from './GalleryViewSwitcher';
-import { posterTemplates, brandNames, colors } from '../../lib/designTokens';
+import { posterTemplates as legacyPosterTemplates, brandNames, colors } from '../../lib/designTokens';
+import { posterTemplates, getRandomTemplate } from '../../lib/posterTemplates';
+import { PosterCard } from '../PosterCard';
 import './MobileGallery.css';
 
 interface MobileGalleryProps {
@@ -86,44 +88,18 @@ export function MobileGallery({
             );
           }
 
-          // Poster mode
-          const brand = brandNames[index % brandNames.length];
-
+          // Poster mode - use PosterCard with template frames
           return (
             <div
               key={asset.id}
               className={`gallery-card poster ${aspectRatio}`}
-              style={{ backgroundColor: template.bgColor }}
-              onClick={() => onAssetClick(asset)}
             >
-              <div className="poster-header">
-                <span className="poster-brand" style={{ color: template.textColor }}>
-                  {brand}
-                </span>
-                <span className="poster-number" style={{ color: template.textColor }}>
-                  {String(index + 1).padStart(3, '0')}
-                </span>
-              </div>
-              <div className="poster-image">
-                <img
-                  src={asset.src}
-                  alt={asset.title}
-                  loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = 'https://via.placeholder.com/400x600/333/999?text=Fashion';
-                  }}
-                />
-              </div>
-              <div className="poster-footer">
-                <div className="poster-title" style={{ color: template.textColor }}>
-                  {asset.title}
-                </div>
-                <div className="poster-meta" style={{ color: template.textColor }}>
-                  <span>{asset.creator || 'Studio'}</span>
-                  <span>¥{asset.price?.toLocaleString()}</span>
-                </div>
-              </div>
+              <PosterCard
+                userImageUrl={asset.src}
+                template={template}
+                onClick={() => onAssetClick(asset)}
+                className="poster-card-wrapper"
+              />
             </div>
           );
         })}

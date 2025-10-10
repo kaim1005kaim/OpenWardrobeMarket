@@ -82,9 +82,12 @@ export function MobileDetailModal({
         {similarAssets.length > 0 && (
           <div className="detail-similar">
             <h3 className="detail-similar-title">SIMILAR DESIGNS</h3>
-            <div className="detail-similar-grid">
-              {similarAssets.slice(0, 6).map((item) => (
-                <div key={item.id} className="detail-similar-item">
+            <div className="detail-similar-masonry">
+              {similarAssets.slice(0, 6).map((item, index) => (
+                <div
+                  key={item.id}
+                  className={`detail-similar-item detail-similar-item-${index + 1}`}
+                >
                   <img src={item.src} alt={item.title} />
                 </div>
               ))}

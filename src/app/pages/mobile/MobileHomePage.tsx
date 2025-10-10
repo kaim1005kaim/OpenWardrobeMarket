@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HamburgerMenu } from '../../components/mobile/HamburgerMenu';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
+import { SearchModal } from '../../components/mobile/SearchModal';
 import { CardSwiper } from '../../components/mobile/CardSwiper';
 import { Asset } from '../../lib/types';
 import './MobileHomePage.css';
@@ -12,6 +13,7 @@ interface MobileHomePageProps {
 export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
   const [recommendedAssets, setRecommendedAssets] = useState<Asset[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [viewMode, setViewMode] = useState<'home' | 'gallery'>('home');
 
@@ -54,11 +56,12 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
         </header>
 
         {/* Search bar */}
-        <div className="search-container">
+        <div className="search-container" onClick={() => setIsSearchOpen(true)}>
           <input
             type="text"
             className="search-input"
             placeholder="Search..."
+            readOnly
           />
         </div>
 
@@ -118,6 +121,12 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         onNavigate={handleMenuNavigate}
+      />
+
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onSearch={(query) => console.log('Search:', query)}
       />
 
       {selectedAsset && (

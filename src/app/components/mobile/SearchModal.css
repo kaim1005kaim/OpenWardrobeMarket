@@ -1,0 +1,163 @@
+/* Search Modal Overlay */
+.search-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(26, 61, 61, 0.95);
+  backdrop-filter: blur(10px);
+  z-index: 1100;
+  padding: 24px;
+}
+
+.search-modal-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Close Button */
+.search-modal-close {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* Search Input */
+.search-modal-form {
+  margin-top: 80px;
+  margin-bottom: 40px;
+}
+
+.search-modal-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 8px;
+}
+
+.search-icon {
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.search-modal-input {
+  flex: 1;
+  background: none;
+  border: none;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 16px;
+  color: white;
+  outline: none;
+}
+
+.search-modal-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Search History */
+.search-history {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.search-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 14px;
+  color: white;
+}
+
+.search-history-remove {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.search-history-remove:hover {
+  opacity: 1;
+}
+
+/* Trending Tags */
+.trending-tags-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.trending-tags-title {
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  color: white;
+  text-transform: uppercase;
+  margin: 0 0 24px 0;
+}
+
+.trending-tags-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-content: flex-start;
+}
+
+.trending-tag {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 20px;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 12px;
+  color: white;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.trending-tag:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+}
+
+/* Tag size variations */
+.trending-tag-1 { width: 80px; }
+.trending-tag-2 { width: 80px; }
+.trending-tag-3 { width: 140px; }
+.trending-tag-4 { width: 80px; }
+.trending-tag-5 { width: 140px; }
+.trending-tag-6 { width: 80px; }
+.trending-tag-7 { width: 160px; }
+.trending-tag-8 { width: 100px; }
+.trending-tag-9 { width: 100px; }
+.trending-tag-10 { width: 120px; }
+.trending-tag-11 { width: 100px; }
+.trending-tag-12 { width: 100px; }
