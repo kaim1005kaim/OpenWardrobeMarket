@@ -54,64 +54,53 @@ export function LoginPage() {
 
   return (
     <div className="login-container">
-      {/* Top white line */}
-      <div className="top-line"></div>
+      {/* Center content */}
+      <div className="login-content">
+        {/* Title */}
+        <div className="brand-title">
+          <div>OPEN</div>
+          <div>WARDROBE</div>
+          <div>MARKET</div>
+        </div>
 
-      {/* Title on the left side */}
-      <div className="brand-title">
-        <div>OPEN</div>
-        <div>WARDROBE</div>
-        <div>MARKET</div>
-      </div>
+        {/* Login form */}
+        <form onSubmit={handleEmailLogin} className="login-form">
+          <input
+            type="email"
+            placeholder="ID"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="login-input"
+            disabled={isLoading}
+          />
+          <input
+            type="password"
+            placeholder="PASSWORD"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="login-input"
+            disabled={isLoading}
+          />
+        </form>
 
-      {/* Center login form */}
-      <form onSubmit={handleEmailLogin} className="login-form">
-        <input
-          type="email"
-          placeholder="ID"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="login-input"
-          disabled={isLoading}
-        />
-        <input
-          type="password"
-          placeholder="PASSWORD"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="login-input"
-          disabled={isLoading}
-        />
-        <button
-          type="submit"
-          className="login-submit-button"
-          disabled={isLoading}
-        >
-          LOGIN
-        </button>
-      </form>
-
-      {/* Bottom section */}
-      <div className="bottom-section">
-        <div className="bottom-line"></div>
-        <div className="auth-buttons">
+        {/* Bottom section */}
+        <div className="auth-actions">
           <button
             onClick={handleGoogleLogin}
-            className="auth-button"
+            className="auth-link"
             disabled={isLoading}
           >
-            GOOGLE LOGIN
+            Google Login
           </button>
           <button
             onClick={handleNewAccount}
-            className="auth-button"
+            className="auth-link"
             disabled={isLoading}
           >
-            NEW ACCOUNT
+            new account
           </button>
         </div>
       </div>
-
     </div>
   )
 }
