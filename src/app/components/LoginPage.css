@@ -17,8 +17,8 @@
   right: 0;
   bottom: 0;
   background-image: url('/mobile_TOP_BG.png');
-  background-size: cover;
-  background-position: center;
+  background-size: 110%;
+  background-position: center top;
   background-repeat: no-repeat;
   z-index: 1;
 }
@@ -53,6 +53,7 @@
   text-align: left;
   margin-top: 30vh;
   width: 100%;
+  padding-left: 10%;
 }
 
 .brand-title div {
@@ -73,6 +74,7 @@
   border: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.6);
   padding: 12px 0;
+  padding-left: 0;
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 10px;
   letter-spacing: 0.12em;
@@ -82,6 +84,7 @@
   width: 80%;
   max-width: 320px;
   text-align: left;
+  margin-left: 10%;
 }
 
 .login-input:focus {
