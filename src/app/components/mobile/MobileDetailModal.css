@@ -25,25 +25,27 @@
 /* Header icons */
 .modal-header {
   position: absolute;
-  top: 20px;
+  top: 10px;
   left: 0;
   right: 0;
   display: flex;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 16px;
   z-index: 20;
 }
 
 .header-icon {
   width: 40px;
   height: 40px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.9);
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Main image */

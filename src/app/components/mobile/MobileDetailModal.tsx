@@ -72,14 +72,14 @@ export function MobileDetailModal({
       >
         {/* Header icons */}
         <div className="modal-header">
-          <button className="header-icon expand-icon" aria-label="Expand">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M14 6L18 2M18 2H14M18 2V6M6 14L2 18M2 18H6M2 18V14" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          <button className="header-icon close-icon" onClick={onClose} aria-label="Close">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6L18 18" stroke="#333333" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
           <button className="header-icon bookmark-icon" aria-label="Bookmark">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M5 2H15V18L10 14L5 18V2Z" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
+              <path d="M5 2H15V18L10 14L5 18V2Z" stroke="#333333" strokeWidth="2" strokeLinejoin="round"/>
             </svg>
           </button>
         </div>
