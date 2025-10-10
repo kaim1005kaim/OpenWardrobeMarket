@@ -199,15 +199,16 @@ export function HamburgerMenu({ isOpen, onClose, onNavigate }: HamburgerMenuProp
         }
 
         .user-name {
-          font-family: 'Montserrat', sans-serif;
+          font-family: "Trajan Pro 3", "Cinzel", serif;
           font-size: 16px;
-          font-weight: 700;
+          font-weight: 400;
           color: #000000;
           margin: 0 0 8px 0;
+          letter-spacing: 0.5px;
         }
 
         .user-tagline {
-          font-family: 'Noto Sans CJK JP', sans-serif;
+          font-family: "Noto Sans JP", sans-serif;
           font-size: 12px;
           color: #666666;
           margin: 0;
@@ -218,7 +219,7 @@ export function HamburgerMenu({ isOpen, onClose, onNavigate }: HamburgerMenuProp
         }
 
         .user-guest p {
-          font-family: 'Noto Sans CJK JP', sans-serif;
+          font-family: "Noto Sans JP", sans-serif;
           font-size: 14px;
           color: #666666;
           margin: 0;
@@ -238,10 +239,10 @@ export function HamburgerMenu({ isOpen, onClose, onNavigate }: HamburgerMenuProp
           background: none;
           border: none;
           cursor: pointer;
-          font-family: 'Montserrat', sans-serif;
-          font-size: 14px;
-          font-weight: 600;
-          letter-spacing: 1px;
+          font-family: "Trajan Pro 3", "Cinzel", serif;
+          font-size: 13px;
+          font-weight: 400;
+          letter-spacing: 1.5px;
           color: #000000;
           text-align: left;
           transition: background 0.2s ease;
@@ -276,9 +277,9 @@ export function HamburgerMenu({ isOpen, onClose, onNavigate }: HamburgerMenuProp
           background: none;
           border: none;
           cursor: pointer;
-          font-family: 'Noto Sans CJK JP', sans-serif;
-          font-size: 13px;
-          font-weight: 500;
+          font-family: "Noto Sans JP", sans-serif;
+          font-size: 12px;
+          font-weight: 400;
           color: #666666;
           text-align: left;
           transition: color 0.2s ease;
@@ -297,15 +298,15 @@ export function HamburgerMenu({ isOpen, onClose, onNavigate }: HamburgerMenuProp
 
         .logout-btn {
           width: 100%;
-          padding: 12px;
+          padding: 14px;
           background: #000000;
           border: none;
           border-radius: 8px;
           cursor: pointer;
-          font-family: 'Montserrat', sans-serif;
-          font-size: 14px;
-          font-weight: 700;
-          letter-spacing: 1px;
+          font-family: "Trajan Pro 3", "Cinzel", serif;
+          font-size: 13px;
+          font-weight: 400;
+          letter-spacing: 2px;
           color: #FFFFFF;
           transition: background 0.2s ease;
         }
