@@ -46,6 +46,12 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Content */
+.modal-content {
+  background: #FFFFFF;
+  position: relative;
+}
+
 /* Main image */
 .modal-image {
   width: 100%;
@@ -53,6 +59,7 @@
   background: #C4C4C4;
   overflow: hidden;
   position: relative;
+  margin-bottom: 24px;
 }
 
 .modal-image img {
@@ -61,11 +68,14 @@
   object-fit: cover;
 }
 
-/* Content */
+/* Content padding */
+.modal-content > *:not(.modal-image) {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
 .modal-content {
-  padding: 24px 20px 80px 20px;
-  background: #FFFFFF;
-  position: relative;
+  padding-bottom: 40px;
 }
 
 /* Title */
@@ -181,12 +191,14 @@
   text-decoration: underline;
 }
 
-/* Similar section */
+/* Similar section - full width */
 .similar-section {
   margin-top: 60px;
-  padding-top: 0;
+  padding: 0;
   border-top: none;
   position: relative;
+  background: #FFFFFF;
+  padding-bottom: 80px;
 }
 
 .section-title {
@@ -200,6 +212,7 @@
   text-transform: uppercase;
   position: relative;
   z-index: 1;
+  padding: 0 20px;
 }
 
 .similar-grid {
@@ -209,6 +222,8 @@
   margin-bottom: 16px;
   padding-top: 40px;
   position: relative;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 .similar-card {
@@ -228,7 +243,7 @@
 
 .more-btn {
   width: 100%;
-  padding: 10px;
+  padding: 10px 20px;
   background: transparent;
   border: none;
   font-family: "Noto Sans JP", sans-serif;

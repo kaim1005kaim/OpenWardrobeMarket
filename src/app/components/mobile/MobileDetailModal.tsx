@@ -84,13 +84,12 @@ export function MobileDetailModal({
           </button>
         </div>
 
-        {/* Main image */}
-        <div className="modal-image">
-          <img src={asset.src} alt={asset.title} />
-        </div>
-
-        {/* Content */}
+        {/* Content - includes image */}
         <div className="modal-content">
+          {/* Main image */}
+          <div className="modal-image">
+            <img src={asset.src} alt={asset.title} />
+          </div>
           {/* Title */}
           <h2 className="asset-title">{asset.title}</h2>
 
@@ -125,21 +124,22 @@ export function MobileDetailModal({
             <button className="more-text-btn">...詳細を見る</button>
           </div>
 
-          {/* Similar designs */}
-          {similarAssets.length > 0 && (
-            <div className="similar-section">
-              <h3 className="section-title">SIMILAR DESIGNS</h3>
-              <div className="similar-grid">
-                {similarAssets.slice(0, 6).map((similar) => (
-                  <div key={similar.id} className="similar-card">
-                    <img src={similar.src} alt={similar.title} />
-                  </div>
-                ))}
-              </div>
-              <button className="more-btn">more</button>
-            </div>
-          )}
         </div>
+
+        {/* Similar designs - full width */}
+        {similarAssets.length > 0 && (
+          <div className="similar-section">
+            <h3 className="section-title">SIMILAR DESIGNS</h3>
+            <div className="similar-grid">
+              {similarAssets.slice(0, 6).map((similar) => (
+                <div key={similar.id} className="similar-card">
+                  <img src={similar.src} alt={similar.title} />
+                </div>
+              ))}
+            </div>
+            <button className="more-btn">more</button>
+          </div>
+        )}
       </div>
     </>
   );
