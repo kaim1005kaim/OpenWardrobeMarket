@@ -2,35 +2,48 @@
   position: relative;
   width: 100vw;
   height: 100vh;
-  background-image: url('/web_TOP_BG.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: #1a3d3d;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   overflow: hidden;
 }
 
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 45vh;
+  background-image: url('/web_TOP_BG.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: 0.8;
+  z-index: 1;
+}
+
 .login-content {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 80px;
+  align-items: flex-start;
+  gap: 60px;
   width: 100%;
-  max-width: 540px;
-  padding: 40px;
+  max-width: 100%;
+  padding: 60px 40px 40px 40px;
   z-index: 10;
 }
 
 .brand-title {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-weight: 400;
-  font-size: 68px;
-  line-height: 1.1;
-  letter-spacing: 0.15em;
+  font-size: 42px;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
   color: white;
-  text-align: center;
+  text-align: left;
 }
 
 .brand-title div {
@@ -40,22 +53,23 @@
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 32px;
   width: 100%;
-  max-width: 540px;
+  max-width: 100%;
 }
 
 .login-input {
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.8);
-  padding: 20px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+  padding: 16px 0;
   font-family: "Trajan Pro 3", "Cinzel", serif;
-  font-size: 13px;
-  letter-spacing: 0.2em;
+  font-size: 11px;
+  letter-spacing: 0.15em;
   color: white;
   outline: none;
   transition: border-color 0.3s ease;
+  width: 100%;
 }
 
 .login-input:focus {
@@ -63,30 +77,31 @@
 }
 
 .login-input::placeholder {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.6);
   font-family: "Trajan Pro 3", "Cinzel", serif;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
 .auth-actions {
   display: flex;
-  justify-content: center;
-  gap: 60px;
+  justify-content: flex-start;
+  gap: 48px;
   width: 100%;
+  margin-top: 20px;
 }
 
 .auth-link {
   background: transparent;
   border: none;
   font-family: "Trajan Pro 3", "Cinzel", serif;
-  font-size: 12px;
-  letter-spacing: 0.15em;
+  font-size: 10px;
+  letter-spacing: 0.12em;
   color: white;
   cursor: pointer;
-  padding: 10px 0;
+  padding: 8px 0;
   transition: opacity 0.3s ease;
-  text-transform: capitalize;
+  text-transform: uppercase;
 }
 
 .auth-link:hover:not(:disabled) {
