@@ -17,8 +17,8 @@
   right: 0;
   bottom: 0;
   background-image: url('/mobile_TOP_BG.png');
-  background-size: 130%;
-  background-position: center top;
+  background-size: cover;
+  background-position: center center;
   background-repeat: no-repeat;
   z-index: 1;
 }
@@ -69,6 +69,13 @@
   max-width: 100%;
 }
 
+.input-wrapper {
+  width: 80%;
+  max-width: 320px;
+  display: flex;
+  justify-content: center;
+}
+
 .login-input {
   background: transparent;
   border: none;
@@ -81,10 +88,8 @@
   color: white;
   outline: none;
   transition: border-color 0.3s ease;
-  width: 80%;
-  max-width: 320px;
+  width: 100%;
   text-align: left;
-  margin-left: 10%;
 }
 
 .login-input:focus {
@@ -101,8 +106,9 @@
 
 .auth-actions {
   display: flex;
-  justify-content: center;
-  gap: 48px;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
   width: 100%;
   margin-top: 32px;
 }
@@ -110,14 +116,16 @@
 .auth-link {
   background: transparent;
   border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 9px;
   letter-spacing: 0.1em;
   color: white;
   cursor: pointer;
-  padding: 8px 12px;
+  padding: 8px 0;
   transition: opacity 0.3s ease;
   text-transform: uppercase;
+  width: auto;
 }
 
 .auth-link:hover:not(:disabled) {

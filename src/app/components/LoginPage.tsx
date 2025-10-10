@@ -65,22 +65,26 @@ export function LoginPage() {
 
         {/* Login form */}
         <form onSubmit={handleEmailLogin} className="login-form">
-          <input
-            type="email"
-            placeholder="ID"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="login-input"
-            disabled={isLoading}
-          />
-          <input
-            type="password"
-            placeholder="PASSWORD"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="login-input"
-            disabled={isLoading}
-          />
+          <div className="input-wrapper">
+            <input
+              type="email"
+              placeholder="ID"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="login-input"
+              disabled={isLoading}
+            />
+          </div>
+          <div className="input-wrapper">
+            <input
+              type="password"
+              placeholder="PASSWORD"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="login-input"
+              disabled={isLoading}
+            />
+          </div>
         </form>
 
         {/* Bottom section */}
