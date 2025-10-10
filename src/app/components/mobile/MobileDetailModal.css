@@ -49,57 +49,48 @@
 /* Content */
 .modal-content {
   background: #FFFFFF;
-  position: relative;
-  padding-bottom: 40px;
 }
 
 /* Main image */
-.modal-image {
+.modal-content .modal-image {
   width: 100%;
   height: 60vh;
   background: #C4C4C4;
   overflow: hidden;
   position: relative;
-  margin-bottom: 24px;
+  margin: 0 0 24px 0;
+  padding: 0;
 }
 
-.modal-image img {
+.modal-content .modal-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-/* Content inner elements padding */
-.asset-title,
-.tags-section,
-.creator-price-row,
-.buy-button,
-.description {
-  padding-left: 20px;
-  padding-right: 20px;
-}
-
 /* Title */
-.asset-title {
+.modal-content .asset-title {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 12px;
   font-weight: 400;
   letter-spacing: 0.05em;
   color: #000000;
   margin: 0 0 16px 0;
+  padding: 0 20px;
   line-height: 1.6;
   text-transform: uppercase;
 }
 
 /* Tags */
-.tags-section {
+.modal-content .tags-section {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 20px;
+  padding: 0 20px;
 }
 
-.tag {
+.modal-content .tag {
   font-family: "Noto Sans JP", sans-serif;
   font-size: 10px;
   color: #666666;
@@ -110,20 +101,21 @@
 }
 
 /* Creator and Price Row */
-.creator-price-row {
+.modal-content .creator-price-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
+  padding: 0 20px;
 }
 
-.creator-info {
+.modal-content .creator-info {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.from-label {
+.modal-content .from-label {
   font-family: "Noto Sans JP", sans-serif;
   font-size: 9px;
   color: #999999;
@@ -131,7 +123,7 @@
   letter-spacing: 0.05em;
 }
 
-.creator-name {
+.modal-content .creator-name {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 11px;
   font-weight: 400;
@@ -140,7 +132,7 @@
   text-transform: uppercase;
 }
 
-.asset-price {
+.modal-content .asset-price {
   font-family: "Montserrat", sans-serif;
   font-size: 20px;
   font-weight: 600;
@@ -148,8 +140,9 @@
 }
 
 /* Buy button */
-.buy-button {
-  width: 100%;
+.modal-content .buy-button {
+  width: calc(100% - 40px);
+  margin: 0 20px 20px 20px;
   padding: 16px;
   background: #1a3d3d;
   border: none;
@@ -159,21 +152,21 @@
   letter-spacing: 0.2em;
   color: #FFFFFF;
   cursor: pointer;
-  margin-bottom: 20px;
   transition: all 0.3s ease;
   text-transform: uppercase;
 }
 
-.buy-button:active {
+.modal-content .buy-button:active {
   background: #2a4d4d;
 }
 
 /* Description */
-.description {
+.modal-content .description {
   margin-bottom: 32px;
+  padding: 0 20px;
 }
 
-.description p {
+.modal-content .description p {
   font-family: "Noto Sans JP", sans-serif;
   font-size: 11px;
   line-height: 1.8;
@@ -181,7 +174,7 @@
   margin: 0 0 8px 0;
 }
 
-.more-text-btn {
+.modal-content .more-text-btn {
   background: transparent;
   border: none;
   font-family: "Noto Sans JP", sans-serif;
@@ -195,39 +188,34 @@
 /* Similar section - full width */
 .similar-section {
   margin-top: 60px;
-  padding: 0;
-  border-top: none;
-  position: relative;
+  padding: 0 0 80px 0;
   background: #FFFFFF;
-  padding-bottom: 80px;
 }
 
-.section-title {
+.similar-section .section-title {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0.15em;
   color: #000000;
   margin: 0 0 -30px 0;
+  padding: 0 20px;
   text-align: center;
   text-transform: uppercase;
   position: relative;
   z-index: 1;
-  padding: 0 20px;
 }
 
-.similar-grid {
+.similar-section .similar-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 16px;
-  padding-top: 40px;
+  padding: 40px 16px 0 16px;
   position: relative;
-  padding-left: 16px;
-  padding-right: 16px;
 }
 
-.similar-card {
+.similar-section .similar-card {
   aspect-ratio: 3 / 4;
   background: #F5F5F5;
   border-radius: 8px;
@@ -236,13 +224,13 @@
   z-index: 2;
 }
 
-.similar-card img {
+.similar-section .similar-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.more-btn {
+.similar-section .more-btn {
   width: 100%;
   padding: 10px 20px;
   background: transparent;
