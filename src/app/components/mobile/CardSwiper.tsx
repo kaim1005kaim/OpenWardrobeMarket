@@ -87,13 +87,7 @@ export function CardSwiper({ assets, onCardClick }: CardSwiperProps) {
           >
             <div className="card-image-container">
               <img src={asset.src} alt={asset.title} loading="lazy" />
-              <div className="card-vertical-title">{asset.title}</div>
-            </div>
-            <div className="swipe-indicator">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5L12 19M12 19L5 12M12 19L19 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>SWIPE</span>
+              <div className="card-vertical-title card-vertical-title-left">{asset.title}</div>
             </div>
           </div>
         ))}
