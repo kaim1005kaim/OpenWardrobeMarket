@@ -27,6 +27,8 @@
 @media (min-width: 768px) {
   .login-container::before {
     background-image: url('/web_TOP_BG.png');
+    background-size: cover;
+    background-position: center center;
   }
 }
 
