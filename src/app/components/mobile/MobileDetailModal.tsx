@@ -70,13 +70,19 @@ export function MobileDetailModal({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Swipe indicator */}
-        <div className="swipe-indicator">
-          <div className="indicator-bar"></div>
+        {/* Header icons */}
+        <div className="modal-header">
+          <button className="header-icon expand-icon" aria-label="Expand">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M14 6L18 2M18 2H14M18 2V6M6 14L2 18M2 18H6M2 18V14" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <button className="header-icon bookmark-icon" aria-label="Bookmark">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M5 2H15V18L10 14L5 18V2Z" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
+            </svg>
+          </button>
         </div>
-
-        {/* Close button */}
-        <button className="close-btn" onClick={onClose}>×</button>
 
         {/* Main image */}
         <div className="modal-image">
@@ -85,54 +91,44 @@ export function MobileDetailModal({
 
         {/* Content */}
         <div className="modal-content">
-          {/* Title and price */}
-          <div className="content-header">
-            <h2 className="asset-title">{asset.title}</h2>
-            <div className="asset-price">¥{asset.price?.toLocaleString()}</div>
-          </div>
-
-          {/* Creator info */}
-          <div className="creator-info">
-            <span className="from-label">from</span>
-            <span className="creator-name">{asset.creator || 'CREATOR'}</span>
-          </div>
+          {/* Title */}
+          <h2 className="asset-title">{asset.title}</h2>
 
           {/* Tags */}
           {asset.tags && asset.tags.length > 0 && (
             <div className="tags-section">
               {asset.tags.map((tag, i) => (
-                <span key={i} className="tag">#{tag}</span>
+                <span key={i} className="tag">{tag}</span>
               ))}
             </div>
           )}
 
+          {/* Creator and Price */}
+          <div className="creator-price-row">
+            <div className="creator-info">
+              <span className="from-label">FROM</span>
+              <span className="creator-name">{asset.creator || 'JOHN DEANNA'}</span>
+            </div>
+            <div className="asset-price">¥{asset.price?.toLocaleString()}</div>
+          </div>
+
+          {/* Buy button */}
+          <button className="buy-button" onClick={onPurchase}>
+            BUY
+          </button>
+
           {/* Description */}
           <div className="description">
             <p>
-              コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。
-              コンセプト・説明文が入る想定です。
+              コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。コンセプト・説明文が入る想定です。コンセプト
             </p>
-          </div>
-
-          {/* Action buttons */}
-          <div className="action-buttons">
-            <button className="action-btn secondary" onClick={onLike}>
-              <span className="icon">♥</span>
-              <span>いいね</span>
-            </button>
-            <button className="action-btn secondary" onClick={onSave}>
-              <span className="icon">📌</span>
-              <span>保存</span>
-            </button>
-            <button className="action-btn primary" onClick={onPurchase}>
-              購入する
-            </button>
+            <button className="more-text-btn">...詳細を見る</button>
           </div>
 
           {/* Similar designs */}
           {similarAssets.length > 0 && (
             <div className="similar-section">
-              <h3 className="section-title">Similar designs</h3>
+              <h3 className="section-title">SIMILAR DESIGNS</h3>
               <div className="similar-grid">
                 {similarAssets.slice(0, 6).map((similar) => (
                   <div key={similar.id} className="similar-card">

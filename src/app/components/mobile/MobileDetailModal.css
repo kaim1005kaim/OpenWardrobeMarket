@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.5);
   z-index: 300;
 }
 
@@ -18,52 +18,40 @@
   z-index: 301;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  border-radius: 20px 20px 0 0;
 }
 
-/* Swipe indicator */
-.swipe-indicator {
-  position: sticky;
-  top: 0;
-  padding: 12px 0;
-  display: flex;
-  justify-content: center;
-  background: #FFFFFF;
-  z-index: 10;
-}
-
-.indicator-bar {
-  width: 40px;
-  height: 4px;
-  background: #CCCCCC;
-  border-radius: 2px;
-}
-
-/* Close button */
-.close-btn {
+/* Header icons */
+.modal-header {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  border-radius: 50%;
-  font-size: 28px;
-  line-height: 1;
-  cursor: pointer;
+  top: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
   z-index: 20;
+}
+
+.header-icon {
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 0;
 }
 
 /* Main image */
 .modal-image {
   width: 100%;
-  aspect-ratio: 3 / 4;
-  background: #F5F5F5;
+  height: 50vh;
+  background: #C4C4C4;
   overflow: hidden;
+  position: relative;
 }
 
 .modal-image img {
@@ -74,56 +62,20 @@
 
 /* Content */
 .modal-content {
-  padding: 20px;
+  padding: 24px 20px;
+  background: #FFFFFF;
 }
 
-.content-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 12px;
-}
-
+/* Title */
 .asset-title {
-  font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  color: #000000;
-  margin: 0;
-  flex: 1;
-}
-
-.asset-price {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  color: #000000;
-}
-
-/* Creator info */
-.creator-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #E5E5E5;
-}
-
-.from-label {
-  font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 11px;
-  color: #666666;
-  text-transform: lowercase;
-}
-
-.creator-name {
   font-family: "Trajan Pro 3", "Cinzel", serif;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
+  letter-spacing: 0.05em;
   color: #000000;
-  letter-spacing: 1.5px;
+  margin: 0 0 16px 0;
+  line-height: 1.6;
+  text-transform: uppercase;
 }
 
 /* Tags */
@@ -131,75 +83,100 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .tag {
   font-family: "Noto Sans JP", sans-serif;
-  font-size: 12px;
+  font-size: 10px;
   color: #666666;
-  background: #F5F5F5;
-  padding: 6px 12px;
-  border-radius: 16px;
+  background: transparent;
+  border: 1px solid #CCCCCC;
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+/* Creator and Price Row */
+.creator-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.creator-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.from-label {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 9px;
+  color: #999999;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.creator-name {
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: #000000;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.asset-price {
+  font-family: "Montserrat", sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #000000;
+}
+
+/* Buy button */
+.buy-button {
+  width: 100%;
+  padding: 16px;
+  background: #1a3d3d;
+  border: none;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: #FFFFFF;
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+
+.buy-button:active {
+  background: #2a4d4d;
 }
 
 /* Description */
 .description {
-  margin-bottom: 24px;
-}
-
-.description p {
-  font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 13px;
-  line-height: 1.7;
-  color: #333333;
-  margin: 0;
-}
-
-/* Action buttons */
-.action-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
   margin-bottom: 32px;
 }
 
-.action-btn {
-  padding: 14px;
+.description p {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 11px;
+  line-height: 1.8;
+  color: #333333;
+  margin: 0 0 8px 0;
+}
+
+.more-text-btn {
+  background: transparent;
   border: none;
-  border-radius: 8px;
-  font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 11px;
+  color: #666666;
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.action-btn.primary {
-  grid-column: 1 / -1;
-  background: #000000;
-  color: #FFFFFF;
-}
-
-.action-btn.primary:active {
-  background: #333333;
-}
-
-.action-btn.secondary {
-  background: #F5F5F5;
-  color: #000000;
-}
-
-.action-btn.secondary:active {
-  background: #E5E5E5;
-}
-
-.action-btn .icon {
-  font-size: 18px;
+  padding: 0;
+  text-decoration: underline;
 }
 
 /* Similar section */
@@ -210,11 +187,13 @@
 }
 
 .section-title {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
   color: #000000;
-  margin: 0 0 16px 0;
+  margin: 0 0 20px 0;
+  text-transform: uppercase;
 }
 
 .similar-grid {
@@ -227,7 +206,7 @@
 .similar-card {
   aspect-ratio: 3 / 4;
   background: #F5F5F5;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -239,20 +218,14 @@
 
 .more-btn {
   width: 100%;
-  padding: 12px;
-  background: #FFFFFF;
-  border: 2px solid #E5E5E5;
-  border-radius: 8px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 11px;
   color: #666666;
   cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.more-btn:active {
-  background: #F5F5F5;
+  text-align: right;
 }
 
 /* Responsive */
