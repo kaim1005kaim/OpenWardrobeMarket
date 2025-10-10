@@ -50,6 +50,7 @@
 .modal-content {
   background: #FFFFFF;
   position: relative;
+  padding-bottom: 40px;
 }
 
 /* Main image */
@@ -68,14 +69,14 @@
   object-fit: cover;
 }
 
-/* Content padding */
-.modal-content > *:not(.modal-image) {
+/* Content inner elements padding */
+.asset-title,
+.tags-section,
+.creator-price-row,
+.buy-button,
+.description {
   padding-left: 20px;
   padding-right: 20px;
-}
-
-.modal-content {
-  padding-bottom: 40px;
 }
 
 /* Title */
