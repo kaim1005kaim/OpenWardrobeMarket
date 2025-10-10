@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AuthProvider } from './lib/AuthContext';
+import { AuthProvider, useAuth } from './lib/AuthContext';
 import { MobileHomePage } from './pages/mobile/MobileHomePage';
 import { MobileGalleryPage } from './pages/mobile/MobileGalleryPage';
 import { MobileCreatePage } from './pages/mobile/MobileCreatePage';
@@ -9,12 +9,36 @@ import './MobileApp.css';
 
 type MobilePage = 'login' | 'home' | 'gallery' | 'create' | 'mypage' | 'faq' | 'contact' | 'privacy';
 
-export function MobileApp() {
+function MobileAppContent() {
+  const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState<MobilePage>('home');
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page as MobilePage);
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        fontFamily: 'Montserrat, sans-serif',
+        fontSize: '14px',
+        color: '#666',
+        background: '#EEECE6'
+      }}>
+        Loading...
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!user) {
+    return <LoginPage />;
+  }
 
   const renderPage = () => {
     switch (currentPage) {
@@ -68,10 +92,16 @@ export function MobileApp() {
   };
 
   return (
+    <div className="mobile-app">
+      {renderPage()}
+    </div>
+  );
+}
+
+export function MobileApp() {
+  return (
     <AuthProvider>
-      <div className="mobile-app">
-        {renderPage()}
-      </div>
+      <MobileAppContent />
     </AuthProvider>
   );
 }
