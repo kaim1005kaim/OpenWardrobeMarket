@@ -1,126 +1,234 @@
-.home-content {
-  background: #FFFFFF;
-}
-
-/* Hero section */
-.hero-section {
+.mobile-home-page {
   position: relative;
-  height: 400px;
-  overflow: hidden;
+  width: 100vw;
+  min-height: 100vh;
+  background-color: #1a3d3d;
+  overflow-x: hidden;
+  padding-bottom: 100px;
 }
 
-.hero-image {
-  width: 100%;
-  height: 100%;
-  background: #EEECE6;
-}
-
-.hero-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.hero-overlay {
-  position: absolute;
-  bottom: 0;
+/* Header */
+.mobile-home-header {
+  position: fixed;
+  top: 0;
   left: 0;
   right: 0;
-  padding: 32px 20px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: transparent;
+  z-index: 100;
 }
 
-.hero-title {
-  font-family: "Noto Sans JP", sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.5;
-  color: #FFFFFF;
-  margin: 0 0 16px 0;
-}
-
-.cta-btn {
-  padding: 14px 32px;
-  background: #FFFFFF;
+.hamburger-btn {
+  background: transparent;
   border: none;
-  border-radius: 8px;
-  font-family: "Noto Sans JP", sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-  color: #000000;
+  padding: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  color: white;
 }
 
-.cta-btn:active {
-  background: #F5F5F5;
-  transform: scale(0.98);
-}
-
-/* Recommend section */
-.recommend-section {
-  padding: 24px 16px;
-}
-
-.section-title {
+.owm-logo {
+  position: absolute;
+  top: 20px;
+  right: 20px;
   font-family: "Trajan Pro 3", "Cinzel", serif;
-  font-size: 13px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: white;
   font-weight: 400;
-  letter-spacing: 2px;
-  color: #666666;
-  margin: 0 0 16px 0;
-  text-transform: lowercase;
 }
 
-.recommend-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+/* Search */
+.search-container {
+  margin-top: 80px;
+  padding: 0 30px;
 }
 
-.recommend-card {
-  background: #FFFFFF;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.recommend-card:active {
-  transform: scale(0.98);
-}
-
-.card-image {
+.search-input {
   width: 100%;
-  aspect-ratio: 3 / 4;
-  background: #EEECE6;
-  overflow: hidden;
+  max-width: 600px;
+  margin: 0 auto;
+  display: block;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 12px 0;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  color: white;
+  text-align: center;
+  outline: none;
 }
 
-.card-image img {
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* RECOMMEND Title */
+.recommend-title {
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 64px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: white;
+  text-align: center;
+  margin: 60px 0 -40px 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Card Swiper Section */
+.card-swiper-section {
+  margin-top: 0;
+  padding: 40px 0;
+  min-height: 600px;
+}
+
+.card-swiper-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 1200px;
+}
+
+.card-swiper {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swiper-card {
+  position: absolute;
+  width: 280px;
+  height: 420px;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.card-image-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.card-image-container img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.card-info {
-  padding: 12px;
-}
-
-.card-title {
-  font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: #000000;
-  margin: 0 0 4px 0;
+.card-vertical-title {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: left center;
+  font-family: "'Courier New'", monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: white;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  max-width: 400px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.card-creator {
-  font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 11px;
-  color: #666666;
-  margin: 0;
+.swipe-indicator {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: white;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.swiper-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.pagination-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pagination-dot.active {
+  background: white;
+  transform: scale(1.2);
+}
+
+/* CTA Button */
+.cta-button {
+  display: block;
+  margin: 40px auto;
+  padding: 16px 40px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: white;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cta-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+}
+
+/* View Toggle Button */
+.view-toggle-btn {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 90;
+  transition: transform 0.3s ease;
+}
+
+.view-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+/* Footer */
+.mobile-home-footer {
+  margin-top: 60px;
+  padding: 40px 20px;
+  background: rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.footer-logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
