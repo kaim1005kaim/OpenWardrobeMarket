@@ -24,15 +24,15 @@
 
 /* Hamburger Menu */
 .hamburger-menu {
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   background: transparent;
   border: none;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 0;
+  padding: 7px 0;
 }
 
 .hamburger-menu span {
@@ -49,9 +49,9 @@
 
 /* Gallery Title */
 .gallery-title {
-  font-family: 'Cinzel', serif;
-  font-size: 42px;
-  font-weight: 300;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 40px;
+  font-weight: 400;
   letter-spacing: 0.3em;
   color: #1a3d3c;
   margin: 0;
@@ -377,7 +377,7 @@
   font-family: 'Forum', cursive;
   font-size: 11px;
   line-height: 1.5;
-  color: #999;
+  color: #666;
   margin-bottom: 30px;
 }
 
@@ -393,7 +393,7 @@
 .price-label {
   font-family: 'Cinzel', serif;
   font-size: 10px;
-  color: #999;
+  color: #666;
   letter-spacing: 0.05em;
 }
 

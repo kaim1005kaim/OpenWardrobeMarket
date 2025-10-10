@@ -23,6 +23,7 @@ export function GalleryPage() {
   const [username, setUsername] = useState<string>('')
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'clean' | 'poster'>('poster')
   const navigate = useNavigate()
 
   useEffect(() => {

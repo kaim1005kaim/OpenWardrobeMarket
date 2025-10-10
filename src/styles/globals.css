@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global styles */
+body {
+  background-color: #EEECE6;
+  margin: 0;
+  padding: 0;
+}
+
 @layer utilities {
   /* New button and chip utilities */
   .btn {

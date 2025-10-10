@@ -6,11 +6,33 @@ import { LoginPage } from './app/components/LoginPage.tsx'
 import { GalleryPage } from './app/components/GalleryPage.tsx'
 import { SignupPage } from './app/components/SignupPage.tsx'
 import { AuthCallback } from './app/pages/auth/callback.tsx'
+import { MobileApp } from './app/MobileApp.tsx'
 import { supabase } from './app/lib/supabase.ts'
 import './styles/globals.css'
 
+// デバイス判定フック
+function useDeviceType() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkDevice = () => {
+      // 画面幅とタッチデバイスで判定
+      const width = window.innerWidth
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+      setIsMobile(width < 768 || hasTouch)
+    }
+
+    checkDevice()
+    window.addEventListener('resize', checkDevice)
+    return () => window.removeEventListener('resize', checkDevice)
+  }, [])
+
+  return isMobile
+}
+
 function AuthWrapper() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const isMobile = useDeviceType()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -25,9 +47,23 @@ function AuthWrapper() {
   }, [])
 
   if (isAuthenticated === null) {
-    return <div>Loading...</div>
+    return <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh',
+      fontFamily: 'Montserrat, sans-serif',
+      fontSize: '14px',
+      color: '#666'
+    }}>Loading...</div>
   }
 
+  // モバイル版を表示
+  if (isMobile) {
+    return <MobileApp />
+  }
+
+  // PC版を表示（既存のルーティング）
   return (
     <Routes>
       <Route path="/" element={isAuthenticated ? <Navigate to="/gallery" /> : <LoginPage />} />
