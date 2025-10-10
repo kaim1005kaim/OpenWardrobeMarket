@@ -16,12 +16,19 @@
   left: 0;
   right: 0;
   height: 45vh;
-  background-image: url('/web_TOP_BG.png');
+  background-image: url('/mobile_TOP_BG.png');
   background-size: cover;
   background-position: center top;
   background-repeat: no-repeat;
   opacity: 0.8;
   z-index: 1;
+}
+
+/* PC版の背景画像 */
+@media (min-width: 768px) {
+  .login-container::before {
+    background-image: url('/web_TOP_BG.png');
+  }
 }
 
 .login-content {
