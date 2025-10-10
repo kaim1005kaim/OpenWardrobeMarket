@@ -5,6 +5,7 @@ import { MobileGalleryPage } from './pages/mobile/MobileGalleryPage';
 import { MobileCreatePage } from './pages/mobile/MobileCreatePage';
 import { MobileMyPage } from './pages/mobile/MobileMyPage';
 import { LoginPage } from './components/LoginPage';
+import './MobileApp.css';
 
 type MobilePage = 'login' | 'home' | 'gallery' | 'create' | 'mypage' | 'faq' | 'contact' | 'privacy';
 
@@ -71,41 +72,6 @@ export function MobileApp() {
       <div className="mobile-app">
         {renderPage()}
       </div>
-
-      <style jsx global>{`
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-        }
-
-        html, body {
-          width: 100%;
-          height: 100%;
-          overflow-x: hidden;
-        }
-
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
-            'Noto Sans CJK JP', 'Helvetica Neue', Arial, sans-serif;
-          -webkit-font-smoothing: antialiased;
-          -moz-osx-font-smoothing: grayscale;
-          background: #FFFFFF;
-        }
-
-        .mobile-app {
-          min-height: 100vh;
-          background: #FFFFFF;
-        }
-
-        /* Figma Design Fonts */
-        @import url('https://fonts.googleapis.com/css2?family=Trajan+Pro:wght@400;700&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Major+Mono+Display&display=swap');
-
-        /* Import fonts */
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap');
-      `}</style>
     </AuthProvider>
   );
 }
