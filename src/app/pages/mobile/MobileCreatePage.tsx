@@ -172,8 +172,39 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
         console.log('Polling generation_history:', historyData);
 
-        if (historyData?.completion_status === 'completed') {
-          clearInterval(pollInterval);
+        // UIを更新
+        if (historyData) {
+          // 進捗更新
+          if (historyData.generation_data?.progress) {
+            setGenerationProgress(historyData.generation_data.progress);
+            setGenerationStatus(`生成中... ${historyData.generation_data.progress}%`);
+          }
+
+          // プレビュー画像更新
+          if (historyData.generation_data?.preview_url) {
+            setPreviewUrl(historyData.generation_data.preview_url);
+          }
+
+          // 完了チェック
+          if (historyData.completion_status === 'completed' && historyData.image_url) {
+            clearInterval(pollInterval);
+            setGenerationStatus('生成完了！');
+            setGenerationProgress(100);
+            setTimeout(() => {
+              alert('生成完了！マイページで確認できます。');
+              if (onNavigate) {
+                onNavigate('mypage');
+              }
+            }, 1000);
+          }
+
+          // 失敗チェック
+          if (historyData.completion_status === 'failed') {
+            clearInterval(pollInterval);
+            setGenerationStatus('生成失敗');
+            alert('生成に失敗しました。もう一度お試しください。');
+            setIsGenerating(false);
+          }
         }
       }, 3000);
 
