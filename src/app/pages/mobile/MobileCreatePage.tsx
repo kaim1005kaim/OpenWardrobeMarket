@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { MobileLayout } from '../../components/mobile/MobileLayout';
-import { BottomNavigation } from '../../components/mobile/BottomNavigation';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
+import { buildPrompt, type Answers } from '../../../lib/prompt/buildMobile';
+import { supabase } from '../../lib/supabase';
 import './MobileCreatePage.css';
 
 interface MobileCreatePageProps {
@@ -57,6 +57,8 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     const questionId = currentQuestion.id;
     const currentAnswers = answers[questionId] || [];
 
+    console.log('Selected:', { questionId, option, currentAnswers });
+
     if (currentQuestion.multiSelect) {
       // Multi-select: toggle
       if (currentAnswers.includes(option)) {
@@ -72,10 +74,12 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       }
     } else {
       // Single select: replace
-      setAnswers({
+      const newAnswers = {
         ...answers,
         [questionId]: [option],
-      });
+      };
+      console.log('New answers:', newAnswers);
+      setAnswers(newAnswers);
     }
   };
 
@@ -86,10 +90,13 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
   const canProceed = () => {
     const currentAnswers = answers[currentQuestion.id] || [];
-    return currentAnswers.length > 0;
+    const result = currentAnswers.length > 0;
+    console.log('canProceed:', { questionId: currentQuestion.id, currentAnswers, result });
+    return result;
   };
 
   const handleNext = () => {
+    console.log('handleNext called, currentStep:', currentStep, 'answers:', answers);
     if (currentStep < createQuestions.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -107,19 +114,58 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     setIsGenerating(true);
     console.log('Generating with answers:', answers);
 
-    // TODO: Call generation API
-    setTimeout(() => {
-      setIsGenerating(false);
-      alert('生成完了！（実装中）');
+    try {
+      // プロンプト生成
+      const answersData: Answers = {
+        vibe: answers.vibe || [],
+        silhouette: answers.silhouette || [],
+        color: answers.color || [],
+        occasion: answers.occasion || [],
+        season: answers.season || [],
+      };
+
+      const prompt = buildPrompt(answersData);
+      const negative = "no text, no words, no logos, no brands, no celebrities, no multiple people, no watermark, no signature";
+
+      // 認証トークン取得
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('ログインが必要です');
+      }
+
+      // Nano Banana API呼び出し
+      const res = await fetch('/api/nano-generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          prompt,
+          negative,
+          aspectRatio: '3:4',
+          answers: answersData,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || '生成に失敗しました');
+      }
+
+      const { id, url } = await res.json();
+      console.log('Generation complete:', { id, url });
+
+      // マイページへ遷移
+      alert('生成完了！マイページで確認できます。');
       if (onNavigate) {
         onNavigate('mypage');
       }
-    }, 2000);
-  };
-
-  const handleTabChange = (tab: string) => {
-    if (onNavigate) {
-      onNavigate(tab);
+    } catch (error) {
+      console.error('Generation error:', error);
+      alert(error instanceof Error ? error.message : '生成に失敗しました');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -130,14 +176,22 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   };
 
   return (
-    <>
-      <MobileLayout
-        title="CREATE"
-        showHeader={true}
-        showBottomNav={true}
-        onMenuClick={() => setIsMenuOpen(true)}
-      >
-        <div className="create-content">
+    <div className="mobile-create-page">
+      {/* Header */}
+      <header className="create-header">
+        <button
+          className="hamburger-btn"
+          onClick={() => setIsMenuOpen(true)}
+          aria-label="Menu"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M3 12H21M3 6H21M3 18H21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
+        <div className="create-logo">CREATE</div>
+      </header>
+
+      <div className="create-content">
           {/* Progress bar */}
           <div className="progress-container">
             <div className="progress-bar">
@@ -196,19 +250,13 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               <p className="generating-text">デザインを生成中...</p>
             </div>
           )}
-        </div>
-      </MobileLayout>
-
-      <BottomNavigation
-        activeTab="create"
-        onTabChange={handleTabChange}
-      />
+      </div>
 
       <MenuOverlay
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         onNavigate={handleMenuNavigate}
       />
-    </>
+    </div>
   );
 }
