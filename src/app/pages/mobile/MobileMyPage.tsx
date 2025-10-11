@@ -48,7 +48,6 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   return (
     <>
       <MobileLayout
-        title="MY PAGE"
         showHeader={true}
         showBottomNav={true}
         onMenuClick={() => setIsMenuOpen(true)}
