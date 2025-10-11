@@ -1,19 +1,34 @@
-// ImagineAPI Webhook受信エンドポイント - ドキュメント準拠版
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-// ImagineAPI Webhook公式ドキュメントに基づく構造
+// ImagineAPI Webhook Payload
 type ImagineWebhookEvent = {
   event: "images.items.create" | "images.items.update";
   payload: {
     id: string;
-    prompt: string;
+    prompt?: string;
     status: "pending" | "in-progress" | "completed" | "failed";
     progress: number | null;
     url: string | null;
     upscaled_urls: string[] | null;
+    error?: string;
   };
 };
+
+// R2 Client
+const r2 = new S3Client({
+  region: 'auto',
+  endpoint: process.env.R2_S3_ENDPOINT!,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+  forcePathStyle: true,
+});
+
+const R2_BUCKET = process.env.R2_BUCKET!;
+const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL!;
 
 // Service role client
 const supabase = createClient(
@@ -27,10 +42,9 @@ const supabase = createClient(
   }
 );
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  console.log('[Webhook] ImagineAPI request received:', {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('[Imagine Webhook] Request received:', {
     method: req.method,
-    headers: req.headers,
     body: req.body
   });
 
@@ -40,163 +54,114 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const webhookEvent = req.body as ImagineWebhookEvent;
+    const { payload } = webhookEvent;
 
-    console.log('[Webhook] Processing webhook event:', {
+    console.log('[Imagine Webhook] Processing:', {
       event: webhookEvent.event,
-      id: webhookEvent.payload.id,
-      status: webhookEvent.payload.status,
-      hasUpscaled: !!(webhookEvent.payload.upscaled_urls)
-    });
-
-    // 非同期処理を実行してからレスポンス
-    await processImagineWebhook(webhookEvent);
-
-    // 成功レスポンス (ImagineAPIはこれを期待)
-    res.status(200).json({ success: true });
-
-  } catch (error) {
-    console.error('[Webhook] Error:', error);
-    res.status(500).json({ error: 'Webhook error', details: error.message });
-  }
-}
-
-async function processImagineWebhook(evt: ImagineWebhookEvent) {
-  try {
-    const { payload } = evt;
-
-    console.log('[Webhook] Processing event:', {
       id: payload.id,
       status: payload.status,
-      progress: payload.progress,
-      hasUrl: !!payload.url,
-      hasUpscaled: !!payload.upscaled_urls
+      progress: payload.progress
     });
 
-    // 1) task_id => job_id の対応を取得（imagine_task_mapから）
-    const { data: mapping } = await supabase
-      .from('imagine_task_map')
-      .select('job_id')
-      .eq('task_id', payload.id)
+    // Find generation_history record by external task_id
+    const { data: history } = await supabase
+      .from('generation_history')
+      .select('*')
+      .eq('external_id', payload.id)
       .maybeSingle();
 
-    if (!mapping?.job_id) {
-      console.warn('[Webhook] No job_id mapping found for task_id:', payload.id);
-      return;
+    if (!history) {
+      console.warn('[Imagine Webhook] No generation_history found for id:', payload.id);
+      return res.status(200).json({ success: true, message: 'No matching record' });
     }
 
-    const jobId = mapping.job_id;
-    console.log('[Webhook] Found job_id:', jobId, 'for task_id:', payload.id);
-
-    // 2) event_logに正規化して保存（カラムを個別に設定）
-    const baseEvent = {
-      job_id: jobId,
-      image_id: payload.id,
-      payload: evt,
-      created_at: new Date().toISOString(),
-      processed: false
-    };
-
-    if (payload.status === "in-progress") {
-      const { error } = await supabase
-        .from('event_log')
-        .insert({
-          ...baseEvent,
-          ext_id: `${payload.id}-progress-${Date.now()}`,
-          event_type: 'progress',
-          progress: payload.progress,
-          preview_url: payload.url
-        });
-        
-      if (error) {
-        console.error('[Webhook] Failed to save progress event:', error);
-      } else {
-        console.log('[Webhook] Progress event saved:', { jobId, progress: payload.progress });
-      }
-
-    } else if (payload.status === "completed") {
-      // ImagineAPIでは完了時にurl（単一）とupscaled_urls（配列）が来る
-      const urls = payload.upscaled_urls || (payload.url ? [payload.url] : []);
-
-      const { error } = await supabase
-        .from('event_log')
-        .insert({
-          ...baseEvent,
-          ext_id: `${payload.id}-completed-${Date.now()}`,
-          event_type: 'completed',
-          result_urls: urls,
-          upscaled_urls: payload.upscaled_urls
-        });
-        
-      if (error) {
-        console.error('[Webhook] Failed to save completed event:', error);
-      } else {
-        console.log('[Webhook] Completed event saved:', {
-          jobId,
-          urls: urls.length,
-          upscaled: payload.upscaled_urls?.length || 0
-        });
-      }
-
-      // Save individual assets to user_generations table
-      if (urls.length > 0) {
-        try {
-          // Extract user_id from job_id (format: user_id:requestId)
-          const userId = jobId.split(':')[0];
-          
-          // Get generation parameters from event_log or generate defaults
-          const generationAssets = urls.map((url: string, index: number) => ({
-            user_id: userId,
-            job_id: jobId,
-            image_id: payload.id,
-            title: `Generation ${index + 1}`,
-            prompt: payload.prompt || 'Generated image',
-            mode: 'unknown', // We'll need to pass this from frontend
-            parameters: evt,
-            r2_url: url,
-            width: 1024, // Default, we'll get actual dimensions later
-            height: 1024,
-            imagine_image_index: index + 1,
-            is_public: false
-          }));
-
-          const { error: assetsError } = await supabase
-            .from('user_generations')
-            .upsert(generationAssets, {
-              onConflict: 'job_id,imagine_image_index'
-            });
-
-          if (assetsError) {
-            console.error('[Webhook] Failed to save generation assets:', assetsError);
-          } else {
-            console.log('[Webhook] Generation assets saved:', generationAssets.length);
+    // Update based on status
+    if (payload.status === 'in-progress') {
+      await supabase
+        .from('generation_history')
+        .update({
+          completion_status: 'processing',
+          generation_data: {
+            ...history.generation_data,
+            progress: payload.progress,
+            preview_url: payload.url
           }
-        } catch (assetError) {
-          console.error('[Webhook] Asset processing error:', assetError);
-        }
+        })
+        .eq('id', history.id);
+
+      console.log('[Imagine Webhook] Updated progress:', payload.progress);
+
+    } else if (payload.status === 'completed') {
+      // Get the first upscaled URL or fallback to regular URL
+      const imageUrl = payload.upscaled_urls?.[0] || payload.url;
+
+      if (!imageUrl) {
+        throw new Error('No image URL in completed webhook');
       }
 
-    } else if (payload.status === "failed") {
-      const { error } = await supabase
-        .from('event_log')
-        .insert({
-          ...baseEvent,
-          ext_id: `${payload.id}-failed-${Date.now()}`,
-          event_type: 'failed',
-          error_message: 'Generation failed'
-        });
-        
-      if (error) {
-        console.error('[Webhook] Failed to save failed event:', error);
-      } else {
-        console.log('[Webhook] Failed event saved:', { jobId });
+      // Download image from ImagineAPI
+      const imgResponse = await fetch(imageUrl);
+      if (!imgResponse.ok) {
+        throw new Error(`Failed to download image: ${imgResponse.status}`);
       }
+
+      const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
+      const ext = imageUrl.includes('.webp') ? 'webp' : imageUrl.includes('.jpg') ? 'jpg' : 'png';
+
+      // Upload to R2
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = `${now.getMonth() + 1}`.padStart(2, '0');
+      const key = `usergen/${history.user_id}/${yyyy}/${mm}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+
+      await r2.send(
+        new PutObjectCommand({
+          Bucket: R2_BUCKET,
+          Key: key,
+          Body: imgBuffer,
+          ContentType: `image/${ext}`,
+          CacheControl: 'public, max-age=31536000, immutable',
+        })
+      );
+
+      const publicUrl = `${R2_PUBLIC_BASE_URL}/${key}`;
+
+      // Update generation_history
+      await supabase
+        .from('generation_history')
+        .update({
+          completion_status: 'completed',
+          image_url: publicUrl,
+          image_path: key,
+          image_bucket: R2_BUCKET,
+          generation_data: {
+            ...history.generation_data,
+            upscaled_urls: payload.upscaled_urls
+          }
+        })
+        .eq('id', history.id);
+
+      console.log('[Imagine Webhook] Completed and saved to R2:', key);
+
+    } else if (payload.status === 'failed') {
+      await supabase
+        .from('generation_history')
+        .update({
+          completion_status: 'failed',
+          generation_data: {
+            ...history.generation_data,
+            error: payload.error || 'Generation failed'
+          }
+        })
+        .eq('id', history.id);
+
+      console.log('[Imagine Webhook] Marked as failed:', payload.id);
     }
 
-    console.log('[Webhook] Event processed successfully:', payload.id);
+    return res.status(200).json({ success: true });
 
-  } catch (error) {
-    console.error('[Webhook] Processing error:', error);
+  } catch (error: any) {
+    console.error('[Imagine Webhook] Error:', error);
+    return res.status(500).json({ error: error.message || 'Webhook processing failed' });
   }
 }
-
-// This function is now replaced by direct query to imagine_task_map table

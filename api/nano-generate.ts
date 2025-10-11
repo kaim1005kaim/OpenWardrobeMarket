@@ -1,23 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import fetch from 'node-fetch';
-
-// R2 Client
-const r2 = new S3Client({
-  region: 'auto',
-  endpoint: process.env.R2_S3_ENDPOINT!,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-  },
-  forcePathStyle: true,
-});
-
-const R2_BUCKET = process.env.R2_BUCKET!;
-const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL!;
-
-const NEGATIVE_PROMPT = "text, words, letters, typography, signs, labels, multiple people, collage, grid, panels, frames, split screen, comic style, manga panels, multiple angles, contact sheet";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -88,59 +70,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const result: any = await response.json();
 
-    // Extract image URL
-    let imageUrl: string | undefined;
-    if (result.results && Array.isArray(result.results) && result.results[0]) {
-      imageUrl = result.results[0].image_url || result.results[0].url;
-    } else if (result.images && Array.isArray(result.images) && result.images[0]) {
-      imageUrl = result.images[0].url;
-    } else if (result.url) {
-      imageUrl = result.url;
-    } else if (result.data && result.data.url) {
-      imageUrl = result.data.url;
+    console.log('[Nano Generate] ImagineAPI response:', JSON.stringify(result));
+
+    // ImagineAPIは非同期で処理されるため、task IDを取得
+    const taskId = result.data?.id || result.id;
+
+    if (!taskId) {
+      console.error('[Nano Generate] No task ID in response:', JSON.stringify(result));
+      throw new Error('No task ID returned from ImagineAPI');
     }
 
-    if (!imageUrl) {
-      console.error('[Nano Generate] ImagineAPI response:', JSON.stringify(result));
-      throw new Error('No image URL returned from ImagineAPI');
-    }
+    console.log('[Nano Generate] Task created:', taskId);
 
-    // Ensure absolute URL
-    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-      const baseUrl = process.env.IMAGINE_API_URL?.replace(/\/generate$/, '');
-      imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-    }
-
-    console.log('[Nano Generate] Image URL received:', imageUrl);
-
-    // 3) Download image and upload to R2
-    const imgResponse = await fetch(imageUrl);
-    if (!imgResponse.ok) {
-      throw new Error(`Failed to download image: ${imgResponse.status}`);
-    }
-
-    const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
-    const ext = imageUrl.includes('.webp') ? 'webp' : imageUrl.includes('.jpg') ? 'jpg' : 'png';
-
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = `${now.getMonth() + 1}`.padStart(2, '0');
-    const key = `usergen/${user.id}/${yyyy}/${mm}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-
-    await r2.send(
-      new PutObjectCommand({
-        Bucket: R2_BUCKET,
-        Key: key,
-        Body: imgBuffer,
-        ContentType: `image/${ext}`,
-        CacheControl: 'public, max-age=31536000, immutable',
-      })
-    );
-
-    const publicUrl = `${R2_PUBLIC_BASE_URL}/${key}`;
-    console.log('[Nano Generate] Saved to R2:', key);
-
-    // 4) Supabase履歴Insert
+    // 3) Supabase履歴Insert（pending状態で作成、webhookで更新される）
     const { data: row, error: insErr } = await supabase
       .from('generation_history')
       .insert({
@@ -150,13 +92,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         prompt: fullPrompt,
         negative_prompt: negative,
         aspect_ratio: aspectRatio,
-        image_bucket: R2_BUCKET,
-        image_path: key,
-        image_url: publicUrl,
+        external_id: taskId,
         folder: 'usergen',
         mode: 'mobile-simple',
         generation_data: answers ?? null,
-        completion_status: 'completed',
+        completion_status: 'pending',
       })
       .select()
       .single();
@@ -166,9 +106,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw insErr;
     }
 
-    console.log('[Nano Generate] Saved to DB:', row.id);
+    console.log('[Nano Generate] Saved to DB:', row.id, 'task:', taskId);
 
-    return res.status(200).json({ id: row.id, url: publicUrl, path: key });
+    // Webhookで画像が完成したら自動的にURLが更新される
+    return res.status(200).json({
+      id: row.id,
+      taskId: taskId,
+      status: 'pending',
+      message: 'Generation started. Webhook will update when complete.'
+    });
   } catch (e: any) {
     console.error('[Nano Generate] Error:', e);
     return res.status(500).json({ error: e?.message || 'Generation failed' });
