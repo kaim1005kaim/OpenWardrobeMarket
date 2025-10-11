@@ -162,6 +162,21 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       // Supabaseのリアルタイム更新を監視
       setGenerationStatus('生成開始...');
 
+      // デバッグ用：定期的にデータベースをポーリング
+      const pollInterval = setInterval(async () => {
+        const { data: historyData } = await supabase
+          .from('generation_history')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        console.log('Polling generation_history:', historyData);
+
+        if (historyData?.completion_status === 'completed') {
+          clearInterval(pollInterval);
+        }
+      }, 3000);
+
       const channel = supabase
         .channel(`generation-${id}`)
         .on(
