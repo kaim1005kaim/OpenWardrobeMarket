@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { MobileLayout } from '../../components/mobile/MobileLayout';
-import { BottomNavigation } from '../../components/mobile/BottomNavigation';
 import { HamburgerMenu } from '../../components/mobile/HamburgerMenu';
-import { GalleryViewSwitcher, GalleryViewMode } from '../../components/mobile/GalleryViewSwitcher';
+import { GalleryViewMode } from '../../components/mobile/GalleryViewSwitcher';
 import { MobileGallery } from '../../components/mobile/MobileGallery';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
 import { Asset } from '../../lib/types';
+import './MobileHomePage.css';
 
 interface MobileGalleryPageProps {
   onNavigate?: (page: string) => void;
@@ -13,7 +13,7 @@ interface MobileGalleryPageProps {
 
 export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [viewMode, setViewMode] = useState<GalleryViewMode>('clean');
+  const [viewMode, setViewMode] = useState<GalleryViewMode>('poster');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -62,15 +62,15 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
     setSelectedAsset(asset);
   };
 
-  const handleTabChange = (tab: string) => {
-    if (onNavigate) {
-      onNavigate(tab);
-    }
-  };
-
   const handleMenuNavigate = (page: string) => {
     if (onNavigate) {
       onNavigate(page);
+    }
+  };
+
+  const handleTitleClick = () => {
+    if (onNavigate) {
+      onNavigate('home');
     }
   };
 
@@ -97,29 +97,22 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
   return (
     <>
       <MobileLayout
-        title="GALLERY"
         showHeader={true}
         showBottomNav={true}
         onMenuClick={() => setIsMenuOpen(true)}
+        onLogoClick={handleTitleClick}
       >
-        <GalleryViewSwitcher
-          mode={viewMode}
-          onModeChange={setViewMode}
-        />
-
-        <MobileGallery
-          assets={assets}
-          viewMode={viewMode}
-          onAssetClick={handleAssetClick}
-          onLoadMore={loadMore}
-          isLoading={isLoading}
-        />
+        <div className="gallery-page-content">
+          <h1 className="gallery-title" onClick={handleTitleClick}>GALLERY</h1>
+          <MobileGallery
+            assets={assets}
+            viewMode={viewMode}
+            onAssetClick={handleAssetClick}
+            onLoadMore={loadMore}
+            isLoading={isLoading}
+          />
+        </div>
       </MobileLayout>
-
-      <BottomNavigation
-        activeTab="gallery"
-        onTabChange={handleTabChange}
-      />
 
       <HamburgerMenu
         isOpen={isMenuOpen}

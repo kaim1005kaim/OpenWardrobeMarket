@@ -62,6 +62,9 @@ export function MobileGallery({
           const template = posterTemplates[index % posterTemplates.length];
           const aspectRatio = getAspectRatio(index);
 
+          // Calculate actual aspect ratio from template frameSize
+          const templateAspectRatio = template.frameSize.height / template.frameSize.width;
+
           if (viewMode === 'clean') {
             return (
               <div
@@ -92,7 +95,8 @@ export function MobileGallery({
           return (
             <div
               key={asset.id}
-              className={`gallery-card poster ${aspectRatio}`}
+              className={`gallery-card poster`}
+              style={{ aspectRatio: `1 / ${templateAspectRatio}` }}
             >
               <PosterCard
                 userImageUrl={asset.src}

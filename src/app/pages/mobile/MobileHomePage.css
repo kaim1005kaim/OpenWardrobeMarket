@@ -81,6 +81,25 @@
   z-index: 1;
 }
 
+/* GALLERY Page Content */
+.gallery-page-content {
+  margin-top: -30px;
+}
+
+/* GALLERY Title */
+.gallery-title {
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 64px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: #000000;
+  text-align: center;
+  margin: 35px 0 -120px 0;
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+}
+
 /* Card Swiper Section */
 .card-swiper-section {
   margin-top: 0;

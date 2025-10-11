@@ -5,16 +5,16 @@ interface MobileLayoutProps {
   children: ReactNode;
   showHeader?: boolean;
   showBottomNav?: boolean;
-  title?: string;
   onMenuClick?: () => void;
+  onLogoClick?: () => void;
 }
 
 export function MobileLayout({
   children,
   showHeader = true,
   showBottomNav = true,
-  title = 'OWM',
-  onMenuClick
+  onMenuClick,
+  onLogoClick
 }: MobileLayoutProps) {
   return (
     <div className="mobile-layout">
@@ -25,8 +25,13 @@ export function MobileLayout({
             <span></span>
             <span></span>
           </button>
-          <h1 className="mobile-title">{title}</h1>
-          <div className="header-spacer"></div>
+          <div
+            className="owm-logo-header"
+            onClick={onLogoClick}
+            style={{ cursor: onLogoClick ? 'pointer' : 'default' }}
+          >
+            OWM
+          </div>
         </header>
       )}
 

@@ -1,9 +1,10 @@
 .mobile-gallery {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  padding: 8px;
-  background: #FFFFFF;
+  padding: 16px;
+  margin-top: 60px;
+  position: relative;
+  z-index: 2;
+  column-count: 2;
+  column-gap: 12px;
 }
 
 /* Clean Mode */
@@ -66,25 +67,25 @@
 
 /* Poster Mode */
 .gallery-card.poster {
-  border-radius: 12px;
+  border-radius: 4px;
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s ease;
-  padding: 12px;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  margin-bottom: 12px;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .gallery-card.poster:active {
   transform: scale(0.98);
 }
 
-.gallery-card.poster.square {
-  min-height: 280px;
-}
-
-.gallery-card.poster.portrait {
-  min-height: 380px;
+.gallery-card.poster .poster-card-wrapper {
+  width: 100%;
+  height: 100%;
 }
 
 .poster-header {
