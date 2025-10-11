@@ -49,6 +49,9 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const currentQuestion = createQuestions[currentStep];
   const progress = ((currentStep + 1) / createQuestions.length) * 100;
@@ -153,18 +156,73 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         throw new Error(errorData.error || '生成に失敗しました');
       }
 
-      const { id, url } = await res.json();
-      console.log('Generation complete:', { id, url });
+      const { id, taskId, status } = await res.json();
+      console.log('Generation started:', { id, taskId, status });
 
-      // マイページへ遷移
-      alert('生成完了！マイページで確認できます。');
-      if (onNavigate) {
-        onNavigate('mypage');
-      }
+      // Supabaseのリアルタイム更新を監視
+      setGenerationStatus('生成開始...');
+
+      const channel = supabase
+        .channel(`generation-${id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'generation_history',
+            filter: `id=eq.${id}`,
+          },
+          (payload) => {
+            console.log('Generation update:', payload);
+            const newRow = payload.new as any;
+
+            // 進捗更新
+            if (newRow.generation_data?.progress) {
+              setGenerationProgress(newRow.generation_data.progress);
+              setGenerationStatus(`生成中... ${newRow.generation_data.progress}%`);
+            }
+
+            // プレビュー画像更新
+            if (newRow.generation_data?.preview_url) {
+              setPreviewUrl(newRow.generation_data.preview_url);
+            }
+
+            // 完了チェック
+            if (newRow.completion_status === 'completed' && newRow.image_url) {
+              setGenerationStatus('生成完了！');
+              setGenerationProgress(100);
+
+              setTimeout(() => {
+                alert('生成完了！マイページで確認できます。');
+                if (onNavigate) {
+                  onNavigate('mypage');
+                }
+              }, 1000);
+            }
+
+            // エラーチェック
+            if (newRow.completion_status === 'failed') {
+              setGenerationStatus('生成失敗');
+              alert('生成に失敗しました。もう一度お試しください。');
+              setIsGenerating(false);
+            }
+          }
+        )
+        .subscribe();
+
+      // クリーンアップ用にタイムアウト設定（5分）
+      setTimeout(() => {
+        channel.unsubscribe();
+        if (isGenerating) {
+          setGenerationStatus('タイムアウト');
+          alert('生成に時間がかかっています。マイページで確認してください。');
+          setIsGenerating(false);
+        }
+      }, 300000);
+
     } catch (error) {
       console.error('Generation error:', error);
       alert(error instanceof Error ? error.message : '生成に失敗しました');
-    } finally {
       setIsGenerating(false);
     }
   };
@@ -246,8 +304,17 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
             </>
           ) : (
             <div className="generating-container">
+              {previewUrl && (
+                <div className="preview-image-container">
+                  <img src={previewUrl} alt="生成プレビュー" className="preview-image" />
+                </div>
+              )}
               <div className="spinner"></div>
-              <p className="generating-text">デザインを生成中...</p>
+              <p className="generating-text">{generationStatus || 'デザインを生成中...'}</p>
+              <div className="progress-bar-container">
+                <div className="progress-bar-fill" style={{ width: `${generationProgress}%` }}></div>
+              </div>
+              <p className="progress-percentage">{generationProgress}%</p>
             </div>
           )}
       </div>
