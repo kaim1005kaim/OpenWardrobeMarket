@@ -1,9 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
+import fetch from 'node-fetch';
 
 // R2 Client
 const r2 = new S3Client({
@@ -19,9 +17,7 @@ const r2 = new S3Client({
 const R2_BUCKET = process.env.R2_BUCKET!;
 const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL!;
 
-function b64ToBuffer(b64: string): Buffer {
-  return Buffer.from(b64, 'base64');
-}
+const NEGATIVE_PROMPT = "text, words, letters, typography, signs, labels, multiple people, collage, grid, panels, frames, split screen, comic style, manga panels, multiple angles, contact sheet";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -64,40 +60,68 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[Nano Generate] User authenticated:', user.id);
 
-    // 2) Gemini 2.5 Flash Image生成（Nano Banana）
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
-    const fullPrompt = `${prompt}${negative ? `. Negative: ${negative}` : ''}`;
+    // 2) ImagineAPI呼び出し
+    const fullPrompt = `${prompt} | single model | one person only | clean minimal background | fashion lookbook style | full body composition | professional fashion photography`;
+    const finalNegative = negative ? `${NEGATIVE_PROMPT}, ${negative}` : NEGATIVE_PROMPT;
 
     console.log('[Nano Generate] Generating with prompt:', fullPrompt);
 
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-      generationConfig: {
-        temperature: 1,
+    const payload = {
+      model: process.env.IMAGINE_API_MODEL || 'mj',
+      prompt: fullPrompt,
+      negative_prompt: finalNegative,
+      quality: 'standard',
+      params: {
+        q: 1,
+        s: 150,
+        v: 7,
+        aspectRatio: aspectRatio
       },
+      count: 1
+    };
+
+    const response = await fetch(`${process.env.IMAGINE_API_URL}/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.IMAGINE_API_TOKEN}`
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30000)
     });
 
-    const response = result.response;
-    const candidates = response.candidates;
-
-    if (!candidates || candidates.length === 0) {
-      return res.status(500).json({ error: 'No image generated' });
+    if (!response.ok) {
+      const errorData: any = await response.json().catch(() => ({}));
+      throw new Error(`ImagineAPI error: ${response.status} - ${errorData.message || response.statusText}`);
     }
 
-    const parts = candidates[0].content.parts;
-    const inlineData = parts.find((p: any) => p.inlineData)?.inlineData;
+    const result: any = await response.json();
 
-    if (!inlineData?.data) {
-      return res.status(500).json({ error: 'No image data' });
+    // Extract image URL
+    let imageUrl: string | undefined;
+    if (result.results && Array.isArray(result.results) && result.results[0]) {
+      imageUrl = result.results[0].image_url || result.results[0].url;
+    } else if (result.images && Array.isArray(result.images) && result.images[0]) {
+      imageUrl = result.images[0].url;
+    } else if (result.url) {
+      imageUrl = result.url;
     }
 
-    const buf = b64ToBuffer(inlineData.data);
-    const mime = inlineData.mimeType || 'image/png';
-    const ext = mime.includes('webp') ? 'webp' : 'png';
+    if (!imageUrl) {
+      throw new Error('No image URL returned from ImagineAPI');
+    }
 
-    console.log('[Nano Generate] Image generated, size:', buf.length, 'bytes');
+    console.log('[Nano Generate] Image URL received:', imageUrl);
 
-    // 3) R2保存
+    // 3) Download image and upload to R2
+    const imgResponse = await fetch(imageUrl);
+    if (!imgResponse.ok) {
+      throw new Error(`Failed to download image: ${imgResponse.status}`);
+    }
+
+    const imgBuffer = Buffer.from(await imgResponse.arrayBuffer());
+    const ext = imageUrl.includes('.webp') ? 'webp' : imageUrl.includes('.jpg') ? 'jpg' : 'png';
+
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = `${now.getMonth() + 1}`.padStart(2, '0');
@@ -107,8 +131,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       new PutObjectCommand({
         Bucket: R2_BUCKET,
         Key: key,
-        Body: buf,
-        ContentType: mime,
+        Body: imgBuffer,
+        ContentType: `image/${ext}`,
         CacheControl: 'public, max-age=31536000, immutable',
       })
     );
@@ -121,10 +145,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('generation_history')
       .insert({
         user_id: user.id,
-        provider: 'gemini',
-        model: 'gemini-2.5-flash-image',
+        provider: 'imagine',
+        model: process.env.IMAGINE_API_MODEL || 'mj',
         prompt,
-        negative_prompt: negative,
+        negative_prompt: finalNegative,
         aspect_ratio: aspectRatio,
         image_bucket: R2_BUCKET,
         image_path: key,
