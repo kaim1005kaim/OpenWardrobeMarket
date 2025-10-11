@@ -105,10 +105,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       imageUrl = result.images[0].url;
     } else if (result.url) {
       imageUrl = result.url;
+    } else if (result.data && result.data.url) {
+      imageUrl = result.data.url;
     }
 
     if (!imageUrl) {
+      console.error('[Nano Generate] ImagineAPI response:', JSON.stringify(result));
       throw new Error('No image URL returned from ImagineAPI');
+    }
+
+    // Ensure absolute URL
+    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+      const baseUrl = process.env.IMAGINE_API_URL?.replace(/\/generate$/, '');
+      imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
     }
 
     console.log('[Nano Generate] Image URL received:', imageUrl);
