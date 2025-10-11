@@ -83,7 +83,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('[Nano Generate] Task created:', taskId);
 
     // 3) Supabase履歴Insert（pending状態で作成、webhookで更新される）
-    const { data: row, error: insErr } = await supabase
+    // RLSをバイパスするためにサービスロールキーを使用
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: row, error: insErr } = await supabaseAdmin
       .from('generation_history')
       .insert({
         user_id: user.id,
