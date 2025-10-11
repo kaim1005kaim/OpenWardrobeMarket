@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MobileLayout } from '../../components/mobile/MobileLayout';
 import { BottomNavigation } from '../../components/mobile/BottomNavigation';
-import { HamburgerMenu } from '../../components/mobile/HamburgerMenu';
+import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
 import { useAuth } from '../../lib/AuthContext';
 import { Asset } from '../../lib/types';
@@ -133,7 +133,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
         onTabChange={handleTabChange}
       />
 
-      <HamburgerMenu
+      <MenuOverlay
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         onNavigate={handleMenuNavigate}

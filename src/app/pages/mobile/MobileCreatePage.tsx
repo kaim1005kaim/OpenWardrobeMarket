@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MobileLayout } from '../../components/mobile/MobileLayout';
 import { BottomNavigation } from '../../components/mobile/BottomNavigation';
-import { HamburgerMenu } from '../../components/mobile/HamburgerMenu';
+import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import './MobileCreatePage.css';
 
 interface MobileCreatePageProps {
@@ -204,7 +204,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         onTabChange={handleTabChange}
       />
 
-      <HamburgerMenu
+      <MenuOverlay
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         onNavigate={handleMenuNavigate}

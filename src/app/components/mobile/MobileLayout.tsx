@@ -7,6 +7,7 @@ interface MobileLayoutProps {
   showBottomNav?: boolean;
   onMenuClick?: () => void;
   onLogoClick?: () => void;
+  isMenuOpen?: boolean;
 }
 
 export function MobileLayout({
@@ -14,17 +15,20 @@ export function MobileLayout({
   showHeader = true,
   showBottomNav = true,
   onMenuClick,
-  onLogoClick
+  onLogoClick,
+  isMenuOpen = false
 }: MobileLayoutProps) {
   return (
     <div className="mobile-layout">
       {showHeader && (
         <header className="mobile-header">
-          <button className="hamburger-btn" onClick={onMenuClick}>
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
+          {!isMenuOpen && (
+            <button className="hamburger-btn" onClick={onMenuClick}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          )}
           <div
             className="owm-logo-header"
             onClick={onLogoClick}

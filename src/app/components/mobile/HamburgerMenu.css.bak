@@ -1,0 +1,158 @@
+/* Overlay Container - isolates stacking context */
+.hamburger-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  isolation: isolate;
+}
+
+/* Backdrop with blur */
+.hamburger-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Menu Container */
+.hamburger-menu {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 61, 61, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* Close Button */
+.hamburger-close-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+}
+
+.hamburger-close-btn:active {
+  opacity: 0.7;
+}
+
+/* Main Navigation */
+.hamburger-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  margin-top: 80px;
+  padding-left: 50px;
+}
+
+.hamburger-nav-item {
+  background: transparent;
+  border: 0;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  color: white;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+}
+
+.hamburger-nav-item:active {
+  opacity: 0.7;
+}
+
+/* Secondary Links */
+.hamburger-secondary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+  margin-bottom: 16px;
+  padding: 60px 0 16px 50px;
+}
+
+.hamburger-secondary-item {
+  background: transparent;
+  border: 0;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: white;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.8;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+}
+
+.hamburger-secondary-item:active {
+  opacity: 1;
+}
+
+/* Footer */
+.hamburger-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 0 16px 50px;
+}
+
+.hamburger-username {
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: white;
+  text-transform: uppercase;
+}
+
+.hamburger-logout-btn {
+  background: transparent;
+  border: 1px solid white;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  color: white;
+  padding: 8px 24px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+}
+
+.hamburger-logout-btn:active {
+  background: white;
+  color: #1a3d3d;
+}
+
+/* Hide trigger buttons when menu is open - CRITICAL for iOS Safari */
+body.menu-open .hamburger-btn {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translate3d(0, 0, 0) !important;
+}
+
+/* Also hide header when menu is open to prevent layer issues */
+body.menu-open .mobile-home-header,
+body.menu-open .mobile-header {
+  z-index: -1 !important;
+}

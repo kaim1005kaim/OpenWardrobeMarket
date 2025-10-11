@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HamburgerMenu } from '../../components/mobile/HamburgerMenu';
+import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
 import { SearchModal } from '../../components/mobile/SearchModal';
 import { CardSwiper } from '../../components/mobile/CardSwiper';
@@ -43,15 +43,17 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
       <div className="mobile-home-page">
         {/* Header */}
         <header className="mobile-home-header">
-          <button
-            className="hamburger-btn"
-            onClick={() => setIsMenuOpen(true)}
-            aria-label="Menu"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M3 12H21M3 6H21M3 18H21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </button>
+          {!isMenuOpen && (
+            <button
+              className="hamburger-btn"
+              onClick={() => setIsMenuOpen(true)}
+              aria-label="Menu"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 12H21M3 6H21M3 18H21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
           <div className="owm-logo">OWM</div>
         </header>
 
@@ -122,7 +124,7 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
         </footer>
       </div>
 
-      <HamburgerMenu
+      <MenuOverlay
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         onNavigate={handleMenuNavigate}

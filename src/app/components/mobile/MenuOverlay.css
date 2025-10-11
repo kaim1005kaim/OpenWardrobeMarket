@@ -1,60 +1,61 @@
-/* Backdrop */
-.hamburger-backdrop {
+/* Menu Overlay Container - Portal root with highest z-index */
+.menu-overlay-container {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 999;
-  backdrop-filter: blur(4px);
+  inset: 0;
+  z-index: 999999;
 }
 
-/* Menu Container */
-.hamburger-menu {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+/* Backdrop */
+.menu-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Menu Content */
+.menu-overlay-content {
+  position: absolute;
+  inset: 0;
   background: rgba(26, 61, 61, 0.85);
   backdrop-filter: blur(20px);
-  z-index: 1000;
+  -webkit-backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
   padding: 24px;
+  overflow-y: auto;
 }
 
 /* Close Button */
-.hamburger-close-btn {
+.menu-close-button {
   position: absolute;
-  top: 24px;
-  left: 24px;
-  width: 40px;
-  height: 40px;
-  background: none;
-  border: none;
+  top: 20px;
+  left: 20px;
+  width: auto;
+  height: auto;
+  background: transparent;
+  border: 0;
   color: white;
-  font-size: 28px;
+  font-size: 32px;
+  line-height: 1;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
+  padding: 4px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Main Navigation */
-.hamburger-nav {
+.menu-nav-main {
   display: flex;
   flex-direction: column;
   gap: 32px;
   margin-top: 80px;
-  padding: 0 0 0 50px;
+  padding-left: 50px;
 }
 
-.hamburger-nav-item {
-  background: none;
-  border: none;
+.menu-nav-main button {
+  background: transparent;
+  border: 0;
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 32px;
   font-weight: 400;
@@ -63,28 +64,22 @@
   text-align: left;
   cursor: pointer;
   padding: 0;
-  transition: opacity 0.2s ease;
-  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.hamburger-nav-item:hover {
-  opacity: 0.7;
-}
-
-/* Secondary Links */
-.hamburger-secondary {
+/* Secondary Navigation */
+.menu-nav-secondary {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-top: auto;
   margin-bottom: 16px;
   padding: 60px 0 16px 50px;
-  position: relative;
 }
 
-.hamburger-secondary-item {
-  background: none;
-  border: none;
+.menu-nav-secondary button {
+  background: transparent;
+  border: 0;
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 12px;
   font-weight: 400;
@@ -94,16 +89,11 @@
   cursor: pointer;
   padding: 0;
   opacity: 0.8;
-  transition: opacity 0.2s ease;
-  white-space: nowrap;
-}
-
-.hamburger-secondary-item:hover {
-  opacity: 1;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Footer */
-.hamburger-footer {
+.menu-footer-section {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -111,7 +101,7 @@
   padding: 16px 0 16px 50px;
 }
 
-.hamburger-username {
+.menu-username {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 14px;
   font-weight: 400;
@@ -120,8 +110,8 @@
   text-transform: uppercase;
 }
 
-.hamburger-logout-btn {
-  background: none;
+.menu-logout-button {
+  background: transparent;
   border: 1px solid white;
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 12px;
@@ -130,10 +120,10 @@
   color: white;
   padding: 8px 24px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.hamburger-logout-btn:hover {
+.menu-logout-button:active {
   background: white;
   color: #1a3d3d;
 }

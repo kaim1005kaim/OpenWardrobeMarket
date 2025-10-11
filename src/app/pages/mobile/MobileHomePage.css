@@ -19,15 +19,33 @@
   justify-content: space-between;
   padding: 0 20px;
   background: transparent;
-  z-index: 100;
+  z-index: 50;
 }
 
-.hamburger-btn {
-  background: transparent;
+.mobile-home-header .hamburger-btn {
+  background: transparent !important;
   border: none;
   padding: 8px;
   cursor: pointer;
   color: white;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  box-shadow: none;
+}
+
+/* Hide hamburger button when menu is open - use display:none to remove from rendering layer */
+body.menu-open .mobile-home-header .hamburger-btn {
+  display: none;
+}
+
+.hamburger-btn:hover,
+.hamburger-btn:focus,
+.hamburger-btn:active {
+  background: transparent !important;
+  outline: none;
+  box-shadow: none;
 }
 
 .owm-logo {

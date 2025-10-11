@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MobileLayout } from '../../components/mobile/MobileLayout';
-import { HamburgerMenu } from '../../components/mobile/HamburgerMenu';
+import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { GalleryViewMode } from '../../components/mobile/GalleryViewSwitcher';
 import { MobileGallery } from '../../components/mobile/MobileGallery';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
@@ -101,6 +101,7 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
         showBottomNav={true}
         onMenuClick={() => setIsMenuOpen(true)}
         onLogoClick={handleTitleClick}
+        isMenuOpen={isMenuOpen}
       >
         <div className="gallery-page-content">
           <h1 className="gallery-title" onClick={handleTitleClick}>GALLERY</h1>
@@ -114,7 +115,7 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
         </div>
       </MobileLayout>
 
-      <HamburgerMenu
+      <MenuOverlay
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         onNavigate={handleMenuNavigate}
