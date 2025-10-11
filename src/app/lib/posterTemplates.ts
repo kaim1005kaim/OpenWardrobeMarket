@@ -1,120 +1,140 @@
 export interface PosterTemplate {
   id: string;
-  framePath: string;
+  framePath: string; // 透過フレームPNGのパス
   backgroundColor: string;
-  imagePosition: {
-    x: number; // percentage
-    y: number; // percentage
-    width: number; // percentage
-    height: number; // percentage
+  frameSize: {
+    // フレームPNG自体のサイズ
+    width: number;
+    height: number;
   };
-  textElements?: {
-    text: string;
+  imageArea: {
+    // ユーザー画像を配置するエリア（ピクセル値、フレームサイズ基準）
     x: number;
     y: number;
-    fontSize: number;
-    color: string;
-    fontFamily: string;
-    rotation?: number;
-  }[];
+    width: number;
+    height: number;
+  };
 }
 
 export const posterTemplates: PosterTemplate[] = [
   {
-    id: 'frame-52',
-    framePath: '/poster/Frame 52.png',
-    backgroundColor: '#4A6FA5',
-    imagePosition: { x: 15, y: 15, width: 70, height: 70 },
+    id: 'poster-a',
+    framePath: '/poster/BG/poster_BG/a.png',
+    backgroundColor: '#5B7DB1',
+    frameSize: { width: 800, height: 1000 },
+    imageArea: { x: 100, y: 125, width: 600, height: 750 },
   },
   {
-    id: 'frame-53',
-    framePath: '/poster/Frame 53.png',
-    backgroundColor: '#C84141',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-b',
+    framePath: '/poster/BG/poster_BG/b.png',
+    backgroundColor: '#E8B4B8',
+    frameSize: { width: 800, height: 983 },
+    imageArea: { x: 0, y: 100, width: 515, height: 883 },
   },
   {
-    id: 'frame-54',
-    framePath: '/poster/Frame 54.png',
-    backgroundColor: '#4A6FA5',
-    imagePosition: { x: 15, y: 15, width: 70, height: 70 },
+    id: 'poster-c',
+    framePath: '/poster/BG/poster_BG/c.png',
+    backgroundColor: '#E8B4B8',
+    frameSize: { width: 800, height: 1000 },
+    imageArea: { x: 145, y: 175, width: 520, height: 650 },
   },
   {
-    id: 'frame-55',
-    framePath: '/poster/Frame 55.png',
-    backgroundColor: '#F5A623',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-d',
+    framePath: '/poster/BG/poster_BG/d.png',
+    backgroundColor: '#FF8C42',
+    frameSize: { width: 800, height: 1000 },
+    imageArea: { x: 250, y: 305, width: 355, height: 445 },
   },
   {
-    id: 'frame-56',
-    framePath: '/poster/Frame 56.png',
-    backgroundColor: '#1a3d3d',
-    imagePosition: { x: 5, y: 5, width: 65, height: 90 },
+    id: 'poster-e',
+    framePath: '/poster/BG/poster_BG/e.png',
+    backgroundColor: '#C1403D',
+    frameSize: { width: 800, height: 1076 },
+    imageArea: { x: 170, y: 245, width: 465, height: 585 },
   },
   {
-    id: 'frame-57',
-    framePath: '/poster/Frame 57.png',
-    backgroundColor: '#50B5B5',
-    imagePosition: { x: 10, y: 10, width: 80, height: 70 },
+    id: 'poster-f',
+    framePath: '/poster/BG/poster_BG/f.png',
+    backgroundColor: '#F4C542',
+    frameSize: { width: 800, height: 1076 },
+    imageArea: { x: 170, y: 180, width: 465, height: 585 },
   },
   {
-    id: 'frame-58',
-    framePath: '/poster/Frame 58.png',
-    backgroundColor: '#E91E63',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-g',
+    framePath: '/poster/BG/poster_BG/g.png',
+    backgroundColor: '#9B6B9E',
+    frameSize: { width: 800, height: 1188 },
+    imageArea: { x: 155, y: 260, width: 490, height: 615 },
   },
   {
-    id: 'frame-59',
-    framePath: '/poster/Frame 59.png',
-    backgroundColor: '#C8E6C9',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-h',
+    framePath: '/poster/BG/poster_BG/h.png',
+    backgroundColor: '#5B9AA8',
+    frameSize: { width: 800, height: 1376 },
+    imageArea: { x: 118, y: 342, width: 572, height: 688 },
   },
   {
-    id: 'frame-60',
-    framePath: '/poster/Frame 60.png',
-    backgroundColor: '#CE93D8',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-i',
+    framePath: '/poster/BG/poster_BG/i.png',
+    backgroundColor: '#C1403D',
+    frameSize: { width: 800, height: 1376 },
+    imageArea: { x: 160, y: 395, width: 480, height: 595 },
   },
   {
-    id: 'frame-61',
-    framePath: '/poster/Frame 61.png',
-    backgroundColor: '#FFF59D',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-j',
+    framePath: '/poster/BG/poster_BG/j.png',
+    backgroundColor: '#4B6BA5',
+    frameSize: { width: 800, height: 1376 },
+    imageArea: { x: 160, y: 395, width: 480, height: 595 },
   },
   {
-    id: 'frame-62',
-    framePath: '/poster/Frame 62.png',
-    backgroundColor: '#FFE0B2',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-k',
+    framePath: '/poster/BG/poster_BG/k.png',
+    backgroundColor: '#F5F3F0',
+    frameSize: { width: 800, height: 800 },
+    imageArea: { x: 0, y: 0, width: 720, height: 800 }, // 右側のテキストを避ける
   },
   {
-    id: 'frame-63',
-    framePath: '/poster/Frame 63.png',
-    backgroundColor: '#5F9EA0',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-l',
+    framePath: '/poster/BG/poster_BG/l.png',
+    backgroundColor: '#F5F3F0',
+    frameSize: { width: 800, height: 1026 },
+    imageArea: { x: 0, y: 0, width: 625, height: 785 },
   },
   {
-    id: 'frame-64',
-    framePath: '/poster/Frame 64.png',
-    backgroundColor: '#C41E3A',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-m',
+    framePath: '/poster/BG/poster_BG/m.png',
+    backgroundColor: '#6FA8A5',
+    frameSize: { width: 800, height: 800 },
+    imageArea: { x: 60, y: 68, width: 530, height: 660 },
   },
   {
-    id: 'frame-66',
-    framePath: '/poster/Frame 66.png',
-    backgroundColor: '#B8860B',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-n',
+    framePath: '/poster/BG/poster_BG/n.png',
+    backgroundColor: '#E8B4B8',
+    frameSize: { width: 800, height: 800 },
+    imageArea: { x: 160, y: 0, width: 640, height: 800 },
   },
   {
-    id: 'frame-67',
-    framePath: '/poster/Frame 67.png',
-    backgroundColor: '#F5F5F5',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-o',
+    framePath: '/poster/BG/poster_BG/o.png',
+    backgroundColor: '#F5F3F0',
+    frameSize: { width: 800, height: 801 },
+    imageArea: { x: 0, y: 0, width: 720, height: 800 }, // 右側のテキストを避ける
   },
   {
-    id: 'frame-68',
-    framePath: '/poster/Frame 68.png',
-    backgroundColor: '#FF6B35',
-    imagePosition: { x: 10, y: 10, width: 80, height: 80 },
+    id: 'poster-p',
+    framePath: '/poster/BG/poster_BG/p.png',
+    backgroundColor: '#B8A143',
+    frameSize: { width: 800, height: 1168 },
+    imageArea: { x: 120, y: 230, width: 560, height: 710 },
+  },
+  {
+    id: 'poster-q',
+    framePath: '/poster/BG/poster_BG/q.png',
+    backgroundColor: '#8B4938',
+    frameSize: { width: 800, height: 1168 },
+    imageArea: { x: 120, y: 230, width: 565, height: 710 },
   },
 ];
 

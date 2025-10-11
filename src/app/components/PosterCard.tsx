@@ -13,7 +13,7 @@ interface PosterCardProps {
   };
 }
 
-export function PosterCard({ userImageUrl, template, onClick, className, customText }: PosterCardProps) {
+export function PosterCard({ userImageUrl, template, onClick, className }: PosterCardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -23,89 +23,74 @@ export function PosterCard({ userImageUrl, template, onClick, className, customT
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // キャンバスサイズ設定
-    const scale = 2; // 高解像度対応
-    canvas.width = 400 * scale;
-    canvas.height = 600 * scale;
+    // キャンバスサイズ設定（各フレームPNGの実際のサイズに合わせる）
+    const WIDTH = template.frameSize.width;
+    const HEIGHT = template.frameSize.height;
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
     canvas.style.width = '100%';
     canvas.style.height = '100%';
 
-    ctx.scale(scale, scale);
-
     // 背景色
     ctx.fillStyle = template.backgroundColor;
-    ctx.fillRect(0, 0, 400, 600);
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
     // ユーザー画像を読み込んで配置
     const userImg = new Image();
     userImg.crossOrigin = 'anonymous';
     userImg.onload = () => {
-      const { x, y, width, height } = template.imagePosition;
-      const imgX = (x / 100) * 400;
-      const imgY = (y / 100) * 600;
-      const imgW = (width / 100) * 400;
-      const imgH = (height / 100) * 600;
+      const { x, y, width, height } = template.imageArea;
 
-      ctx.drawImage(userImg, imgX, imgY, imgW, imgH);
+      // 画像をカバー方式で配置（アスペクト比を保ちつつエリアを埋める）
+      const imgAspect = userImg.width / userImg.height;
+      const areaAspect = width / height;
 
-      // テキスト要素を描画（テンプレートに定義されている場合）
-      if (template.textElements) {
-        template.textElements.forEach((textEl) => {
-          ctx.save();
+      let drawWidth, drawHeight, drawX, drawY;
 
-          ctx.fillStyle = textEl.color;
-          ctx.font = `${textEl.fontSize}px ${textEl.fontFamily}`;
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-
-          if (textEl.rotation) {
-            ctx.translate(textEl.x, textEl.y);
-            ctx.rotate((textEl.rotation * Math.PI) / 180);
-            ctx.fillText(textEl.text, 0, 0);
-          } else {
-            ctx.fillText(textEl.text, textEl.x, textEl.y);
-          }
-
-          ctx.restore();
-        });
+      if (imgAspect > areaAspect) {
+        // 画像が横長 → 高さに合わせる
+        drawHeight = height;
+        drawWidth = height * imgAspect;
+        drawX = x - (drawWidth - width) / 2;
+        drawY = y;
+      } else {
+        // 画像が縦長 → 幅に合わせる
+        drawWidth = width;
+        drawHeight = width / imgAspect;
+        drawX = x;
+        drawY = y - (drawHeight - height) / 2;
       }
 
-      // カスタムテキストを描画（動的に渡された場合）
-      if (customText) {
-        ctx.save();
+      // 画像エリアをクリップ
+      ctx.save();
+      ctx.rect(x, y, width, height);
+      ctx.clip();
+      ctx.drawImage(userImg, drawX, drawY, drawWidth, drawHeight);
+      ctx.restore();
 
-        if (customText.brand) {
-          ctx.fillStyle = 'white';
-          ctx.font = '12px "Trajan Pro 3", "Cinzel", serif';
-          ctx.fillText(customText.brand.toUpperCase(), 20, 20);
-        }
-
-        if (customText.title) {
-          ctx.fillStyle = 'white';
-          ctx.font = '14px "Trajan Pro 3", "Cinzel", serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(customText.title.toUpperCase(), 200, 560);
-        }
-
-        if (customText.creator) {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-          ctx.font = '10px "Noto Sans JP", sans-serif';
-          ctx.textAlign = 'right';
-          ctx.fillText(customText.creator, 380, 580);
-        }
-
-        ctx.restore();
-      }
-
-      // テンプレートフレーム（装飾）を最後に重ねる
+      // 透過フレームを最後に重ねる
       const frameImg = new Image();
       frameImg.onload = () => {
-        ctx.drawImage(frameImg, 0, 0, 400, 600);
+        console.log('Frame loaded successfully:', template.framePath, 'Size:', frameImg.width, 'x', frameImg.height);
+        ctx.drawImage(frameImg, 0, 0, WIDTH, HEIGHT);
+        console.log('Frame drawn on canvas');
+      };
+      frameImg.onerror = () => {
+        console.error('Failed to load frame:', template.framePath);
+      };
+      frameImg.src = template.framePath;
+    };
+    userImg.onerror = () => {
+      console.error('Failed to load user image:', userImageUrl);
+      // エラー時もフレームを表示
+      const frameImg = new Image();
+      frameImg.onload = () => {
+        ctx.drawImage(frameImg, 0, 0, WIDTH, HEIGHT);
       };
       frameImg.src = template.framePath;
     };
     userImg.src = userImageUrl;
-  }, [userImageUrl, template, customText]);
+  }, [userImageUrl, template]);
 
   return (
     <div className={className} onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>

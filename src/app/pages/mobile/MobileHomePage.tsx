@@ -101,18 +101,23 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
 
         {/* Footer */}
         <footer className="mobile-home-footer">
+          <div className="footer-links">
+            <a href="#" className="footer-link">F.A.Q.</a>
+            <a href="#" className="footer-link">PRIVACY POLICY</a>
+            <a href="#" className="footer-link">CONTACT</a>
+          </div>
+
           <div className="footer-logo">
-            <svg width="40" height="60" viewBox="0 0 40 60" fill="none">
-              <text x="20" y="30" fontFamily="Trajan Pro 3, Cinzel" fontSize="14" fill="white" textAnchor="middle">
-                OI
-              </text>
-              <text x="20" y="50" fontFamily="'Courier New', monospace" fontSize="8" fill="white" textAnchor="middle" letterSpacing="1">
-                OPEN WARDROBE MARKET
-              </text>
-              <text x="20" y="58" fontFamily="'Courier New', monospace" fontSize="6" fill="white" textAnchor="middle">
-                FASHION POWERED BY OPEN DESIGN
-              </text>
-            </svg>
+            <img src="/logo.png" alt="OWM Logo" className="footer-logo-image" />
+            <div className="footer-logo-text">
+              <p className="footer-brand">OPEN WARDROBE MARKET</p>
+              <p className="footer-tagline">DESIGN, GENERATE, AND PUBLISH YOUR ORIGINAL FASHION</p>
+              <p className="footer-tagline">FASHION POWERED BY OPEN DESIGN</p>
+            </div>
+          </div>
+
+          <div className="footer-copyright">
+            <p>©︎2025 OPEN WARDROBE MARKET. ALL RIGHTS RESERVED.</p>
           </div>
         </footer>
       </div>
