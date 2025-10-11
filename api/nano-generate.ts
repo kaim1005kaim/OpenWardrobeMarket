@@ -62,32 +62,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 2) ImagineAPI呼び出し
     const fullPrompt = `${prompt} | single model | one person only | clean minimal background | fashion lookbook style | full body composition | professional fashion photography`;
-    const finalNegative = negative ? `${NEGATIVE_PROMPT}, ${negative}` : NEGATIVE_PROMPT;
 
     console.log('[Nano Generate] Generating with prompt:', fullPrompt);
 
     const payload = {
-      model: process.env.IMAGINE_API_MODEL || 'mj',
-      prompt: fullPrompt,
-      negative_prompt: finalNegative,
-      quality: 'standard',
-      params: {
-        q: 1,
-        s: 150,
-        v: 7,
-        aspectRatio: aspectRatio
-      },
-      count: 1
+      prompt: fullPrompt
     };
 
-    const response = await fetch(`${process.env.IMAGINE_API_URL}/generate`, {
+    const IMAGINE_API_KEY = process.env.IMAGINE_API_KEY || 'imgn_suoc6eez6gfqlb2ke3jpniae2hi6akos';
+
+    const response = await fetch('https://cl.imagineapi.dev/items/images/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.IMAGINE_API_TOKEN}`
+        'Authorization': `Bearer ${IMAGINE_API_KEY}`
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000)
+      signal: AbortSignal.timeout(60000)
     });
 
     if (!response.ok) {
@@ -154,10 +145,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('generation_history')
       .insert({
         user_id: user.id,
-        provider: 'imagine',
-        model: process.env.IMAGINE_API_MODEL || 'mj',
-        prompt,
-        negative_prompt: finalNegative,
+        provider: 'imagineapi',
+        model: 'midjourney',
+        prompt: fullPrompt,
+        negative_prompt: negative,
         aspect_ratio: aspectRatio,
         image_bucket: R2_BUCKET,
         image_path: key,
