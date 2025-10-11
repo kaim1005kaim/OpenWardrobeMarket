@@ -64,8 +64,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[Nano Generate] User authenticated:', user.id);
 
-    // 2) Imagen 3生成（Gemini 2.0は画像生成非対応のため）
-    const model = genAI.getGenerativeModel({ model: 'imagen-3.0-generate-001' });
+    // 2) Gemini 2.5 Flash Image生成（Nano Banana）
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image' });
     const fullPrompt = `${prompt}${negative ? `. Negative: ${negative}` : ''}`;
 
     console.log('[Nano Generate] Generating with prompt:', fullPrompt);
@@ -121,8 +121,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('generation_history')
       .insert({
         user_id: user.id,
-        provider: 'google',
-        model: 'imagen-3.0-generate-001',
+        provider: 'gemini',
+        model: 'gemini-2.5-flash-image',
         prompt,
         negative_prompt: negative,
         aspect_ratio: aspectRatio,
