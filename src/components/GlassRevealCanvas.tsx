@@ -41,20 +41,16 @@ void main(){
   gUv = gUv * u_glassScale + 0.5;
   float h = texture2D(u_glass, gUv).r;
   vec2 grad = vec2(dFdx(h), dFdy(h));
+
+  // progressが1.0→0.0に減るにつれて歪みが減る
   vec2 uvR = vUv + grad * (u_amount * u_progress);
 
-  // 最初はブラー多め → 0へ
-  float k = smoothstep(0.0, 1.0, u_progress);
+  // progressが1.0→0.0に減るにつれてブラーが減る
+  float k = u_progress; // ブラーの強さ
   vec3 col = blur5(u_image, uvR, px*3.0, k);
 
-  // 円形ソフトマスク（アスペクト比考慮）
-  vec2 st = (vUv - 0.5); st.x *= u_res.x/u_res.y;
-  float aspect = u_res.x / u_res.y;
-  float radius = aspect < 1.0 ? 0.48 : 0.48 / aspect; // 短辺に合わせる
-  float mask = smoothstep(radius, radius - u_maskFeather, length(st));
-  float a = 1.0 - mask;
-
-  gl_FragColor = vec4(toSRGB(col), a);
+  // 全画面表示（マスクなし）
+  gl_FragColor = vec4(toSRGB(col), 1.0);
 }
 `;
 

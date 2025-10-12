@@ -339,10 +339,11 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
                   <GlassRevealCanvas
                     imageUrl={imageUrl}
-                    durationMs={1400}
-                    amount={0.05}
-                    glassScale={[8, 1]}
-                    maskFeather={0.1}
+                    durationMs={2500}
+                    amount={0.08}
+                    glassScale={[12, 1]}
+                    glassRotate={0}
+                    maskFeather={0}
                     active={stage === "revealing"}
                     onDone={handleRevealDone}
                   />
