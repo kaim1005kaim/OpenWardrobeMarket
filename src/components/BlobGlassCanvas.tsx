@@ -18,6 +18,8 @@ uniform sampler2D u_glass;
 uniform float u_refract;
 uniform float u_pixels;      // 最大屈折量 [px]
 uniform float u_glassScale;  // ガラステクスチャのスケール
+uniform float u_ribShade;    // 0.0〜0.4: 明暗コントラスト
+uniform float u_ribAlpha;    // 0.0〜0.25: 透明度への効き
 uniform float u_seed;
 
 uniform vec3  u_colA;     // 外側
@@ -109,6 +111,19 @@ void main(){
   // コアは透過するのでアルファを下げる
   alpha *= (1.0 - coreMask * 0.8);
 
+  // ===== 擬似ガラス効果（縦スリット陰影） =====
+  // 1) ガラステクスチャをタイルして縦スリット強調
+  vec2 gUv = vec2(vUv.x * u_glassScale, vUv.y);
+  float h = texture2D(u_glass, gUv).r;
+
+  // ハイパスっぽくメリハリを付ける
+  float rib = smoothstep(0.35, 0.65, h);
+  rib = pow(abs(rib - 0.5) * 2.0, 0.9);
+
+  // 2) 合成：色の明暗＋アルファへも少し反映
+  col = mix(col * (1.0 - u_ribShade), col * (1.0 + u_ribShade), rib);
+  alpha = clamp(alpha * (1.0 - u_ribAlpha * rib), 0.0, 1.0);
+
   gl_FragColor = vec4(col, alpha);
 }
 `;
@@ -161,8 +176,10 @@ export default function BlobGlassCanvas({
         u_res:{value:new THREE.Vector2(1,1)},
         u_glass:{value:tex},
         u_refract:{value:refract},
-        u_pixels:{value:12.0},      // 最大屈折量 [px]
-        u_glassScale:{value:1.0},   // ガラスタイル倍率
+        u_pixels:{value:12.0},       // 最大屈折量 [px]
+        u_glassScale:{value:1.2},    // ガラスタイル倍率（縦スリット本数）
+        u_ribShade:{value:0.18},     // 明暗コントラスト
+        u_ribAlpha:{value:0.10},     // 透明度への効き
         u_seed:{value:Math.random()*1000},
         u_colA:{value:new THREE.Color(targetA)},
         u_colB:{value:new THREE.Color(targetB)},
