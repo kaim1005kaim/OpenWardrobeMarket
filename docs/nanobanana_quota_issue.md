@@ -26,7 +26,7 @@
 
 ## Root Cause
 
-The Google API key (`AIzaSyC0qm3bjibBZbgKV2Jd6wcfesvoSf8VyMc`) has exhausted its free tier limits:
+The Google API key has exhausted its free tier limits:
 - Free tier quota: 0 requests remaining
 - The model `gemini-2.5-flash-image` requires available quota
 
@@ -82,10 +82,10 @@ Once quota is resolved, test:
 
 ### Environment Variables
 ```bash
-GOOGLE_API_KEY=AIzaSyC0qm3bjibBZbgKV2Jd6wcfesvoSf8VyMc  # ← Quota exhausted
+GOOGLE_API_KEY=your_google_api_key_here  # Set in Vercel environment variables
 R2_PUBLIC_BASE_URL=https://pub-84ce7a1b2f1b4f3c8ed8e3f2b19a8e9d.r2.dev
 NEXT_PUBLIC_SUPABASE_URL=https://etvmigcsvrvetemyeiez.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key  # Set in Vercel environment variables
 ```
 
 ### API Endpoint
