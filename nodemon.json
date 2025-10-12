@@ -2,7 +2,7 @@
   "watch": ["server"],
   "ext": "ts",
   "ignore": ["server/**/*.test.ts"],
-  "exec": "node --env-file=.env.local --loader tsx server/index.ts",
+  "exec": "node --env-file=.env.local --import tsx server/index.ts",
   "env": {
     "NODE_ENV": "development"
   }
