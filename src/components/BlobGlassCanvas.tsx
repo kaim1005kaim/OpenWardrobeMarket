@@ -33,8 +33,11 @@ float fbm(vec2 p){
   return f;
 }
 
+// グローバル変数で重心を保持
+vec2 g_centroid;
+
 // メタボール場
-float field(vec2 p, out vec2 centroid){
+float field(vec2 p){
   // アスペクト補正
   p.x *= u_res.x/u_res.y;
 
@@ -43,7 +46,7 @@ float field(vec2 p, out vec2 centroid){
   vec2 c0 = vec2( 0.0 + 0.22*sin(t+u_seed),  0.02 + 0.18*cos(t*0.9+u_seed));
   vec2 c1 = vec2(-0.18 + 0.17*cos(t*0.7+2.0),-0.10 + 0.19*sin(t*1.1+1.3));
   vec2 c2 = vec2( 0.20 + 0.15*sin(t*0.6+3.1),-0.04 + 0.16*cos(t*0.8+0.7));
-  centroid = (c0+c1+c2)/3.0;
+  g_centroid = (c0+c1+c2)/3.0;
 
   // スカラー場：exp(-k r^2) の和
   float k = 6.0;
@@ -60,8 +63,8 @@ float field(vec2 p, out vec2 centroid){
 
 void main(){
   vec2 uv = vUv*2.0-1.0;
-  vec2 centroid;
-  float F = field(uv, centroid);
+  float F = field(uv);
+  vec2 centroid = g_centroid;
 
   // iso面（内外の境界）
   float iso = 0.95;
