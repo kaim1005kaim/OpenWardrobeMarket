@@ -2,7 +2,7 @@
   "watch": ["server"],
   "ext": "ts",
   "ignore": ["server/**/*.test.ts"],
-  "exec": "tsx server/index.ts",
+  "exec": "node -r dotenv/config --loader tsx server/index.ts dotenv_config_path=.env.local",
   "env": {
     "NODE_ENV": "development"
   }

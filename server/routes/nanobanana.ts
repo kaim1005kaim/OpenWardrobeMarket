@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { GoogleAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
 
 // Initialize Google Gemini AI
-const ai = new GoogleAI({ apiKey: process.env.GOOGLE_API_KEY! });
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
 // Initialize R2 (S3-compatible) client
 const r2 = new S3Client({
@@ -57,13 +57,8 @@ router.post('/nano-generate', async (req, res) => {
     console.log('[Nano Banana] Generating image for user:', user.id);
     console.log('[Nano Banana] Prompt:', fullPrompt);
 
-    const genRes = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: fullPrompt,
-      generationConfig: {
-        imageConfig: { aspectRatio }
-      },
-    });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-05-20' });
+    const genRes = await model.generateContent(fullPrompt);
 
     const parts: any[] = genRes.candidates?.[0]?.content?.parts ?? [];
     const inline = parts.find((p) => p.inlineData)?.inlineData;
