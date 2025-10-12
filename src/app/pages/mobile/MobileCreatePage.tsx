@@ -176,7 +176,8 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       }
 
       // Nano Banana API呼び出し
-      const res = await fetch('http://localhost:3001/api/nano-generate', {
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+      const res = await fetch(`${apiUrl}/api/nano-generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
