@@ -318,9 +318,9 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
             <div className="viewer-container" style={{ position: 'relative', width: '100%', aspectRatio: '3/4', marginTop: '32px' }}>
               {/* 生成中のProcedural */}
               {stage === "generating" && (
-                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 1 }}>
                   <BlobGlassCanvas
-                    active
+                    active={stage === "generating"}
                     maskFeather={0.1}
                     targetA={currentPalette.a}
                     targetB={currentPalette.b}
@@ -336,14 +336,14 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
               {/* 受信後の"歪ませリビール" */}
               {stage === "revealing" && imageUrl && (
-                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
                   <GlassRevealCanvas
                     imageUrl={imageUrl}
                     durationMs={1400}
                     amount={0.05}
                     glassScale={[8, 1]}
                     maskFeather={0.1}
-                    active
+                    active={stage === "revealing"}
                     onDone={handleRevealDone}
                   />
                 </div>
