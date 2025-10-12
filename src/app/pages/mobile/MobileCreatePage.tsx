@@ -218,7 +218,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
   const handleRevealDone = () => {
     setStage("done");
-    setIsGenerating(false);
+    // isGenerating は done 状態でも true のままにして、生成完了画面を表示
   };
 
   const handleMenuNavigate = (page: string) => {
