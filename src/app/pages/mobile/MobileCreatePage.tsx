@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { buildPrompt, type Answers } from '../../../lib/prompt/buildMobile';
 import { supabase } from '../../lib/supabase';
+import BlobGlassCanvas from '../../../components/BlobGlassCanvas';
+import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import './MobileCreatePage.css';
 
 interface MobileCreatePageProps {
@@ -44,14 +46,18 @@ const createQuestions: Question[] = [
   },
 ];
 
+type Stage = "idle" | "generating" | "revealing" | "done";
+
 export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [stage, setStage] = useState<Stage>("idle");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStatus, setGenerationStatus] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   const currentQuestion = createQuestions[currentStep];
   const progress = ((currentStep + 1) / createQuestions.length) * 100;
@@ -114,6 +120,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   };
 
   const handleGenerate = async () => {
+    setStage("generating");
     setIsGenerating(true);
     console.log('Generating with answers:', answers);
 
@@ -156,121 +163,24 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         throw new Error(errorData.error || '生成に失敗しました');
       }
 
-      const { id, taskId, status } = await res.json();
-      console.log('Generation started:', { id, taskId, status });
+      const { id, url } = await res.json();
+      console.log('Generation completed:', { id, url });
 
-      // Supabaseのリアルタイム更新を監視
-      setGenerationStatus('生成開始...');
-
-      // デバッグ用：定期的にデータベースをポーリング
-      const pollInterval = setInterval(async () => {
-        const { data: historyData } = await supabase
-          .from('generation_history')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        console.log('Polling generation_history:', historyData);
-
-        // UIを更新
-        if (historyData) {
-          // 進捗更新
-          if (historyData.generation_data?.progress) {
-            setGenerationProgress(historyData.generation_data.progress);
-            setGenerationStatus(`生成中... ${historyData.generation_data.progress}%`);
-          }
-
-          // プレビュー画像更新
-          if (historyData.generation_data?.preview_url) {
-            setPreviewUrl(historyData.generation_data.preview_url);
-          }
-
-          // 完了チェック
-          if (historyData.completion_status === 'completed' && historyData.image_url) {
-            clearInterval(pollInterval);
-            setGenerationStatus('生成完了！');
-            setGenerationProgress(100);
-            setTimeout(() => {
-              alert('生成完了！マイページで確認できます。');
-              if (onNavigate) {
-                onNavigate('mypage');
-              }
-            }, 1000);
-          }
-
-          // 失敗チェック
-          if (historyData.completion_status === 'failed') {
-            clearInterval(pollInterval);
-            setGenerationStatus('生成失敗');
-            alert('生成に失敗しました。もう一度お試しください。');
-            setIsGenerating(false);
-          }
-        }
-      }, 3000);
-
-      const channel = supabase
-        .channel(`generation-${id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'generation_history',
-            filter: `id=eq.${id}`,
-          },
-          (payload) => {
-            console.log('Generation update:', payload);
-            const newRow = payload.new as any;
-
-            // 進捗更新
-            if (newRow.generation_data?.progress) {
-              setGenerationProgress(newRow.generation_data.progress);
-              setGenerationStatus(`生成中... ${newRow.generation_data.progress}%`);
-            }
-
-            // プレビュー画像更新
-            if (newRow.generation_data?.preview_url) {
-              setPreviewUrl(newRow.generation_data.preview_url);
-            }
-
-            // 完了チェック
-            if (newRow.completion_status === 'completed' && newRow.image_url) {
-              setGenerationStatus('生成完了！');
-              setGenerationProgress(100);
-
-              setTimeout(() => {
-                alert('生成完了！マイページで確認できます。');
-                if (onNavigate) {
-                  onNavigate('mypage');
-                }
-              }, 1000);
-            }
-
-            // エラーチェック
-            if (newRow.completion_status === 'failed') {
-              setGenerationStatus('生成失敗');
-              alert('生成に失敗しました。もう一度お試しください。');
-              setIsGenerating(false);
-            }
-          }
-        )
-        .subscribe();
-
-      // クリーンアップ用にタイムアウト設定（5分）
-      setTimeout(() => {
-        channel.unsubscribe();
-        if (isGenerating) {
-          setGenerationStatus('タイムアウト');
-          alert('生成に時間がかかっています。マイページで確認してください。');
-          setIsGenerating(false);
-        }
-      }, 300000);
+      // 画像受信→リビールステージへ
+      setImageUrl(url);
+      setStage("revealing");
 
     } catch (error) {
       console.error('Generation error:', error);
       alert(error instanceof Error ? error.message : '生成に失敗しました');
+      setStage("idle");
       setIsGenerating(false);
     }
+  };
+
+  const handleRevealDone = () => {
+    setStage("done");
+    setIsGenerating(false);
   };
 
   const handleMenuNavigate = (page: string) => {
@@ -349,18 +259,55 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               </div>
             </>
           ) : (
-            <div className="generating-container">
-              {previewUrl && (
-                <div className="preview-image-container">
-                  <img src={previewUrl} alt="生成プレビュー" className="preview-image" />
+            <div className="viewer-container" style={{ position: 'relative', width: '100%', aspectRatio: '3/4', marginTop: '32px' }}>
+              {/* 生成中のProcedural */}
+              {stage === "generating" && (
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', background: 'rgba(0,0,0,0.04)' }}>
+                  <BlobGlassCanvas active refract={0.9} colorA="#CFE5DE" colorB="#AF9ACD" />
+                  <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: '#666', fontSize: 14 }}>
+                    PLEASE WAIT<br />生成中です…
+                  </div>
                 </div>
               )}
-              <div className="spinner"></div>
-              <p className="generating-text">{generationStatus || 'デザインを生成中...'}</p>
-              <div className="progress-bar-container">
-                <div className="progress-bar-fill" style={{ width: `${generationProgress}%` }}></div>
-              </div>
-              <p className="progress-percentage">{generationProgress}%</p>
+
+              {/* 受信後の"歪ませリビール" */}
+              {stage === "revealing" && imageUrl && (
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
+                  <GlassRevealCanvas
+                    imageUrl={imageUrl}
+                    durationMs={1400}
+                    amount={0.05}
+                    lines={1.0}
+                    active
+                    onDone={handleRevealDone}
+                  />
+                </div>
+              )}
+
+              {/* 完成表示 */}
+              {stage === "done" && imageUrl && (
+                <>
+                  <img
+                    src={imageUrl}
+                    alt="generated"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }}
+                  />
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, display: 'flex', gap: 12 }}>
+                    <button
+                      style={{ flex: 1, padding: '12px 16px', background: '#fff', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer' }}
+                      onClick={() => alert('ドラフト保存機能は実装予定です')}
+                    >
+                      ドラフトに保存
+                    </button>
+                    <button
+                      style={{ flex: 1, padding: '12px 16px', background: '#000', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+                      onClick={() => onNavigate?.('mypage')}
+                    >
+                      公開する
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
       </div>
