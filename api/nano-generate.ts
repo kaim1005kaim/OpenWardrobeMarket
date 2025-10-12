@@ -54,12 +54,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[Nano Banana] Prompt:', fullPrompt);
 
-    // @ts-ignore - generationConfigはランタイムで動作するが型定義にない
     const resp = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: fullPrompt,
-      generationConfig: { imageConfig: { aspectRatio } },
-    });
+      // generationConfig: { imageConfig: { aspectRatio } },
+    } as any);
 
     const parts: any[] = resp.candidates?.[0]?.content?.parts ?? [];
     const inline = parts.find((p: any) => p.inlineData)?.inlineData;
