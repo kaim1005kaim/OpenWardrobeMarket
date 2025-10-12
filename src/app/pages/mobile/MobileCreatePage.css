@@ -296,3 +296,14 @@
   color: #000000;
   margin: 0;
 }
+
+
+/* Fade out animation for metaball transition */
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

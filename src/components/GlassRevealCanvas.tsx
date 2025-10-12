@@ -7,7 +7,7 @@ varying vec2 vUv;
 void main(){ vUv = uv; gl_Position = vec4(position.xy,0.,1.); }
 `;
 
-// Glass Stripe Reveal: 縦ストライプのシャッターエフェクト
+// Glass Stripe Reveal: 縦ストライプのシャッターエフェクト + 画像フェードイン
 const FRAG = `
 precision highp float;
 varying vec2 vUv;
@@ -15,6 +15,7 @@ uniform sampler2D u_img;
 uniform sampler2D u_glass;
 uniform vec2  u_imgTexel;   // 1/texture size
 uniform float u_progress;   // 0..1 (0=ガラス最大,1=クリア)
+uniform float u_fadeIn;     // 0..1 (画像のフェードイン)
 uniform float u_strength;   // 屈折強度
 uniform float u_stripes;    // ストライプ本数
 uniform float u_jitter;     // 0..0.2 くらい
@@ -54,7 +55,10 @@ void main(){
 
   float blurMix = smoothstep(0.2, 0.8, amp); // 強い歪み時だけ少しボケ
   vec3  col = mix(col0, blur, blurMix);
-  gl_FragColor = vec4(col, 1.0);
+
+  // 画像のフェードイン（アルファ制御）
+  float alpha = u_fadeIn;
+  gl_FragColor = vec4(col, alpha);
 }
 `;
 
@@ -145,6 +149,7 @@ export default function GlassRevealCanvas({
         u_glass: { value: texGlass },
         u_imgTexel: { value: new THREE.Vector2(1/1024, 1/1024) },
         u_progress: { value: 0 }, // 0..1
+        u_fadeIn: { value: 0 },   // 0..1 画像フェードイン
         u_strength: { value: strength },
         u_stripes: { value: stripes },
         u_jitter: { value: jitter },
@@ -156,24 +161,47 @@ export default function GlassRevealCanvas({
     });
     scene.add(new THREE.Mesh(geo, mat));
 
-    const total = holdMs + revealMs;
+    const fadeInMs = 400;  // フェードイン時間
+    const settleMs = 300;  // リビール完了後の安定時間
+    const total = fadeInMs + holdMs + revealMs + settleMs;
+
+    let revealDoneCalled = false;
 
     const render = () => {
       const t = performance.now() - t0;
       let p = 0;
-      if (t <= holdMs) {
-        p = 0;  // エフェクトON状態で待機
+      let fade = 0;
+
+      if (t <= fadeInMs) {
+        // フェードイン期間：画像が徐々に表示される
+        fade = t / fadeInMs;
+        p = 0;
+      } else if (t <= fadeInMs + holdMs) {
+        // ホールド期間：ガラスエフェクトON状態で待機
+        fade = 1.0;
+        p = 0;
+      } else if (t <= fadeInMs + holdMs + revealMs) {
+        // リビール期間：左から右に解除
+        fade = 1.0;
+        p = (t - fadeInMs - holdMs) / revealMs;
       } else if (t <= total) {
-        p = (t - holdMs) / revealMs;  // 0→1 左から右に解除
+        // 安定期間：エフェクト完全OFF、ボタン表示前の余裕
+        fade = 1.0;
+        p = 1.0;
       } else {
-        p = 1.0;  // エフェクトOFF状態を維持
+        // 完了後もエフェクトOFF状態を維持
+        fade = 1.0;
+        p = 1.0;
       }
+
       (mat.uniforms.u_progress.value as number) = p;
+      (mat.uniforms.u_fadeIn.value as number) = fade;
 
       renderer.render(scene, cam);
 
-      // リビール完了時に一度だけonRevealDone呼び出し
-      if (t >= total && t < total + 50) {
+      // リビール＋安定期間完了時に一度だけonRevealDone呼び出し
+      if (t >= total && !revealDoneCalled) {
+        revealDoneCalled = true;
         onRevealDoneRef.current?.();
       }
 

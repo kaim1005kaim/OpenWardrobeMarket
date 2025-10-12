@@ -303,9 +303,17 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
             </>
           ) : (
             <div className="viewer-container" style={{ position: 'relative', width: '100%', aspectRatio: '3/4', marginTop: '32px' }}>
-              {/* 生成中のProcedural */}
+              {/* 生成中のProcedural（フェードアウト可能） */}
               {stage === "generating" && (
-                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 1 }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    zIndex: 1
+                  }}
+                >
                   <BlobGlassCanvas
                     active={stage === "generating"}
                     targetA={currentPalette.a}
@@ -314,6 +322,27 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: '#666', fontSize: 14 }}>
                     PLEASE WAIT<br />生成中です…
                   </div>
+                </div>
+              )}
+
+              {/* メタボールフェードアウト用オーバーレイ */}
+              {stage === "revealing" && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    zIndex: 1,
+                    opacity: 1,
+                    animation: 'fadeOut 0.4s ease-out forwards'
+                  }}
+                >
+                  <BlobGlassCanvas
+                    active={false}
+                    targetA={currentPalette.a}
+                    targetB={currentPalette.b}
+                  />
                 </div>
               )}
 
