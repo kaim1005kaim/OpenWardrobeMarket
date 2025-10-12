@@ -9,6 +9,7 @@ void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
 
 // ---- メタボールSDF + fBm + ガラス縦スリット ----
 const FRAG = /* glsl */`
+#extension GL_OES_standard_derivatives : enable
 precision highp float;
 varying vec2 vUv;
 
@@ -16,6 +17,8 @@ uniform float u_time;
 uniform vec2  u_res;
 uniform sampler2D u_glass;
 uniform float u_refract;
+uniform float u_pixels;      // 最大屈折量 [px]
+uniform float u_glassScale;  // ガラステクスチャのスケール
 uniform float u_seed;
 
 uniform vec3  u_colA;     // 外側
@@ -71,13 +74,14 @@ float field(vec2 p){
 void main(){
   vec2 uv = vUv*2.0-1.0;
 
-  // ガラステクスチャから水平勾配を取得（リブドガラス）
-  float g = texture2D(u_glass, vUv).r;
-  float gL = texture2D(u_glass, vUv + vec2(-1.0/u_res.x, 0.0)).r;
-  float dx = (g - gL);  // X軸方向の勾配
+  // ガラステクスチャから水平勾配を取得（dFdx使用）
+  vec2 gUv = vec2(vUv.x * u_glassScale, vUv.y);
+  float h = texture2D(u_glass, gUv).r;
+  float dx = dFdx(h);
 
-  // 水平方向にのみ屈折オフセット（強度を大幅に上げる）
-  vec2 refractOffset = vec2(dx * u_refract * 0.08, 0.0);
+  // ピクセル換算してから NDC に戻す
+  float px = u_pixels / u_res.x;
+  vec2 refractOffset = vec2(dx * u_refract * px, 0.0);
 
   // 形状評価（元のUV）
   float F = field(uv);
@@ -93,8 +97,8 @@ void main(){
   vec3 baseA = mix(u_colA, u_colB, 0.15*w);
   vec3 baseB = mix(u_colB, u_colA, 0.10*(1.0-w));
 
-  // 色をガラス屈折UVでサンプリング（水平方向のみ）
-  vec2 colorUv = uv + refractOffset;
+  // 色をガラス屈折UVでサンプリング（vUv→uv変換してからfbm）
+  vec2 colorUv = (vUv + refractOffset) * 2.0 - 1.0;
   vec3 col = mix(baseA, baseB, 0.5 + 0.5*fbm(colorUv*2.0 + u_time*0.1));
 
   // コア部分は完全に透過（背景色になる）
@@ -158,6 +162,8 @@ export default function BlobGlassCanvas({
         u_res:{value:new THREE.Vector2(1,1)},
         u_glass:{value:tex},
         u_refract:{value:refract},
+        u_pixels:{value:12.0},      // 最大屈折量 [px]
+        u_glassScale:{value:1.0},   // ガラスタイル倍率
         u_seed:{value:Math.random()*1000},
         u_colA:{value:new THREE.Color(targetA)},
         u_colB:{value:new THREE.Color(targetB)},
@@ -189,7 +195,12 @@ export default function BlobGlassCanvas({
       raf = requestAnimationFrame(render);
     };
 
-    const ro = new ResizeObserver((es)=>{ const cr=es[0].contentRect; const w=Math.max(1,cr.width|0), h=Math.max(1,cr.height|0); renderer.setSize(w,h,false); (mat.uniforms.u_res.value as THREE.Vector2).set(w,h); });
+    const ro = new ResizeObserver((es)=>{
+      const cr=es[0].contentRect;
+      const w=Math.max(1,cr.width|0), h=Math.max(1,cr.height|0);
+      renderer.setSize(w,h,false);
+      (mat.uniforms.u_res.value as THREE.Vector2).set(w,h);
+    });
     ro.observe(ref.current);
 
     const vis=()=>{ cancelAnimationFrame(raf); if(!document.hidden && active) raf=requestAnimationFrame(render); };
