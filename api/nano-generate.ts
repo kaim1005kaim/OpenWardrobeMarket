@@ -1,5 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { GoogleGenAI } from '@google/genai';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
+import { randomUUID } from 'node:crypto';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -18,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { prompt, negative, aspectRatio = '3:4', answers } = req.body;
 
-    // 1) Supabase Auth
+    // 認証
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       return res.status(401).json({ error: 'No authorization header' });
@@ -30,60 +33,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser(token);
+    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
 
     if (userErr || !user) {
-      console.error('[Nano Generate] Auth error:', userErr);
+      console.error('[Nano Banana] Auth error:', userErr);
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    console.log('[Nano Generate] User authenticated:', user.id);
+    console.log('[Nano Banana] Generating image for user:', user.id);
 
-    // 2) ImagineAPI呼び出し
-    const fullPrompt = `${prompt} | single model | one person only | clean minimal background | fashion lookbook style | full body composition | professional fashion photography`;
+    // Nano Banana (Gemini) で画像生成（同期処理）
+    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
-    console.log('[Nano Generate] Generating with prompt:', fullPrompt);
+    const fullPrompt = `${prompt} | single model | one person only | clean minimal background | fashion lookbook style | full body composition | professional fashion photography${negative ? `. Negative: ${negative}` : ''}`;
 
-    const payload = {
-      prompt: fullPrompt
-    };
+    console.log('[Nano Banana] Prompt:', fullPrompt);
 
-    const IMAGINE_API_KEY = process.env.IMAGINE_API_KEY || 'imgn_suoc6eez6gfqlb2ke3jpniae2hi6akos';
-
-    const response = await fetch('https://cl.imagineapi.dev/items/images/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${IMAGINE_API_KEY}`
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(60000)
+    const resp = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: fullPrompt,
+      generationConfig: { imageConfig: { aspectRatio } },
     });
 
-    if (!response.ok) {
-      const errorData: any = await response.json().catch(() => ({}));
-      throw new Error(`ImagineAPI error: ${response.status} - ${errorData.message || response.statusText}`);
+    const parts: any[] = resp.candidates?.[0]?.content?.parts ?? [];
+    const inline = parts.find((p: any) => p.inlineData)?.inlineData;
+
+    if (!inline?.data) {
+      console.error('[Nano Banana] No image data in response');
+      return res.status(500).json({ error: 'No image generated' });
     }
 
-    const result: any = await response.json();
+    const mime = inline.mimeType || 'image/png';
+    const ext = mime.includes('webp') ? 'webp' : 'png';
+    const buffer = Buffer.from(inline.data, 'base64');
 
-    console.log('[Nano Generate] ImagineAPI response:', JSON.stringify(result));
+    // R2にアップロード
+    const r2 = new S3Client({
+      region: 'auto',
+      endpoint: process.env.R2_S3_ENDPOINT!,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+      },
+      forcePathStyle: true,
+    });
 
-    // ImagineAPIは非同期で処理されるため、task IDを取得
-    const taskId = result.data?.id || result.id;
+    const R2_BUCKET = process.env.R2_BUCKET || 'owm-assets';
+    const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL || 'https://pub-4215f2149d4e4f369c2bde9f2769dfd4.r2.dev';
 
-    if (!taskId) {
-      console.error('[Nano Generate] No task ID in response:', JSON.stringify(result));
-      throw new Error('No task ID returned from ImagineAPI');
-    }
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const key = `usergen/${user.id}/${yyyy}/${mm}/${Date.now()}_${randomUUID()}.${ext}`;
 
-    console.log('[Nano Generate] Task created:', taskId);
+    console.log('[Nano Banana] Uploading to R2:', key);
 
-    // 3) Supabase履歴Insert（pending状態で作成、webhookで更新される）
-    // RLSをバイパスするためにサービスロールキーを使用
+    await r2.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: mime,
+      CacheControl: 'public, max-age=31536000, immutable',
+    }));
+
+    const publicUrl = `${R2_PUBLIC_BASE_URL}/${key}`;
+
+    // generation_historyに保存
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -93,36 +108,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('generation_history')
       .insert({
         user_id: user.id,
-        provider: 'imagineapi',
-        model: 'midjourney',
-        prompt: fullPrompt,
+        provider: 'gemini',
+        model: 'gemini-2.5-flash-image',
+        prompt,
         negative_prompt: negative,
         aspect_ratio: aspectRatio,
-        external_id: taskId,
+        image_bucket: R2_BUCKET,
+        image_path: key,
+        r2_url: publicUrl,
         folder: 'usergen',
         mode: 'mobile-simple',
         generation_data: answers ?? null,
-        completion_status: 'pending',
+        completion_status: 'completed',
       })
       .select()
       .single();
 
     if (insErr) {
-      console.error('[Nano Generate] DB insert error:', insErr);
+      console.error('[Nano Banana] DB insert error:', insErr);
       throw insErr;
     }
 
-    console.log('[Nano Generate] Saved to DB:', row.id, 'task:', taskId);
+    console.log('[Nano Banana] Generation complete:', row.id);
 
-    // Webhookで画像が完成したら自動的にURLが更新される
+    // 同期処理なので即座にURLを返す
     return res.status(200).json({
       id: row.id,
-      taskId: taskId,
-      status: 'pending',
-      message: 'Generation started. Webhook will update when complete.'
+      url: publicUrl,
+      path: key,
+      status: 'completed'
     });
   } catch (e: any) {
-    console.error('[Nano Generate] Error:', e);
+    console.error('[Nano Banana] Error:', e);
     return res.status(500).json({ error: e?.message || 'Generation failed' });
   }
 }

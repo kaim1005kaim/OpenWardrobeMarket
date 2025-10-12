@@ -196,11 +196,17 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         throw new Error(errorData.error || '生成に失敗しました');
       }
 
-      const { id, taskId, status } = await res.json();
-      console.log('Generation started:', { id, taskId, status });
+      const { id, url, status } = await res.json();
+      console.log('Generation completed:', { id, url, status });
 
-      // ポーリングで画像完成を待つ
-      await pollForCompletion(id);
+      // Nano Bananaは同期処理なので即座にURLが返る
+      if (url) {
+        setImageUrl(url);
+        setGenerationProgress(100);
+        setStage("revealing");
+      } else {
+        throw new Error('画像URLが取得できませんでした');
+      }
 
     } catch (error) {
       console.error('Generation error:', error);
@@ -208,57 +214,6 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       setStage("idle");
       setIsGenerating(false);
     }
-  };
-
-  // 画像完成をポーリング
-  const pollForCompletion = async (generationId: string) => {
-    const maxAttempts = 60; // 最大60回（2分間）
-    const interval = 2000; // 2秒ごと
-
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error('セッションが切れました');
-        }
-
-        const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
-        const response = await fetch(`${apiUrl}/api/generation-status?id=${generationId}`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('ステータス取得に失敗しました');
-        }
-
-        const data = await response.json();
-        console.log(`Polling attempt ${attempt + 1}:`, data);
-
-        if (data.status === 'completed' && data.url) {
-          // 完成！
-          setImageUrl(data.url);
-          setStage("revealing");
-          return;
-        } else if (data.status === 'failed') {
-          throw new Error('生成に失敗しました');
-        }
-
-        // プログレス更新
-        const progress = Math.min(90, (attempt / maxAttempts) * 100);
-        setGenerationProgress(progress);
-
-        // 次のポーリングまで待機
-        await new Promise(resolve => setTimeout(resolve, interval));
-
-      } catch (error) {
-        console.error('Polling error:', error);
-        throw error;
-      }
-    }
-
-    throw new Error('生成がタイムアウトしました');
   };
 
   const handleRevealDone = () => {
