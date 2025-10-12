@@ -122,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         aspect_ratio: aspectRatio,
         image_bucket: R2_BUCKET,
         image_path: key,
-        r2_url: publicUrl,
+        image_url: publicUrl,
         folder: 'usergen',
         mode: 'mobile-simple',
         generation_data: answers ?? null,
