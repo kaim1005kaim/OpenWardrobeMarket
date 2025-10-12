@@ -180,9 +180,9 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.6);
   padding: 6px 0;
   padding-left: 0;
-  font-family: "Trajan Pro 3", "Cinzel", serif;
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-family: "Forum", cursive;
+  font-size: 14px;
+  letter-spacing: 0.05em;
   color: white;
   outline: none;
   transition: border-color 0.3s ease;
