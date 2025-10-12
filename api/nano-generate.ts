@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { VertexAI } from '@google-cloud/vertexai';
+import { GoogleGenAI } from '@google/genai';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
@@ -41,53 +41,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
 
     if (userErr || !user) {
-      console.error('[Vertex AI] Auth error:', userErr);
+      console.error('[Gemini API] Auth error:', userErr);
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    console.log('[Vertex AI] Generating image for user:', user.id);
+    console.log('[Gemini API] Generating image for user:', user.id);
 
-    // Vertex AI認証情報の設定
-    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON!);
-
-    const vertexAI = new VertexAI({
-      project: process.env.GOOGLE_CLOUD_PROJECT || 'owm-production',
-      location: 'us-central1',
-      googleAuthOptions: {
-        credentials,
-      },
-    });
+    // Gemini API (AI Studio) で画像生成
+    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
     const fullPrompt = `${prompt} | single model | one person only | clean minimal background | fashion lookbook style | full body composition | professional fashion photography${negative ? `. Negative: ${negative}` : ''}`;
 
-    console.log('[Vertex AI] Prompt:', fullPrompt);
+    console.log('[Gemini API] Prompt:', fullPrompt);
 
-    // Imagen 3で画像生成（fastよりクォータが高い）
-    const generativeModel = vertexAI.preview.getGenerativeModel({
-      model: 'imagen-3.0-generate-001',
-    });
+    const resp = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: fullPrompt,
+      generationConfig: { imageConfig: { aspectRatio } },
+    } as any);
 
-    const result = await generativeModel.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [{ text: fullPrompt }]
-      }],
-      generationConfig: {
-        temperature: 0.4,
-        topP: 1.0,
-        topK: 32,
-        maxOutputTokens: 2048,
-      }
-    });
+    console.log('[Gemini API] Generation response received');
 
-    console.log('[Vertex AI] Generation response received');
-
-    // Vertex AIのレスポンスから画像データを抽出
-    const parts: any[] = result.response?.candidates?.[0]?.content?.parts ?? [];
+    const parts: any[] = resp.candidates?.[0]?.content?.parts ?? [];
     const inline = parts.find((p: any) => p.inlineData)?.inlineData;
 
     if (!inline?.data) {
-      console.error('[Vertex AI] No image data in response');
+      console.error('[Gemini API] No image data in response');
       return res.status(500).json({ error: 'No image generated' });
     }
 
@@ -114,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const key = `usergen/${user.id}/${yyyy}/${mm}/${Date.now()}_${randomUUID()}.${ext}`;
 
-    console.log('[Vertex AI] Uploading to R2:', key);
+    console.log('[Gemini API] Uploading to R2:', key);
 
     await r2.send(new PutObjectCommand({
       Bucket: R2_BUCKET,
@@ -136,8 +115,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('generation_history')
       .insert({
         user_id: user.id,
-        provider: 'vertex-ai',
-        model: 'imagen-3.0-generate-001',
+        provider: 'gemini-api',
+        model: 'gemini-2.5-flash-image',
         prompt,
         negative_prompt: negative,
         aspect_ratio: aspectRatio,
@@ -153,11 +132,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (insErr) {
-      console.error('[Vertex AI] DB insert error:', insErr);
+      console.error('[Gemini API] DB insert error:', insErr);
       throw insErr;
     }
 
-    console.log('[Vertex AI] Generation complete:', row.id);
+    console.log('[Gemini API] Generation complete:', row.id);
 
     // 同期処理なので即座にURLを返す
     return res.status(200).json({
@@ -167,7 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       status: 'completed'
     });
   } catch (e: any) {
-    console.error('[Vertex AI] Error:', e);
+    console.error('[Gemini API] Error:', e);
     return res.status(500).json({ error: e?.message || 'Generation failed' });
   }
 }
