@@ -14,7 +14,7 @@ uniform vec2  u_res;
 uniform sampler2D u_image;
 uniform sampler2D u_glass;
 uniform float u_progress;   // 1 -> 0
-uniform float u_amount;     // 0.02~0.06
+uniform float u_amount;     // 0.02~0.15
 uniform vec2  u_glassScale;
 uniform float u_glassRotate;
 uniform float u_maskFeather;
@@ -35,19 +35,24 @@ mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
 void main(){
   vec2 px = 1.0 / u_res;
 
+  // スケールアニメーション（最初82%→100%へ拡大）
+  float scaleProgress = 1.0 - u_progress; // 0→1へ
+  float scale = mix(0.82, 1.0, scaleProgress);
+  vec2 scaledUv = (vUv - 0.5) / scale + 0.5;
+
   // ガラスUV
-  vec2 c = vUv - 0.5;
+  vec2 c = scaledUv - 0.5;
   vec2 gUv = rot(u_glassRotate) * c;
   gUv = gUv * u_glassScale + 0.5;
   float h = texture2D(u_glass, gUv).r;
   vec2 grad = vec2(dFdx(h), dFdy(h));
 
   // progressが1.0→0.0に減るにつれて歪みが減る
-  vec2 uvR = vUv + grad * (u_amount * u_progress);
+  vec2 uvR = scaledUv + grad * (u_amount * u_progress);
 
   // progressが1.0→0.0に減るにつれてブラーが減る
-  float k = u_progress; // ブラーの強さ
-  vec3 col = blur5(u_image, uvR, px*3.0, k);
+  float k = u_progress * 0.8; // ブラーの強さ
+  vec3 col = blur5(u_image, uvR, px*4.0, k);
 
   // 全画面表示（マスクなし）
   gl_FragColor = vec4(toSRGB(col), 1.0);

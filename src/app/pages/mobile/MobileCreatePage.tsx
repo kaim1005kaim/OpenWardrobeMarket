@@ -334,14 +334,14 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 </div>
               )}
 
-              {/* 受信後の"歪ませリビール" */}
-              {stage === "revealing" && imageUrl && (
+              {/* 受信後の"歪ませリビール"（doneでも継続表示して黒画面を防ぐ） */}
+              {(stage === "revealing" || stage === "done") && imageUrl && (
                 <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
                   <GlassRevealCanvas
                     imageUrl={imageUrl}
-                    durationMs={2500}
-                    amount={0.08}
-                    glassScale={[12, 1]}
+                    durationMs={3000}
+                    amount={0.15}
+                    glassScale={[16, 1]}
                     glassRotate={0}
                     maskFeather={0}
                     active={stage === "revealing"}
@@ -350,14 +350,9 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 </div>
               )}
 
-              {/* 完成表示 */}
+              {/* 完成表示（ボタンのみ、画像はGlassRevealCanvasが継続表示） */}
               {stage === "done" && imageUrl && (
                 <>
-                  <img
-                    src={imageUrl}
-                    alt="generated"
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }}
-                  />
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, display: 'flex', gap: 12 }}>
                     <button
                       style={{ flex: 1, padding: '12px 16px', background: '#fff', border: '1px solid #ddd', borderRadius: 8, cursor: 'pointer' }}
