@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PosterTemplate } from '../lib/posterTemplates';
 
 interface PosterCardProps {
@@ -6,6 +6,7 @@ interface PosterCardProps {
   template: PosterTemplate;
   onClick?: () => void;
   className?: string;
+  loading?: 'lazy' | 'eager';
   customText?: {
     title?: string;
     creator?: string;
@@ -13,10 +14,35 @@ interface PosterCardProps {
   };
 }
 
-export function PosterCard({ userImageUrl, template, onClick, className }: PosterCardProps) {
+export function PosterCard({ userImageUrl, template, onClick, className, loading = 'lazy' }: PosterCardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [shouldLoad, setShouldLoad] = useState(loading === 'eager');
+
+  // Intersection Observer for lazy loading
+  useEffect(() => {
+    if (loading === 'eager' || shouldLoad) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '50px' } // 画面の50px手前で読み込み開始
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [loading, shouldLoad]);
 
   useEffect(() => {
+    if (!shouldLoad) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -90,10 +116,10 @@ export function PosterCard({ userImageUrl, template, onClick, className }: Poste
       frameImg.src = template.framePath;
     };
     userImg.src = userImageUrl;
-  }, [userImageUrl, template]);
+  }, [userImageUrl, template, shouldLoad]);
 
   return (
-    <div className={className} onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
+    <div ref={containerRef} className={className} onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
       <canvas
         ref={canvasRef}
         style={{
@@ -101,6 +127,7 @@ export function PosterCard({ userImageUrl, template, onClick, className }: Poste
           height: '100%',
           display: 'block',
           borderRadius: '4px',
+          backgroundColor: template.backgroundColor,
         }}
       />
     </div>

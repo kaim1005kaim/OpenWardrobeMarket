@@ -61,6 +61,8 @@ export function MobileGallery({
         {assets.map((asset, index) => {
           const template = posterTemplates[index % posterTemplates.length];
           const aspectRatio = getAspectRatio(index);
+          // 最初の6枚は eager loading（優先的にロード）
+          const loadingStrategy = index < 6 ? 'eager' : 'lazy';
 
           // Calculate actual aspect ratio from template frameSize
           const templateAspectRatio = template.frameSize.height / template.frameSize.width;
@@ -76,7 +78,7 @@ export function MobileGallery({
                   <img
                     src={asset.src}
                     alt={asset.title}
-                    loading="lazy"
+                    loading={loadingStrategy}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = 'https://via.placeholder.com/400x600/EEECE6/999?text=Fashion';
@@ -103,6 +105,7 @@ export function MobileGallery({
                 template={template}
                 onClick={() => onAssetClick(asset)}
                 className="poster-card-wrapper"
+                loading={loadingStrategy}
               />
             </div>
           );
