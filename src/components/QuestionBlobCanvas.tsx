@@ -41,64 +41,71 @@ float field(vec2 p){
   // アスペクト補正
   p.x *= u_res.x/u_res.y;
 
-  // 3つのメタボールを時間でスイング（サイズ大きく）
+  // 4つのメタボールで多様な形状（サイズ大幅に増加）
   float t = u_time*0.35;
-  vec2 c0 = vec2( 0.0 + 0.35*sin(t+u_seed),  0.02 + 0.30*cos(t*0.9+u_seed));
-  vec2 c1 = vec2(-0.28 + 0.28*cos(t*0.7+2.0),-0.15 + 0.32*sin(t*1.1+1.3));
-  vec2 c2 = vec2( 0.32 + 0.25*sin(t*0.6+3.1),-0.06 + 0.28*cos(t*0.8+0.7));
-  g_center = (c0+c1+c2)/3.0;
+  vec2 c0 = vec2( 0.0 + 0.55*sin(t+u_seed),        0.03 + 0.50*cos(t*0.9+u_seed));
+  vec2 c1 = vec2(-0.45 + 0.48*cos(t*0.7+2.0),     -0.25 + 0.52*sin(t*1.1+1.3));
+  vec2 c2 = vec2( 0.50 + 0.42*sin(t*0.6+3.1),     -0.10 + 0.46*cos(t*0.8+0.7));
+  vec2 c3 = vec2( 0.10 + 0.38*sin(t*0.5+4.5),      0.40 + 0.40*cos(t*1.2+2.1));
+  g_center = (c0+c1+c2+c3)/4.0;
 
   // スカラー場：exp(-k r^2) の和
-  float k = 5.5;  // 少し下げてサイズ大きく
+  float k = 4.5;  // さらに下げてサイズ大きく
   float F = 0.0;
   F += exp(-k*dot(p-c0,p-c0));
   F += exp(-k*dot(p-c1,p-c1));
   F += exp(-k*dot(p-c2,p-c2));
+  F += exp(-k*dot(p-c3,p-c3));
 
-  // 低周波ノイズで輪郭をわずかに揺らす
-  F += 0.12*fbm(p*1.0 + vec2(t*0.2, -t*0.17));  // 周波数下げる
+  // 大きな変形ノイズ（三角・トゲトゲ形状）
+  float ang = atan(p.y, p.x);
+  float r = length(p);
+  // 角度ベースのトゲトゲ（3, 5, 7角形を混ぜる）
+  float spike3 = sin(ang*3.0 + t*0.4) * 0.25;
+  float spike5 = sin(ang*5.0 - t*0.6) * 0.18;
+  float spike7 = sin(ang*7.0 + t*0.3) * 0.12;
+  F += spike3 + spike5 + spike7;
 
   return F;
 }
 
 void main(){
+  // ---- ガラス縦スリット屈折を先に計算して形状も歪める ----
+  float g = texture2D(u_glass, vUv).r;
+  float gU = texture2D(u_glass, vUv + vec2(0.0, -1.0/u_res.y)).r;
+  float dy = (g - gU);  // Y軸方向の勾配
+
+  // ストライプごとにY軸にずらす
+  float stripePhase = vUv.x * 50.0;  // 50本のストライプ
+  float stripeOffset = sin(stripePhase * 6.28318) * dy * u_refract * 3.0;
+
+  // 歪んだUVで形状を評価
   vec2 uv = vUv*2.0-1.0;
-  float F = field(uv);
+  vec2 distortedUv = uv + vec2(0.0, stripeOffset);
+  float F = field(distortedUv);
   vec2 center = g_center;
 
-  // iso面（内外の境界） - iso値下げて滑らかに
-  float iso = 0.88;
-  float d = iso - F;              // 負:内側 / 正:外側
-  float edge = smoothstep(0.03, 0.0, abs(d));
-  float alpha = smoothstep(0.02, -0.05, d);  // 幅広げて滑らか
+  // iso面（内外の境界） - 滑らかに
+  float iso = 0.80;  // さらに下げて大きく
+  float d = iso - F;
+  float alpha = smoothstep(0.02, -0.05, d);
 
-  // 時間で色相をわずかに往復（全体のトーン変化）
+  // 時間で色相をわずかに往復
   float w = 0.5 + 0.5*sin(u_time*0.25);
   vec3 baseA = mix(u_colA, u_colB, 0.15*w);
   vec3 baseB = mix(u_colB, u_colA, 0.10*(1.0-w));
 
-  // ---- ガラス縦スリット屈折（水平のみ） ----
-  // まず屈折用のオフセットを計算
-  float g = texture2D(u_glass, vUv).r;
-  float gL = texture2D(u_glass, vUv + vec2(-1.0/u_res.x, 0.0)).r;
-  float dx = (g - gL);
-
-  // 屈折を適用したUVで再サンプリング
-  vec2 distortedUv = uv + vec2(dx, 0.0) * u_refract * 2.5;
-  vec2 distortedUvCorr = distortedUv; distortedUvCorr.x *= u_res.x/u_res.y;
-
-  // 屈折後の色を再計算
+  // 色（ガラス屈折適用後）
   vec3 col = mix(baseA, baseB, 0.5 + 0.5*fbm(distortedUv*2.0 + u_time*0.1));
 
-  // 核は屈折後の座標で
-  vec2 distortedCentCorr = center; distortedCentCorr.x *= u_res.x/u_res.y;
-  float rCoreDistorted = length(distortedUvCorr - distortedCentCorr);
-  float coreMaskDistorted = smoothstep(0.45, 0.0, rCoreDistorted + 0.12*fbm(distortedUv*1.1 + u_time*0.15));
+  // コア部分は完全に透過（背景色になる）
+  vec2 uvCorr = distortedUv; uvCorr.x *= u_res.x/u_res.y;
+  vec2 centCorr = center; centCorr.x *= u_res.x/u_res.y;
+  float rCore = length(uvCorr - centCorr);
+  float coreMask = smoothstep(0.55, 0.0, rCore);
 
-  // 核の加算（内側のみ）
-  col = mix(col, u_coreCol, coreMaskDistorted * 0.85);
-  // 縁ハイライト
-  col += 0.12*edge;
+  // コアは透過するのでアルファを下げる
+  alpha *= (1.0 - coreMask * 0.7);
 
   gl_FragColor = vec4(col, alpha);
 }
