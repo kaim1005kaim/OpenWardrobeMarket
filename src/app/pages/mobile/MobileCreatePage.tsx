@@ -345,6 +345,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                     holdMs={600}
                     revealMs={1200}
                     settleMs={400}
+                    displayMs={5000}
                     leftToRight={true}
                     active={stage === "revealing"}
                     onDone={handleRevealDone}

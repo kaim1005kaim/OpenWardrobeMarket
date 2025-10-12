@@ -68,6 +68,7 @@ type Props = {
   holdMs?: number;                 // default 600
   revealMs?: number;               // default 1200
   settleMs?: number;               // default 400
+  displayMs?: number;              // default 5000 (完成画像を表示する時間)
   leftToRight?: boolean;           // default true
 
   // 旧パラメータ（互換性のため無視）
@@ -81,7 +82,7 @@ type Props = {
 export default function GlassRevealCanvas({
   imageUrl, onDone, active = true,
   stripes=48, jitter=0.08, strength=0.9,
-  holdMs=600, revealMs=1200, settleMs=400,
+  holdMs=600, revealMs=1200, settleMs=400, displayMs=5000,
   leftToRight=true,
 }: Props){
   const ref = useRef<HTMLCanvasElement|null>(null);
@@ -135,7 +136,8 @@ export default function GlassRevealCanvas({
     scene.add(new THREE.Mesh(geo, mat));
 
     let raf = 0;
-    const total = holdMs + revealMs + settleMs;
+    const revealTotal = holdMs + revealMs + settleMs;
+    const total = revealTotal + displayMs;
     const t0 = performance.now();
 
     const render = () => {
@@ -143,7 +145,8 @@ export default function GlassRevealCanvas({
       let p = 0;
       if (t <= holdMs) p = 0;
       else if (t <= holdMs + revealMs) p = (t - holdMs) / revealMs;         // 0→1
-      else if (t <= total) p = 1.0;                                         // 固定
+      else if (t <= revealTotal) p = 1.0;                                   // リビール完了
+      else if (t <= total) p = 1.0;                                         // 完成画像を表示
       (mat.uniforms.u_progress.value as number) = p;
 
       renderer.render(scene, cam);
@@ -154,7 +157,8 @@ export default function GlassRevealCanvas({
       }
     };
 
-    if (active) raf = requestAnimationFrame(render);
+    // activeに関わらず常に開始（done状態でも表示を継続）
+    raf = requestAnimationFrame(render);
 
     const onResize = () => {
       const w = ref.current!.clientWidth, h = ref.current!.clientHeight;
@@ -168,7 +172,7 @@ export default function GlassRevealCanvas({
       geo.dispose(); mat.dispose(); texImg.dispose(); texGlass.dispose();
       renderer.dispose();
     };
-  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, settleMs, leftToRight, active, onDone]);
+  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, settleMs, displayMs, leftToRight, active, onDone]);
 
   return (
     <canvas
