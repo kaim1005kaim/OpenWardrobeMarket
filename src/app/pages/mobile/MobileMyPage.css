@@ -1,117 +1,240 @@
 .mypage-content {
-  background: #FFFFFF;
+  background: #EEECE6;
+  min-height: 100vh;
+  padding-bottom: 80px;
 }
 
-/* Profile section */
-.profile-section {
-  padding: 32px 20px;
-  text-align: center;
-  border-bottom: 1px solid #E5E5E5;
-}
-
-.profile-avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  overflow: hidden;
-  margin: 0 auto 16px;
+/* Header */
+.mypage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
   background: #EEECE6;
 }
 
-.profile-avatar img {
+.menu-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: #000000;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-text {
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  color: #000000;
+}
+
+/* Title Section */
+.title-section {
+  position: relative;
+  padding: 40px 20px 20px;
+  text-align: center;
+  background: #EEECE6;
+}
+
+.page-title {
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 36px;
+  font-weight: 400;
+  letter-spacing: 4px;
+  color: #000000;
+  margin: 0 0 20px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.profile-avatar-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin: -40px auto 0;
+  background: #FFFFFF;
+  border: 3px solid #EEECE6;
+  position: relative;
+  z-index: 2;
+}
+
+.profile-avatar-circle img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.profile-name {
+/* Profile Info */
+.profile-info {
+  padding: 20px 20px 32px;
+  text-align: center;
+  background: #EEECE6;
+}
+
+.profile-name-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  color: #000000;
+  cursor: pointer;
+  margin: 0 0 8px 0;
+  padding: 4px 8px;
+}
+
+.profile-name-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.profile-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #FFFFFF;
+  border: 1px solid #000000;
+  border-radius: 4px;
   font-family: 'Montserrat', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 10px;
+  font-weight: 600;
   letter-spacing: 1px;
   color: #000000;
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
+}
+
+.profile-rating {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 0 16px 0;
+}
+
+.profile-rating .star {
+  font-size: 18px;
+  color: #000000;
+}
+
+.profile-rating .star.empty {
+  color: #CCCCCC;
 }
 
 .profile-bio {
   font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.8;
   color: #666666;
-  margin: 0 0 16px 0;
-  max-width: 300px;
+  margin: 0 0 12px 0;
+  max-width: 320px;
   margin-left: auto;
   margin-right: auto;
 }
 
-.edit-profile-btn {
-  padding: 10px 24px;
-  background: #FFFFFF;
-  border: 2px solid #E5E5E5;
-  border-radius: 8px;
-  font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 13px;
+.more-btn {
+  background: none;
+  border: none;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 1px;
   color: #000000;
+  text-decoration: underline;
   cursor: pointer;
+  padding: 4px 8px;
+}
+
+/* Section Tabs */
+.section-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 80px;
+  padding: 24px 20px;
+  background: #EEECE6;
+  border-bottom: 2px solid #CCCCCC;
+}
+
+.section-tab {
+  background: none;
+  border: none;
+  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  color: #999999;
+  cursor: pointer;
+  padding: 8px 0;
+  border-bottom: 3px solid transparent;
   transition: all 0.2s ease;
 }
 
-.edit-profile-btn:active {
-  background: #F5F5F5;
+.section-tab.active {
+  color: #000000;
+  border-bottom-color: #000000;
 }
 
-/* Tabs */
+/* Sub Tabs */
 .tabs-container {
   display: flex;
-  background: #FFFFFF;
-  border-bottom: 1px solid #E5E5E5;
+  justify-content: center;
+  gap: 32px;
+  background: #EEECE6;
+  padding: 20px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .tab-btn {
-  flex: 1;
-  min-width: 80px;
-  padding: 16px 12px;
   background: none;
   border: none;
-  border-bottom: 3px solid transparent;
-  font-family: "Trajan Pro 3", "Cinzel", serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 1px;
-  color: #666666;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #999999;
   cursor: pointer;
-  transition: all 0.2s ease;
+  padding: 4px 0;
   white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
 .tab-btn.active {
   color: #000000;
-  border-bottom-color: #000000;
 }
 
 /* Grid */
 .assets-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  padding: 4px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 20px;
+  background: #EEECE6;
   min-height: 300px;
 }
 
 .asset-card {
   aspect-ratio: 3 / 4;
   position: relative;
-  background: #EEECE6;
+  background: #FFFFFF;
   overflow: hidden;
   cursor: pointer;
+  border-radius: 4px;
 }
 
 .card-image {
   width: 100%;
   height: 100%;
+  position: relative;
 }
 
 .card-image img {
@@ -125,30 +248,58 @@
   transform: scale(1.05);
 }
 
-.card-overlay {
+.sold-badge {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 8px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.asset-card:hover .card-overlay {
-  opacity: 1;
-}
-
-.card-title {
-  font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
+  bottom: 8px;
+  left: 8px;
+  padding: 4px 12px;
+  background: #FF0000;
+  border-radius: 4px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
   color: #FFFFFF;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  z-index: 2;
+}
+
+/* Create Button */
+.create-button-container {
+  padding: 20px;
+  background: #EEECE6;
+}
+
+.create-design-btn {
+  width: 100%;
+  padding: 16px 24px;
+  background: #FFFFFF;
+  border: 2px solid #000000;
+  border-radius: 8px;
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.create-design-btn:active {
+  background: #F5F5F5;
+  transform: scale(0.98);
+}
+
+/* Setting Content */
+.setting-content {
+  padding: 40px 20px;
+  text-align: center;
+  background: #EEECE6;
+  min-height: 400px;
+}
+
+.setting-content p {
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 14px;
+  color: #666666;
 }
 
 /* Empty state */

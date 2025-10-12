@@ -15,6 +15,7 @@ type TabType = 'publish' | 'drafts' | 'collections' | 'own';
 
 export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const { user } = useAuth();
+  const [activeSection, setActiveSection] = useState<'design' | 'setting'>('design');
   const [activeTab, setActiveTab] = useState<TabType>('publish');
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -27,12 +28,6 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const fetchAssets = async (tab: TabType) => {
     // TODO: Fetch from API based on tab
     setAssets(generateDummyAssets(12));
-  };
-
-  const handleTabChange = (tab: string) => {
-    if (onNavigate) {
-      onNavigate(tab);
-    }
   };
 
   const handleMenuNavigate = (page: string) => {
@@ -48,89 +43,144 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   return (
     <>
       <MobileLayout
-        showHeader={true}
-        showBottomNav={true}
+        showHeader={false}
+        showBottomNav={false}
         onMenuClick={() => setIsMenuOpen(true)}
       >
         <div className="mypage-content">
-          {/* Profile section */}
-          <div className="profile-section">
-            <div className="profile-avatar">
+          {/* Header with Menu */}
+          <div className="mypage-header">
+            <button className="menu-btn" onClick={() => setIsMenuOpen(true)}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <div className="header-actions">
+              <span className="header-text">OWM</span>
+            </div>
+          </div>
+
+          {/* Title with Profile */}
+          <div className="title-section">
+            <h1 className="page-title">MY PAGE</h1>
+            <div className="profile-avatar-circle">
               <img
-                src={user?.user_metadata?.avatar_url || 'https://via.placeholder.com/80/EEECE6/999?text=User'}
+                src={user?.user_metadata?.avatar_url || 'https://via.placeholder.com/120/EEECE6/999?text=User'}
                 alt="Profile"
               />
             </div>
-            <h2 className="profile-name">
-              {user?.user_metadata?.username || user?.email?.split('@')[0] || 'USER NAME'}
-            </h2>
+          </div>
+
+          {/* Profile Info */}
+          <div className="profile-info">
+            <button className="profile-name-btn">
+              {user?.user_metadata?.username || user?.email?.split('@')[0] || 'JOHN DEANNA'}
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 9 12 12 9" />
+              </svg>
+            </button>
+            <div className="profile-badge">SUBSCRIBED</div>
+            <div className="profile-rating">
+              <span className="star">★</span>
+              <span className="star">★</span>
+              <span className="star">★</span>
+              <span className="star">★</span>
+              <span className="star empty">☆</span>
+            </div>
             <p className="profile-bio">
-              プロフィール文章が表示されます。プロフィール文章が表示されます。
-              プロフィール文章が表示されます。
+              プロフィール文章が表示されます。プロフィール文章が表示されます。プロフィール文章が表示されます。プロフィール文章が表示されます。
             </p>
-            <button className="edit-profile-btn" onClick={() => console.log('Edit profile')}>
-              プロフィールを編集
+            <button className="more-btn">more</button>
+          </div>
+
+          {/* Section Tabs */}
+          <div className="section-tabs">
+            <button
+              className={`section-tab ${activeSection === 'design' ? 'active' : ''}`}
+              onClick={() => setActiveSection('design')}
+            >
+              DESIGN
+            </button>
+            <button
+              className={`section-tab ${activeSection === 'setting' ? 'active' : ''}`}
+              onClick={() => setActiveSection('setting')}
+            >
+              SETTING
             </button>
           </div>
 
-          {/* Tabs */}
-          <div className="tabs-container">
-            <button
-              className={`tab-btn ${activeTab === 'publish' ? 'active' : ''}`}
-              onClick={() => setActiveTab('publish')}
-            >
-              Publish
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'drafts' ? 'active' : ''}`}
-              onClick={() => setActiveTab('drafts')}
-            >
-              Drafts
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'collections' ? 'active' : ''}`}
-              onClick={() => setActiveTab('collections')}
-            >
-              Collections
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'own' ? 'active' : ''}`}
-              onClick={() => setActiveTab('own')}
-            >
-              Own
-            </button>
-          </div>
-
-          {/* Grid */}
-          <div className="assets-grid">
-            {assets.length > 0 ? (
-              assets.map((asset) => (
-                <div
-                  key={asset.id}
-                  className="asset-card"
-                  onClick={() => setSelectedAsset(asset)}
+          {activeSection === 'design' && (
+            <>
+              {/* Sub Tabs */}
+              <div className="tabs-container">
+                <button
+                  className={`tab-btn ${activeTab === 'publish' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('publish')}
                 >
-                  <div className="card-image">
-                    <img src={asset.src} alt={asset.title} loading="lazy" />
-                  </div>
-                  <div className="card-overlay">
-                    <span className="card-title">{asset.title}</span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="empty-state">
-                <p>まだ{getTabLabel(activeTab)}がありません</p>
+                  Publish
+                </button>
+                <button
+                  className={`tab-btn ${activeTab === 'drafts' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('drafts')}
+                >
+                  Drafts
+                </button>
+                <button
+                  className={`tab-btn ${activeTab === 'collections' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('collections')}
+                >
+                  Collections
+                </button>
+                <button
+                  className={`tab-btn ${activeTab === 'own' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('own')}
+                >
+                  Own
+                </button>
               </div>
-            )}
-          </div>
+
+              {/* Grid */}
+              <div className="assets-grid">
+                {assets.length > 0 ? (
+                  assets.map((asset) => (
+                    <div
+                      key={asset.id}
+                      className="asset-card"
+                      onClick={() => setSelectedAsset(asset)}
+                    >
+                      <div className="card-image">
+                        <img src={asset.src} alt={asset.title} loading="lazy" />
+                        {Math.random() > 0.5 && (
+                          <div className="sold-badge">SOLD</div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <p>まだ{getTabLabel(activeTab)}がありません</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Create Button */}
+              <div className="create-button-container">
+                <button className="create-design-btn" onClick={() => onNavigate?.('create')}>
+                  あなただけのデザインを完成させよう
+                </button>
+              </div>
+            </>
+          )}
+
+          {activeSection === 'setting' && (
+            <div className="setting-content">
+              <p>設定画面（実装予定）</p>
+            </div>
+          )}
         </div>
       </MobileLayout>
-
-      <BottomNavigation
-        activeTab="mypage"
-        onTabChange={handleTabChange}
-      />
 
       <MenuOverlay
         isOpen={isMenuOpen}
