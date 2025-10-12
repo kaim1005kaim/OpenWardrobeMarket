@@ -75,15 +75,6 @@ float field(vec2 p){
 void main(){
   vec2 uv = vUv*2.0-1.0;
 
-  // ガラステクスチャから水平勾配を取得（dFdx使用）
-  vec2 gUv = vec2(vUv.x * u_glassScale, vUv.y);
-  float h = texture2D(u_glass, gUv).r;
-  float dx = dFdx(h);
-
-  // ピクセル換算してから NDC に戻す
-  float px = u_pixels / u_res.x;
-  vec2 refractOffset = vec2(dx * u_refract * px, 0.0);
-
   // 形状評価（元のUV）
   float F = field(uv);
   vec2 center = g_center;
@@ -98,9 +89,8 @@ void main(){
   vec3 baseA = mix(u_colA, u_colB, 0.15*w);
   vec3 baseB = mix(u_colB, u_colA, 0.10*(1.0-w));
 
-  // 色をガラス屈折UVでサンプリング（vUv→uv変換してからfbm）
-  vec2 colorUv = (vUv + refractOffset) * 2.0 - 1.0;
-  vec3 col = mix(baseA, baseB, 0.5 + 0.5*fbm(colorUv*2.0 + u_time*0.1));
+  // 色をfbmでサンプリング
+  vec3 col = mix(baseA, baseB, 0.5 + 0.5*fbm(uv*2.0 + u_time*0.1));
 
   // コア部分は完全に透過（背景色になる）
   vec2 uvCorr = uv; uvCorr.x *= u_res.x/u_res.y;
