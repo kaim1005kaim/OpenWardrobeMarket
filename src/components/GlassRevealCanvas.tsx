@@ -1,128 +1,179 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import glassURL from "@/assets/glaspattern.png";
+import glassURL from "@/assets/glaspattern_stripe.png";
 
-const VERT = /* glsl */`
+const VERT = `
 varying vec2 vUv;
-void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
+void main(){ vUv = uv; gl_Position = vec4(position.xy,0.,1.); }
 `;
 
-const FRAG = /* glsl */`
+// Glass Stripe Reveal: 縦ストライプのシャッターエフェクト
+const FRAG = `
 precision highp float;
-uniform float u_time;
-uniform vec2  u_res;
-uniform sampler2D u_image;
-uniform sampler2D u_glass;
-uniform float u_progress;   // 1 -> 0
-uniform float u_amount;     // 0.02~0.15
-uniform vec2  u_glassScale;
-uniform float u_glassRotate;
-uniform float u_maskFeather;
-
 varying vec2 vUv;
+uniform sampler2D u_img;
+uniform sampler2D u_glass;
+uniform vec2  u_imgTexel;   // 1/texture size
+uniform float u_progress;   // 0..1 (0=ガラス最大,1=クリア)
+uniform float u_strength;   // 屈折強度
+uniform float u_stripes;    // ストライプ本数
+uniform float u_jitter;     // 0..0.2 くらい
+uniform bool  u_leftToRight;
 
-vec3 toSRGB(vec3 c){ return pow(c, vec3(1.0/2.2)); }
-
-// 5tap 簡易ブラー
-vec3 blur5(sampler2D t, vec2 uv, vec2 px, float k){
-  vec3 c0=texture2D(t,uv).rgb;
-  vec3 cx=texture2D(t,uv+vec2(px.x,0.)).rgb+texture2D(t,uv-vec2(px.x,0.)).rgb;
-  vec3 cy=texture2D(t,uv+vec2(0.,px.y)).rgb+texture2D(t,uv-vec2(0.,px.y)).rgb;
-  return mix(c0,(cx+cy)*0.25, k);
-}
-mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
+float hash(float x){ return fract(sin(x*43758.5453123)*1e4); }
 
 void main(){
-  vec2 px = 1.0 / u_res;
+  // ストライプ index と画面内の規格化位置
+  float idxF = floor(vUv.x * u_stripes);
+  float stripePos = idxF / (u_stripes - 1.0); // 0..1 左→右
+  if(!u_leftToRight) stripePos = 1.0 - stripePos;
 
-  // スケールアニメーション（最初82%→100%へ拡大）
-  float scaleProgress = 1.0 - u_progress; // 0→1へ
-  float scale = mix(0.82, 1.0, scaleProgress);
-  vec2 scaledUv = (vUv - 0.5) / scale + 0.5;
+  // 列ごとのランダム遅延（±u_jitter/2）
+  float delay = (hash(idxF+13.0) - 0.5) * u_jitter;
 
-  // ガラスUV
-  vec2 c = scaledUv - 0.5;
-  vec2 gUv = rot(u_glassRotate) * c;
-  gUv = gUv * u_glassScale + 0.5;
-  float h = texture2D(u_glass, gUv).r;
-  vec2 grad = vec2(dFdx(h), dFdy(h));
+  // この列における "開き具合"（0=閉じ/歪み大, 1=開き/歪み0）
+  float open = smoothstep(0.0, 1.0, u_progress - stripePos + delay);
+  float amp  = 1.0 - open; // 歪み強度（列ごと）
 
-  // progressが1.0→0.0に減るにつれて歪みが減る
-  vec2 uvR = scaledUv + grad * (u_amount * u_progress);
+  // ガラスマップ（縦スリット）→ 水平勾配で屈折
+  float gR = texture2D(u_glass, vec2(vUv.x, vUv.y)).r;
+  float gL = texture2D(u_glass, vec2(vUv.x - u_imgTexel.x, vUv.y)).r;
+  float dx = (gR - gL);                    // 横方向の法線近似
+  vec2 offset = vec2(dx, 0.0) * u_strength * amp;
 
-  // progressが1.0→0.0に減るにつれてブラーが減る
-  float k = u_progress * 0.8; // ブラーの強さ
-  vec3 col = blur5(u_image, uvR, px*4.0, k);
+  // 簡易ぼかし（歪みが強い時だけ 5tap）
+  vec2 t = u_imgTexel;
+  vec3 col0 = texture2D(u_img, vUv + offset).rgb;
+  vec3 blur = (
+    texture2D(u_img, vUv + offset + vec2(0.0,-2.0)*t).rgb +
+    texture2D(u_img, vUv + offset + vec2(0.0,-1.0)*t).rgb +
+    col0 +
+    texture2D(u_img, vUv + offset + vec2(0.0, 1.0)*t).rgb +
+    texture2D(u_img, vUv + offset + vec2(0.0, 2.0)*t).rgb
+  ) / 5.0;
 
-  // 全画面表示（マスクなし）
-  gl_FragColor = vec4(toSRGB(col), 1.0);
+  float blurMix = smoothstep(0.2, 0.8, amp); // 強い歪み時だけ少しボケ
+  vec3  col = mix(col0, blur, blurMix);
+  gl_FragColor = vec4(col, 1.0);
 }
 `;
 
 type Props = {
-  imageUrl: string;
-  active?: boolean;
+  imageUrl: string;                // 完成画像URL
+  onDone?: () => void;
+  active?: boolean;                // 互換性のため
+  stripes?: number;                // default 48
+  jitter?: number;                 // default 0.08
+  strength?: number;               // default 0.9
+  holdMs?: number;                 // default 600
+  revealMs?: number;               // default 1200
+  settleMs?: number;               // default 400
+  leftToRight?: boolean;           // default true
+
+  // 旧パラメータ（互換性のため無視）
   durationMs?: number;
   amount?: number;
   glassScale?: [number, number];
   glassRotate?: number;
   maskFeather?: number;
-  onDone?: () => void;
 };
 
 export default function GlassRevealCanvas({
-  imageUrl, active=true, durationMs=1200,
-  amount=0.05, glassScale=[6,1], glassRotate=0.0, maskFeather=0.08,
-  onDone,
+  imageUrl, onDone, active = true,
+  stripes=48, jitter=0.08, strength=0.9,
+  holdMs=600, revealMs=1200, settleMs=400,
+  leftToRight=true,
 }: Props){
   const ref = useRef<HTMLCanvasElement|null>(null);
 
-  useEffect(()=>{ if(!ref.current) return;
-    const renderer = new THREE.WebGLRenderer({ canvas: ref.current, antialias:true, alpha:true });
-    renderer.setClearColor(0,0); renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+  useEffect(() => {
+    if(!ref.current) return;
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas: ref.current, antialias: true, alpha: true, premultipliedAlpha: true,
+      powerPreference: "high-performance",
+    });
+    renderer.setClearColor(0x000000, 0);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 
     const scene = new THREE.Scene();
     const cam = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
 
-    const texImg = new THREE.TextureLoader().load(imageUrl);
-    texImg.minFilter=THREE.LinearFilter; texImg.magFilter=THREE.LinearFilter; texImg.colorSpace=THREE.SRGBColorSpace;
+    // 画像とガラステクスチャの読み込み
+    const loader = new THREE.TextureLoader();
+    const texImg = loader.load(imageUrl, () => {
+      const w = ref.current!.clientWidth || texImg.image.width;
+      const h = ref.current!.clientHeight || texImg.image.height;
+      renderer.setSize(w, h, false);
+      mat.uniforms.u_imgTexel.value.set(1/texImg.image.width, 1/texImg.image.height);
+    });
+    texImg.minFilter = THREE.LinearFilter; texImg.magFilter = THREE.LinearFilter;
+    texImg.colorSpace = THREE.SRGBColorSpace;
 
-    const texGlass = new THREE.TextureLoader().load(glassURL);
-    texGlass.wrapS=texGlass.wrapT=THREE.RepeatWrapping;
-    texGlass.minFilter=THREE.LinearFilter; texGlass.magFilter=THREE.LinearFilter; texGlass.colorSpace=THREE.SRGBColorSpace;
+    const texGlass = loader.load(glassURL);
+    texGlass.wrapS = texGlass.wrapT = THREE.RepeatWrapping;
+    texGlass.minFilter = THREE.LinearFilter;
+    texGlass.magFilter = THREE.LinearFilter;
+    texGlass.colorSpace = THREE.SRGBColorSpace;
 
     const geo = new THREE.PlaneGeometry(2,2);
     const mat = new THREE.ShaderMaterial({
-      uniforms:{
-        u_time:{value:0}, u_res:{value:new THREE.Vector2(1,1)},
-        u_image:{value:texImg}, u_glass:{value:texGlass},
-        u_progress:{value:1}, u_amount:{value:amount},
-        u_glassScale:{value:new THREE.Vector2(glassScale[0], glassScale[1])},
-        u_glassRotate:{value:glassRotate}, u_maskFeather:{value:maskFeather},
+      uniforms: {
+        u_img: { value: texImg },
+        u_glass: { value: texGlass },
+        u_imgTexel: { value: new THREE.Vector2(1/1024, 1/1024) },
+        u_progress: { value: 0 }, // 0..1
+        u_strength: { value: strength },
+        u_stripes: { value: stripes },
+        u_jitter: { value: jitter },
+        u_leftToRight: { value: leftToRight },
       },
-      vertexShader: VERT, fragmentShader: FRAG, transparent:true
+      vertexShader: VERT,
+      fragmentShader: FRAG,
+      transparent: true,
     });
-    const mesh = new THREE.Mesh(geo,mat); scene.add(mesh);
+    scene.add(new THREE.Mesh(geo, mat));
 
-    let raf=0; const t0=performance.now(); const start=performance.now();
-    const render=()=>{ const now=performance.now();
-      (mat.uniforms.u_time.value as number)=(now-t0)/1000;
-      const p = Math.max(0, 1 - (now - start)/durationMs);
-      (mat.uniforms.u_progress.value as number)=p;
+    let raf = 0;
+    const total = holdMs + revealMs + settleMs;
+    const t0 = performance.now();
+
+    const render = () => {
+      const t = performance.now() - t0;
+      let p = 0;
+      if (t <= holdMs) p = 0;
+      else if (t <= holdMs + revealMs) p = (t - holdMs) / revealMs;         // 0→1
+      else if (t <= total) p = 1.0;                                         // 固定
+      (mat.uniforms.u_progress.value as number) = p;
+
       renderer.render(scene, cam);
-      if(p<=0){ cancelAnimationFrame(raf); onDone?.(); return; }
-      raf=requestAnimationFrame(render);
+      if (t < total + 50) raf = requestAnimationFrame(render);
+      else {
+        onDone?.();
+        cancelAnimationFrame(raf);
+      }
     };
 
-    const ro=new ResizeObserver((es)=>{ const cr=es[0].contentRect; const w=Math.max(1,cr.width|0), h=Math.max(1,cr.height|0); renderer.setSize(w,h,false); (mat.uniforms.u_res.value as THREE.Vector2).set(w,h); });
-    ro.observe(ref.current);
+    if (active) raf = requestAnimationFrame(render);
 
-    document.hidden || (raf=requestAnimationFrame(render));
-    const vis=()=>{ cancelAnimationFrame(raf); if(!document.hidden && active) raf=requestAnimationFrame(render); };
-    document.addEventListener("visibilitychange",vis);
+    const onResize = () => {
+      const w = ref.current!.clientWidth, h = ref.current!.clientHeight;
+      renderer.setSize(w, h, false);
+    };
+    window.addEventListener("resize", onResize);
 
-    return ()=>{ cancelAnimationFrame(raf); document.removeEventListener("visibilitychange",vis); ro.disconnect(); geo.dispose(); (mat as any).dispose?.(); texImg.dispose(); texGlass.dispose(); renderer.dispose(); };
-  }, [imageUrl, active, amount, glassScale[0], glassScale[1], glassRotate, maskFeather, durationMs, onDone]);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      geo.dispose(); mat.dispose(); texImg.dispose(); texGlass.dispose();
+      renderer.dispose();
+    };
+  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, settleMs, leftToRight, active, onDone]);
 
-  return <canvas ref={ref} style={{width:"100%",height:"100%",display:"block",pointerEvents:"none",willChange:"transform,opacity"}}/>;
+  return (
+    <canvas
+      ref={ref}
+      style={{ width: "100%", height: "100%", display: "block", pointerEvents: "none" }}
+    />
+  );
 }

@@ -334,16 +334,18 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 </div>
               )}
 
-              {/* 受信後の"歪ませリビール"（doneでも継続表示して黒画面を防ぐ） */}
+              {/* 受信後の"Glass Stripe Reveal"（doneでも継続表示して黒画面を防ぐ） */}
               {(stage === "revealing" || stage === "done") && imageUrl && (
                 <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
                   <GlassRevealCanvas
                     imageUrl={imageUrl}
-                    durationMs={3000}
-                    amount={0.15}
-                    glassScale={[16, 1]}
-                    glassRotate={0}
-                    maskFeather={0}
+                    stripes={48}
+                    jitter={0.08}
+                    strength={0.9}
+                    holdMs={600}
+                    revealMs={1200}
+                    settleMs={400}
+                    leftToRight={true}
                     active={stage === "revealing"}
                     onDone={handleRevealDone}
                   />
