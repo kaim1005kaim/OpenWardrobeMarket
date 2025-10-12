@@ -32,7 +32,7 @@
   border: none;
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 300;
   letter-spacing: 2px;
   color: #000000;
   cursor: pointer;
@@ -50,7 +50,7 @@
 .page-title {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 56px;
-  font-weight: 400;
+  font-weight: 300;
   letter-spacing: 2px;
   color: #000000;
   margin: 0;
@@ -93,7 +93,7 @@
   border: none;
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 16px;
-  font-weight: 400;
+  font-weight: 300;
   letter-spacing: 2px;
   color: #000000;
   cursor: pointer;
@@ -175,7 +175,7 @@
   border: none;
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 16px;
-  font-weight: 400;
+  font-weight: 300;
   letter-spacing: 3px;
   color: #999999;
   cursor: pointer;

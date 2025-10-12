@@ -56,7 +56,7 @@ body.menu-open .mobile-home-header .hamburger-btn {
   font-size: 12px;
   letter-spacing: 0.1em;
   color: white;
-  font-weight: 400;
+  font-weight: 300;
 }
 
 /* Search */
@@ -90,7 +90,7 @@ body.menu-open .mobile-home-header .hamburger-btn {
 .recommend-title {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 48px;
-  font-weight: 400;
+  font-weight: 300;
   letter-spacing: 0.02em;
   color: white;
   text-align: center;
@@ -108,7 +108,7 @@ body.menu-open .mobile-home-header .hamburger-btn {
 .gallery-title {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 64px;
-  font-weight: 400;
+  font-weight: 300;
   letter-spacing: 0.02em;
   color: #000000;
   text-align: center;

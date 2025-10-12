@@ -13,136 +13,115 @@ uniform float u_time;
 uniform vec2  u_res;
 uniform sampler2D u_image;
 uniform sampler2D u_glass;
-uniform float u_progress;   // 1 → 0 で完成
-uniform float u_amount;     // 最大屈折量
-uniform float u_lines;      // 縦線の強さ
+uniform float u_progress;   // 1 -> 0
+uniform float u_amount;     // 0.02~0.06
+uniform vec2  u_glassScale;
+uniform float u_glassRotate;
+uniform float u_maskFeather;
+
 varying vec2 vUv;
 
-// 近傍サンプルで簡易ブラー
-vec3 sampleBlur(sampler2D tex, vec2 uv, vec2 px, float k){
-  vec3 c0 = texture2D(tex, uv).rgb;
-  vec3 c1 = texture2D(tex, uv+vec2(px.x,0.)).rgb;
-  vec3 c2 = texture2D(tex, uv-vec2(px.x,0.)).rgb;
-  vec3 c3 = texture2D(tex, uv+vec2(0.,px.y)).rgb;
-  vec3 c4 = texture2D(tex, uv-vec2(0.,px.y)).rgb;
-  return mix(c0,(c1+c2+c3+c4)*0.25, k);
-}
+vec3 toSRGB(vec3 c){ return pow(c, vec3(1.0/2.2)); }
 
-float luma(vec3 c){ return dot(c, vec3(0.299,0.587,0.114)); }
+// 5tap 簡易ブラー
+vec3 blur5(sampler2D t, vec2 uv, vec2 px, float k){
+  vec3 c0=texture2D(t,uv).rgb;
+  vec3 cx=texture2D(t,uv+vec2(px.x,0.)).rgb+texture2D(t,uv-vec2(px.x,0.)).rgb;
+  vec3 cy=texture2D(t,uv+vec2(0.,px.y)).rgb+texture2D(t,uv-vec2(0.,px.y)).rgb;
+  return mix(c0,(cx+cy)*0.25, k);
+}
+mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
 
 void main(){
   vec2 px = 1.0 / u_res;
 
-  // ガラス高さ → 法線的なズレ
-  float h = texture2D(u_glass, vec2(vUv.x*1.0, vUv.y)).r;
+  // ガラスUV
+  vec2 c = vUv - 0.5;
+  vec2 gUv = rot(u_glassRotate) * c;
+  gUv = gUv * u_glassScale + 0.5;
+  float h = texture2D(u_glass, gUv).r;
   vec2 grad = vec2(dFdx(h), dFdy(h));
-  float amp = u_amount * u_progress;     // 進行に応じて弱くなる
-  vec2 uvR = vUv + grad * amp;
+  vec2 uvR = vUv + grad * (u_amount * u_progress);
 
-  // 追加の縦スキャン歪み（進行に応じて消える）
-  float scan = (sin((vUv.y*3.14159*16.0) + u_time*2.0) * 0.25 + 0.25) * u_progress;
-  uvR.x += scan * px.x * 32.0;
+  // 最初はブラー多め → 0へ
+  float k = smoothstep(0.0, 1.0, u_progress);
+  vec3 col = blur5(u_image, uvR, px*3.0, k);
 
-  // 画像サンプル（最初はブラー強め→完成でシャープ）
-  float blurK = smoothstep(0.0, 1.0, u_progress); // 1→0 で弱く
-  vec3 col = sampleBlur(u_image, uvR, px*3.0, blurK);
+  // 円形ソフトマスク（アスペクト比考慮）
+  vec2 st = (vUv - 0.5); st.x *= u_res.x/u_res.y;
+  float aspect = u_res.x / u_res.y;
+  float radius = aspect < 1.0 ? 0.48 : 0.48 / aspect; // 短辺に合わせる
+  float mask = smoothstep(radius, radius - u_maskFeather, length(st));
+  float a = 1.0 - mask;
 
-  // グレースケール→カラーへ
-  float g = luma(col);
-  col = mix(col, vec3(g), u_progress*0.6); // 開始時は少しモノクロ
-
-  // 縦ラインの乗算（リブドガラス感、進行で薄く）
-  float lines = 0.5 + 0.5*sin(vUv.x*3.14159*128.0);
-  col *= mix(1.0, 0.86 + 0.14*lines, u_lines * u_progress);
-
-  // 走査線ハイライト（白い帯が下に進む）
-  float y = fract(u_time*0.25);
-  float band = smoothstep(y-0.03, y, vUv.y) * smoothstep(y+0.03, y, vUv.y);
-  col += band * 0.10 * u_progress;
-
-  // 軽いビネット
-  vec2 uv = vUv - 0.5; uv.x *= u_res.x/u_res.y;
-  float vig = smoothstep(0.9, 0.2, dot(uv,uv));
-  col *= mix(1.0, vig, 0.08);
-
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(toSRGB(col), a);
 }
 `;
 
 type Props = {
   imageUrl: string;
-  active?: boolean;          // trueの間だけレンダ＋進行
-  durationMs?: number;       // 1→0 になるまでの時間
-  amount?: number;           // 最初の歪み強度（0.02〜0.06）
-  lines?: number;            // 縦ライン強度（0〜1）
-  onDone?: () => void;       // 完了コールバック
+  active?: boolean;
+  durationMs?: number;
+  amount?: number;
+  glassScale?: [number, number];
+  glassRotate?: number;
+  maskFeather?: number;
+  onDone?: () => void;
 };
 
 export default function GlassRevealCanvas({
-  imageUrl,
-  active = true,
-  durationMs = 1200,
-  amount = 0.04,
-  lines = 1.0,
+  imageUrl, active=true, durationMs=1200,
+  amount=0.05, glassScale=[6,1], glassRotate=0.0, maskFeather=0.08,
   onDone,
 }: Props){
   const ref = useRef<HTMLCanvasElement|null>(null);
 
   useEffect(()=>{ if(!ref.current) return;
     const renderer = new THREE.WebGLRenderer({ canvas: ref.current, antialias:true, alpha:true });
-    renderer.setClearColor(0x000000, 0);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
+    renderer.setClearColor(0,0); renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
 
     const scene = new THREE.Scene();
     const cam = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
 
-    const texImg = new THREE.TextureLoader().load(imageUrl, ()=>{ /* loaded */ });
-    texImg.minFilter = THREE.LinearFilter; texImg.magFilter = THREE.LinearFilter;
-    texImg.colorSpace = THREE.SRGBColorSpace;
+    const texImg = new THREE.TextureLoader().load(imageUrl);
+    texImg.minFilter=THREE.LinearFilter; texImg.magFilter=THREE.LinearFilter; texImg.colorSpace=THREE.SRGBColorSpace;
 
     const texGlass = new THREE.TextureLoader().load(glassURL);
-    texGlass.wrapS = texGlass.wrapT = THREE.RepeatWrapping;
-    texGlass.minFilter = THREE.LinearFilter; texGlass.magFilter = THREE.LinearFilter;
-    texGlass.colorSpace = THREE.SRGBColorSpace;
+    texGlass.wrapS=texGlass.wrapT=THREE.RepeatWrapping;
+    texGlass.minFilter=THREE.LinearFilter; texGlass.magFilter=THREE.LinearFilter; texGlass.colorSpace=THREE.SRGBColorSpace;
 
     const geo = new THREE.PlaneGeometry(2,2);
     const mat = new THREE.ShaderMaterial({
       uniforms:{
         u_time:{value:0}, u_res:{value:new THREE.Vector2(1,1)},
         u_image:{value:texImg}, u_glass:{value:texGlass},
-        u_progress:{value:1}, u_amount:{value:amount}, u_lines:{value:lines},
+        u_progress:{value:1}, u_amount:{value:amount},
+        u_glassScale:{value:new THREE.Vector2(glassScale[0], glassScale[1])},
+        u_glassRotate:{value:glassRotate}, u_maskFeather:{value:maskFeather},
       },
       vertexShader: VERT, fragmentShader: FRAG, transparent:true
     });
     const mesh = new THREE.Mesh(geo,mat); scene.add(mesh);
 
-    let raf=0; const t0=performance.now(); let started=performance.now();
-    const render = ()=>{
-      const now=performance.now();
-      (mat.uniforms.u_time.value as number)=(now - t0)/1000;
-      // 1→0 に線形（好みでease）
-      const p = Math.max(0, 1 - (now - started)/durationMs);
-      (mat.uniforms.u_progress.value as number) = p;
+    let raf=0; const t0=performance.now(); const start=performance.now();
+    const render=()=>{ const now=performance.now();
+      (mat.uniforms.u_time.value as number)=(now-t0)/1000;
+      const p = Math.max(0, 1 - (now - start)/durationMs);
+      (mat.uniforms.u_progress.value as number)=p;
       renderer.render(scene, cam);
-      if (p<=0){ cancelAnimationFrame(raf); onDone?.(); return; }
+      if(p<=0){ cancelAnimationFrame(raf); onDone?.(); return; }
       raf=requestAnimationFrame(render);
     };
 
-    const ro = new ResizeObserver((es)=>{
-      const cr=es[0].contentRect; const w=Math.max(1,cr.width|0), h=Math.max(1,cr.height|0);
-      renderer.setSize(w,h,false); (mat.uniforms.u_res.value as THREE.Vector2).set(w,h);
-    }); ro.observe(ref.current);
+    const ro=new ResizeObserver((es)=>{ const cr=es[0].contentRect; const w=Math.max(1,cr.width|0), h=Math.max(1,cr.height|0); renderer.setSize(w,h,false); (mat.uniforms.u_res.value as THREE.Vector2).set(w,h); });
+    ro.observe(ref.current);
 
-    const vis = ()=>{ cancelAnimationFrame(raf);
-      if(!document.hidden && active){ started=performance.now(); raf=requestAnimationFrame(render); }
-    }; document.addEventListener("visibilitychange", vis);
+    document.hidden || (raf=requestAnimationFrame(render));
+    const vis=()=>{ cancelAnimationFrame(raf); if(!document.hidden && active) raf=requestAnimationFrame(render); };
+    document.addEventListener("visibilitychange",vis);
 
-    if (active) raf=requestAnimationFrame(render);
-
-    return ()=>{ cancelAnimationFrame(raf); document.removeEventListener("visibilitychange", vis); ro.disconnect();
-      geo.dispose(); mat.dispose(); texImg.dispose(); texGlass.dispose(); renderer.dispose();
-    };
-  }, [imageUrl, active, amount, lines, durationMs, onDone]);
+    return ()=>{ cancelAnimationFrame(raf); document.removeEventListener("visibilitychange",vis); ro.disconnect(); geo.dispose(); (mat as any).dispose?.(); texImg.dispose(); texGlass.dispose(); renderer.dispose(); };
+  }, [imageUrl, active, amount, glassScale[0], glassScale[1], glassRotate, maskFeather, durationMs, onDone]);
 
   return <canvas ref={ref} style={{width:"100%",height:"100%",display:"block",pointerEvents:"none",willChange:"transform,opacity"}}/>;
 }

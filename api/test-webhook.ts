@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       payload: data.data || data
     };
 
-    const webhookResponse = await fetch(`${req.headers.origin || 'https://open-wardrobe-market.vercel.app'}/api/imagine-webhook`, {
+    const webhookResponse = await fetch(`${req.headers.origin || 'https://open-wardrobe-market.com'}/api/imagine-webhook`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

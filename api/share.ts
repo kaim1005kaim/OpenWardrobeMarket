@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://open-wardrobe-market.vercel.app';
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://open-wardrobe-market.com';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

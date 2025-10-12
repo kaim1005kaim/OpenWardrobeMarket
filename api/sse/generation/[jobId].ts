@@ -162,7 +162,7 @@ export default async function handler(req: NextRequest) {
             
             // Fallback: Use our status endpoint
             try {
-              const statusUrl = `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://open-wardrobe-market.vercel.app'}/api/imagine-status?imageId=${imageIdForPolling}&jobId=${jobId}`;
+              const statusUrl = `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://open-wardrobe-market.com'}/api/imagine-status?imageId=${imageIdForPolling}&jobId=${jobId}`;
               const statusResponse = await fetch(statusUrl);
               
               if (statusResponse.ok) {

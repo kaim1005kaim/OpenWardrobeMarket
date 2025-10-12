@@ -70,6 +70,17 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const currentQuestion = createQuestions[currentStep];
   const progress = ((currentStep + 1) / createQuestions.length) * 100;
 
+  // 各ステップごとの色パレット（生成中用）
+  const PALETTES = [
+    { a: "#F5D4C7", b: "#D86C56" }, // step1 (vibe)
+    { a: "#D7E8FF", b: "#6BA4FF" }, // step2 (silhouette)
+    { a: "#E9DDFF", b: "#8A63F8" }, // step3 (color) 紫寄り
+    { a: "#D9F0E5", b: "#33A68B" }, // step4 (occasion)
+    { a: "#FFF1C7", b: "#E0A33A" }, // step5 (season)
+  ];
+
+  const currentPalette = PALETTES[Math.min(currentStep, PALETTES.length - 1)];
+
   // 回答が変更されたら形状と色を更新
   useEffect(() => {
     const config = getMorphConfig(answers);
@@ -220,28 +231,19 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           aria-label="Menu"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M3 12H21M3 6H21M3 18H21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </button>
         <button className="create-logo-btn" onClick={() => onNavigate?.('home')}>OWM</button>
       </header>
 
       <div className="create-content">
-          {/* Progress bar */}
-          <div className="progress-container">
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-            </div>
-            <p className="progress-text">
-              {currentStep + 1} / {createQuestions.length}
-            </p>
-          </div>
-
           {!isGenerating ? (
             <>
-              {/* 設問アニメーション */}
-              <div style={{ position: 'relative', width: '100%', height: '240px', marginTop: '24px', marginBottom: '16px' }}>
-                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', background: 'rgba(0,0,0,0.02)' }}>
+              {/* CREATEタイトル + 設問アニメーション */}
+              <div style={{ position: 'relative', width: '100%', height: '320px', marginTop: '0', marginBottom: '32px' }}>
+                {/* アニメーション背景 */}
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
                   <QuestionBlobCanvas
                     active={!isGenerating}
                     morphType={morphType}
@@ -249,6 +251,10 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                     colorB={colorB}
                     transition={transition}
                   />
+                </div>
+                {/* CREATEタイトル（エフェクトの上に重ねる） */}
+                <div style={{ position: 'absolute', top: '8px', left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                  <h1 className="create-title">CREATE</h1>
                 </div>
               </div>
 
@@ -258,6 +264,16 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 {currentQuestion.multiSelect && (
                   <p className="hint-text">複数選択可能です</p>
                 )}
+              </div>
+
+              {/* Progress bar */}
+              <div className="progress-container">
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                </div>
+                <p className="progress-text">
+                  {currentStep + 1} / {createQuestions.length}
+                </p>
               </div>
 
               {/* Options */}
@@ -296,8 +312,16 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
             <div className="viewer-container" style={{ position: 'relative', width: '100%', aspectRatio: '3/4', marginTop: '32px' }}>
               {/* 生成中のProcedural */}
               {stage === "generating" && (
-                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', background: 'rgba(0,0,0,0.04)' }}>
-                  <BlobGlassCanvas active refract={0.9} colorA="#CFE5DE" colorB="#AF9ACD" />
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
+                  <BlobGlassCanvas
+                    active
+                    maskFeather={0.1}
+                    targetA={currentPalette.a}
+                    targetB={currentPalette.b}
+                    psScale={0.82}
+                    psSmooth={0.6}
+                    psDistort={0.90}
+                  />
                   <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: '#666', fontSize: 14 }}>
                     PLEASE WAIT<br />生成中です…
                   </div>
@@ -311,7 +335,8 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                     imageUrl={imageUrl}
                     durationMs={1400}
                     amount={0.05}
-                    lines={1.0}
+                    glassScale={[8, 1]}
+                    maskFeather={0.1}
                     active
                     onDone={handleRevealDone}
                   />
