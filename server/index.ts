@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
@@ -6,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateRoutes } from './routes/generate';
 import { statusRoutes } from './routes/status';
 import { trendsRoutes } from './routes/trends';
-import { nanoBananaRoutes } from './routes/nanobanana';
+import { router as nanoBananaRoutes } from './routes/nanobanana';
 
 const app = express();
 const port = process.env.PORT || 3001;
