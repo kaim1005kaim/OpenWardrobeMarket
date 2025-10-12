@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { buildPrompt, type Answers } from '../../../lib/prompt/buildMobile';
 import { supabase } from '../../lib/supabase';
 import BlobGlassCanvas from '../../../components/BlobGlassCanvas';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
+import QuestionBlobCanvas from '../../../components/QuestionBlobCanvas';
+import { getMorphConfig } from '../../../lib/questionMorphing';
 import './MobileCreatePage.css';
 
 interface MobileCreatePageProps {
@@ -59,8 +61,27 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
+  // 設問アニメーション用
+  const [morphType, setMorphType] = useState(0);
+  const [colorA, setColorA] = useState("#F4DDD4");
+  const [colorB, setColorB] = useState("#D4887A");
+  const [transition, setTransition] = useState(0);
+
   const currentQuestion = createQuestions[currentStep];
   const progress = ((currentStep + 1) / createQuestions.length) * 100;
+
+  // 回答が変更されたら形状と色を更新
+  useEffect(() => {
+    const config = getMorphConfig(answers);
+    setMorphType(config.morphType);
+    setColorA(config.colorA);
+    setColorB(config.colorB);
+
+    // トランジションアニメーション
+    setTransition(0);
+    const timer = setTimeout(() => setTransition(1), 50);
+    return () => clearTimeout(timer);
+  }, [answers]);
 
   const handleSelect = (option: string) => {
     const questionId = currentQuestion.id;
@@ -218,6 +239,19 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
           {!isGenerating ? (
             <>
+              {/* 設問アニメーション */}
+              <div style={{ position: 'relative', width: '100%', height: '240px', marginTop: '24px', marginBottom: '16px' }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', background: 'rgba(0,0,0,0.02)' }}>
+                  <QuestionBlobCanvas
+                    active={!isGenerating}
+                    morphType={morphType}
+                    colorA={colorA}
+                    colorB={colorB}
+                    transition={transition}
+                  />
+                </div>
+              </div>
+
               {/* Question */}
               <div className="question-container">
                 <h2 className="question-text">{currentQuestion.question}</h2>
