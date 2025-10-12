@@ -146,7 +146,7 @@ export default function GlassRevealCanvas({
         u_progress: { value: 0 }, // 0..1
         u_fadeIn: { value: 0 },   // 0..1 画像フェードイン
         u_strength: { value: strength },
-        u_pixels: { value: 12.0 }, // 最大屈折量 [px]
+        u_pixels: { value: 80.0 }, // 最大屈折量 [px]（ストライプ横幅）
         u_edge: { value: 0.12 },   // 開く幅
         u_stripes: { value: stripes },
         u_jitter: { value: jitter },
