@@ -5,12 +5,15 @@ import { isWebView } from '../lib/utils/detectWebView'
 import { WebViewWarning } from './mobile/WebViewWarning'
 import './LoginPage.css'
 
-type LoginMode = 'password' | 'magic-link'
+type PageMode = 'login' | 'signup'
+type AuthMode = 'password' | 'magic-link'
 
 export function LoginPage() {
-  const [mode, setMode] = useState<LoginMode>('password')
+  const [pageMode, setPageMode] = useState<PageMode>('login')
+  const [authMode, setAuthMode] = useState<AuthMode>('password')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
   const [showWebViewWarning, setShowWebViewWarning] = useState(false)
@@ -94,8 +97,54 @@ export function LoginPage() {
     }
   }
 
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    if (password !== confirmPassword) {
+      setError('パスワードが一致しません')
+      setIsLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setError('パスワードは6文字以上で入力してください')
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      if (error) throw error
+
+      alert('確認メールを送信しました。メールのリンクをクリックして登録を完了してください。')
+      setPageMode('login')
+      setAuthMode('password')
+    } catch (error: any) {
+      console.error('Signup error:', error)
+      setError(error.message || '登録に失敗しました')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleNewAccount = () => {
-    navigate('/signup')
+    setPageMode('signup')
+    setAuthMode('password')
+    setError(null)
+  }
+
+  const handleBackToLogin = () => {
+    setPageMode('login')
+    setAuthMode('password')
+    setError(null)
   }
 
   return (
@@ -110,23 +159,25 @@ export function LoginPage() {
             <div>MARKET</div>
           </div>
 
-          {/* Mode Toggle */}
-          <div className="login-mode-toggle">
-            <button
-              className={`login-mode-btn ${mode === 'password' ? 'active' : ''}`}
-              onClick={() => setMode('password')}
-              disabled={isLoading}
-            >
-              パスワード
-            </button>
-            <button
-              className={`login-mode-btn ${mode === 'magic-link' ? 'active' : ''}`}
-              onClick={() => setMode('magic-link')}
-              disabled={isLoading}
-            >
-              マジックリンク
-            </button>
-          </div>
+          {/* Mode Toggle - Only show in signup mode */}
+          {pageMode === 'signup' && (
+            <div className="login-mode-toggle">
+              <button
+                className={`login-mode-btn ${authMode === 'password' ? 'active' : ''}`}
+                onClick={() => setAuthMode('password')}
+                disabled={isLoading}
+              >
+                パスワード
+              </button>
+              <button
+                className={`login-mode-btn ${authMode === 'magic-link' ? 'active' : ''}`}
+                onClick={() => setAuthMode('magic-link')}
+                disabled={isLoading}
+              >
+                マジックリンク
+              </button>
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (
@@ -141,8 +192,8 @@ export function LoginPage() {
             </div>
           )}
 
-          {/* Password Login form */}
-          {mode === 'password' && (
+          {/* Login Mode Forms */}
+          {pageMode === 'login' && (
             <form onSubmit={handleEmailLogin} className="login-form">
               <div className="input-wrapper">
                 <input
@@ -176,8 +227,54 @@ export function LoginPage() {
             </form>
           )}
 
-          {/* Magic Link form */}
-          {mode === 'magic-link' && (
+          {/* Signup Mode - Password */}
+          {pageMode === 'signup' && authMode === 'password' && (
+            <form onSubmit={handleSignup} className="login-form">
+              <div className="input-wrapper">
+                <input
+                  type="email"
+                  placeholder="EMAIL"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="login-input"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+              <div className="input-wrapper">
+                <input
+                  type="password"
+                  placeholder="PASSWORD"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="login-input"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+              <div className="input-wrapper">
+                <input
+                  type="password"
+                  placeholder="CONFIRM PASSWORD"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="login-input"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="login-submit-btn"
+                disabled={isLoading}
+              >
+                {isLoading ? '登録中...' : 'SIGN UP'}
+              </button>
+            </form>
+          )}
+
+          {/* Signup Mode - Magic Link */}
+          {pageMode === 'signup' && authMode === 'magic-link' && (
             <form onSubmit={handleMagicLink} className="login-form">
               <p className="magic-link-info">
                 パスワード不要でログインできるリンクを送信します
@@ -205,20 +302,33 @@ export function LoginPage() {
 
           {/* Bottom section */}
           <div className="auth-actions">
-            <button
-              onClick={handleGoogleLogin}
-              className="auth-link"
-              disabled={isLoading}
-            >
-              Google Login
-            </button>
-            <button
-              onClick={handleNewAccount}
-              className="auth-link"
-              disabled={isLoading}
-            >
-              new account
-            </button>
+            {pageMode === 'login' && (
+              <>
+                <button
+                  onClick={handleGoogleLogin}
+                  className="auth-link"
+                  disabled={isLoading}
+                >
+                  GOOGLE LOGIN
+                </button>
+                <button
+                  onClick={handleNewAccount}
+                  className="auth-link"
+                  disabled={isLoading}
+                >
+                  NEW ACCOUNT
+                </button>
+              </>
+            )}
+            {pageMode === 'signup' && (
+              <button
+                onClick={handleBackToLogin}
+                className="auth-link"
+                disabled={isLoading}
+              >
+                BACK TO LOGIN
+              </button>
+            )}
           </div>
         </div>
       </div>
