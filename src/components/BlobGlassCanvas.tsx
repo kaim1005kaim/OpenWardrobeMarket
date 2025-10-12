@@ -20,6 +20,9 @@ uniform float u_pixels;      // 最大屈折量 [px]
 uniform float u_glassScale;  // ガラステクスチャのスケール
 uniform float u_ribShade;    // 0.0〜0.4: 明暗コントラスト
 uniform float u_ribAlpha;    // 0.0〜0.25: 透明度への効き
+uniform float u_edgeOffsetPx; // エッジ座標オフセット量 [px]
+uniform float u_edgeWidth;    // エッジマスクの幅
+uniform bool  u_vertical;     // true=縦オフセット, false=横オフセット
 uniform float u_seed;
 
 uniform vec3  u_colA;     // 外側
@@ -75,14 +78,32 @@ float field(vec2 p){
 void main(){
   vec2 uv = vUv*2.0-1.0;
 
-  // 形状評価（元のUV）
-  float F = field(uv);
+  // ===== A' 方式：エッジだけ座標オフセット =====
+  // 1) リブ信号取得（-0.5..0.5に正規化）
+  vec2 gUv = vec2(vUv.x * u_glassScale, vUv.y);
+  float rib = texture2D(u_glass, gUv).r;
+  float rib01c = rib - 0.5;  // -0.5..0.5
+
+  // 2) 初期SDF評価でエッジマスク作成
+  float F0 = field(uv);
+  float iso = 1.2;
+  float d0 = iso - F0;
+  float edgeMask = 1.0 - smoothstep(u_edgeWidth, u_edgeWidth*2.0, abs(d0));
+
+  // 3) エッジでのみ縦/横オフセット
+  float px2uvY = u_edgeOffsetPx / u_res.y;
+  float px2uvX = u_edgeOffsetPx / u_res.x;
+  vec2 edgeOffset = u_vertical
+    ? vec2(0.0, rib01c * px2uvY * edgeMask)
+    : vec2(rib01c * px2uvX * edgeMask, 0.0);
+
+  // 4) オフセット座標で再評価
+  float F = field(uv + edgeOffset);
   vec2 center = g_center;
 
-  // iso面（内外の境界） - k値を上げたので調整
-  float iso = 1.2;
+  // iso面（内外の境界）
   float d = iso - F;
-  float alpha = smoothstep(0.02, -0.05, d);
+  float alpha = smoothstep(0.015, -0.035, d);
 
   // 時間で色相をわずかに往復
   float w = 0.5 + 0.5*sin(u_time*0.25);
@@ -101,18 +122,14 @@ void main(){
   // コアは透過するのでアルファを下げる
   alpha *= (1.0 - coreMask * 0.8);
 
-  // ===== 擬似ガラス効果（縦スリット陰影） =====
-  // 1) ガラステクスチャをタイルして縦スリット強調
-  vec2 ribUv = vec2(vUv.x * u_glassScale, vUv.y);
-  float ribHeight = texture2D(u_glass, ribUv).r;
+  // ===== 擬似ガラス効果（リブで陰影） =====
+  // リブ信号でハイパスっぽくメリハリ
+  float ribShade = smoothstep(0.35, 0.65, rib + 0.5);  // rib01c -> 0..1
+  ribShade = pow(abs(ribShade - 0.5) * 2.0, 0.9);
 
-  // ハイパスっぽくメリハリを付ける
-  float rib = smoothstep(0.35, 0.65, ribHeight);
-  rib = pow(abs(rib - 0.5) * 2.0, 0.9);
-
-  // 2) 合成：色の明暗＋アルファへも少し反映
-  col = mix(col * (1.0 - u_ribShade), col * (1.0 + u_ribShade), rib);
-  alpha = clamp(alpha * (1.0 - u_ribAlpha * rib), 0.0, 1.0);
+  // 合成：色の明暗＋アルファへも少し反映
+  col = mix(col * (1.0 - u_ribShade), col * (1.0 + u_ribShade), ribShade);
+  alpha = clamp(alpha * (1.0 - u_ribAlpha * ribShade), 0.0, 1.0);
 
   gl_FragColor = vec4(col, alpha);
 }
@@ -170,6 +187,9 @@ export default function BlobGlassCanvas({
         u_glassScale:{value:1.2},    // ガラスタイル倍率（縦スリット本数）
         u_ribShade:{value:0.18},     // 明暗コントラスト
         u_ribAlpha:{value:0.10},     // 透明度への効き
+        u_edgeOffsetPx:{value:6.0},  // エッジ座標オフセット [px]
+        u_edgeWidth:{value:0.05},    // エッジマスクの幅
+        u_vertical:{value:true},     // 縦オフセット
         u_seed:{value:Math.random()*1000},
         u_colA:{value:new THREE.Color(targetA)},
         u_colB:{value:new THREE.Color(targetB)},
