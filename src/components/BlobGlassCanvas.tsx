@@ -74,25 +74,34 @@ Blob evalBlob(vec2 uv, float time, float seed, vec2 distortOffset){
   // ガラスエフェクトの歪みをシェイプ自体に適用
   st += distortOffset * 0.12;
 
-  // 時間変化するタービュランス（アメーバのように動的に変形）
-  float turbTime1 = time * 0.4;
-  float turbTime2 = time * 0.6;
-  float turbTime3 = time * 0.3;
+  // 角度と半径（極座標）
+  float ang = atan(st.y, st.x);
+  float r = length(st);
 
-  // 多層ノイズで複雑な変形
+  // 時間変化するタービュランス（アメーバのように動的に変形）
+  float turbTime1 = time * 0.35;
+  float turbTime2 = time * 0.52;
+  float turbTime3 = time * 0.28;
+  float turbTime4 = time * 0.41;
+
+  // 多層ノイズで複雑な変形（角度依存）
   float n0 = snoise(st*2.8 + vec2(turbTime1, seed));
   float n1 = snoise(st*6.5 + vec2(-turbTime2, seed*3.1));
   float n2 = snoise(st*4.2 + vec2(turbTime3*0.7, seed*1.5));
+  float n3 = snoise(vec2(ang*4.0, r*8.0) + turbTime4); // 角度で変形
 
-  // 外側の半径（時間で変化）
-  float rOuter = 0.32 + 0.12*n0 + 0.08*abs(n1) + 0.05*n2;
+  // 外側の半径（角度依存で変形）
+  float rOuter = 0.32 + 0.12*n0 + 0.08*abs(n1) + 0.05*n2 + 0.06*n3*sin(ang*3.0 + time*0.4);
 
-  // 内側の穴の半径（ドーナツ形状）
-  float rInner = 0.08 + 0.04*sin(time*0.5 + seed);
+  // 内側の穴の半径（ドーナツ形状、角度依存で変形してアメーバに）
+  float innerNoise1 = snoise(vec2(ang*5.0, time*0.6 + seed));
+  float innerNoise2 = snoise(vec2(ang*8.0, time*0.45 + seed*2.0));
+  float innerNoise3 = snoise(vec2(ang*3.0 + time*0.3, r*10.0));
+  float rInner = 0.08 + 0.05*innerNoise1 + 0.03*innerNoise2 + 0.02*innerNoise3;
 
   // SDF：ドーナツ形状
-  float distOuter = length(st) - rOuter;
-  float distInner = length(st) - rInner;
+  float distOuter = r - rOuter;
+  float distInner = r - rInner;
   float d = max(distOuter, -distInner); // ドーナツ
 
   // カラー：時間で滑らかに遷移（cosパレット）
@@ -101,11 +110,27 @@ Blob evalBlob(vec2 uv, float time, float seed, vec2 distortOffset){
     u_colA*0.45 + u_colB*0.15,
     vec3(0.40), vec3(1.0,0.9,0.8), vec3(0.05,0.33,0.67));
 
-  // 真ん中のコア（同じ色相で統一）
-  float coreDist = length(st);
-  float coreStrength = smoothstep(rInner + 0.05, rInner - 0.02, coreDist);
-  vec3 coreCol = mix(u_colA, u_colB, 0.5); // テーマ色の中間
-  vec3 col = mix(base, coreCol, coreStrength * 0.7);
+  // 真ん中に不定形のコアエフェクト（色が見える有機的な形状）
+  float coreDist = r;
+
+  // 不定形のコア形状（時間で動的に変化）
+  float coreShape1 = snoise(st*8.0 + vec2(time*0.5, seed));
+  float coreShape2 = snoise(st*12.0 + vec2(-time*0.7, seed*1.8));
+  float coreShape3 = snoise(vec2(ang*6.0 + time*0.6, coreDist*15.0));
+
+  // 不定形の強度（0〜1）
+  float corePattern = (coreShape1 + coreShape2*0.6 + coreShape3*0.4) * 0.5 + 0.5;
+  corePattern = pow(corePattern, 2.0); // コントラスト強化
+
+  // コアの可視範囲（穴の中）
+  float coreVisibility = smoothstep(rInner + 0.03, rInner - 0.01, coreDist);
+  float coreStrength = corePattern * coreVisibility;
+
+  // コアの色（テーマ色の明るいバージョン）
+  vec3 coreCol = mix(u_colA, u_colB, 0.5 + 0.3*sin(time*0.5 + seed)); // 時間で変化
+  coreCol = mix(coreCol, vec3(1.0), 0.15); // 少し明るく
+
+  vec3 col = mix(base, coreCol, coreStrength * 0.8);
 
   // 微細な縦筋（内部の流体感）
   col += 0.06 * snoise(vec2(st.y*9.0 + time*0.9, seed));

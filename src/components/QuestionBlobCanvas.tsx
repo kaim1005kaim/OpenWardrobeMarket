@@ -84,34 +84,51 @@ float shape2(vec2 st, float time){
   return smoothstep(0.03, -0.01, box);
 }
 
-// 形状3: 有機的ドーナツ（タービュランスで動的変形）
+// 形状3: 有機的ドーナツ（タービュランスで動的変形＋真ん中に不定形コア）
 float shape3(vec2 st, float time){
   float ang = atan(st.y, st.x);
   float r = length(st);
 
   // 時間変化するタービュランス
-  float turbTime1 = time * 0.5;
-  float turbTime2 = time * 0.7;
-  float turbTime3 = time * 0.4;
+  float turbTime1 = time * 0.38;
+  float turbTime2 = time * 0.59;
+  float turbTime3 = time * 0.31;
+  float turbTime4 = time * 0.44;
 
-  // 多層ノイズで複雑な変形（アメーバのように）
+  // 多層ノイズで複雑な変形（角度依存）
   float n0 = snoise(st * 5.0 + turbTime1);
   float n1 = snoise(vec2(ang * 3.0, r * 7.0) + turbTime2);
   float n2 = snoise(st * 2.5 - turbTime3);
-  float n3 = snoise(st * 3.8 + vec2(turbTime1*0.6, turbTime2*0.8));
+  float n3 = snoise(vec2(ang * 6.0, r * 9.0) + turbTime4);
 
-  // 外側の半径
-  float rOuter = 0.32 + n0 * 0.20 + n1 * 0.15 + n2 * 0.10;
+  // 外側の半径（角度依存で変形）
+  float rOuter = 0.32 + n0 * 0.20 + n1 * 0.15 + n2 * 0.10 + n3 * 0.08 * sin(ang * 4.0 + time * 0.45);
 
-  // 内側の穴の半径（時間で変化）
-  float rInner = 0.08 + 0.04*sin(time*0.6) + n3 * 0.03;
+  // 内側の穴の半径（角度依存で変形してアメーバに）
+  float innerNoise1 = snoise(vec2(ang * 7.0, time * 0.65));
+  float innerNoise2 = snoise(vec2(ang * 10.0, time * 0.48));
+  float innerNoise3 = snoise(vec2(ang * 4.0 + time * 0.35, r * 12.0));
+  float rInner = 0.08 + 0.06*innerNoise1 + 0.04*innerNoise2 + 0.03*innerNoise3;
 
   // ドーナツSDF
   float distOuter = r - rOuter;
   float distInner = r - rInner;
   float dist = max(distOuter, -distInner);
 
-  return smoothstep(0.04, -0.02, dist);
+  // メインのドーナツ形状
+  float donut = smoothstep(0.04, -0.02, dist);
+
+  // 真ん中に不定形のコアパターンを追加
+  float coreShape1 = snoise(st * 10.0 + vec2(time * 0.55, 0.0));
+  float coreShape2 = snoise(st * 14.0 + vec2(-time * 0.72, 0.0));
+  float corePattern = (coreShape1 + coreShape2 * 0.7) * 0.5 + 0.5;
+  corePattern = pow(corePattern, 2.5);
+
+  // コアの可視範囲（穴の中）
+  float coreVisibility = smoothstep(rInner + 0.04, rInner - 0.01, r);
+  float core = corePattern * coreVisibility * 0.6;
+
+  return donut + core;
 }
 
 // 形状4: 波打つ縦ストライプ（ゆっくり波打つ）
