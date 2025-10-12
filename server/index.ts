@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateRoutes } from './routes/generate';
 import { statusRoutes } from './routes/status';
 import { trendsRoutes } from './routes/trends';
+import { nanoBananaRoutes } from './routes/nanobanana';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -32,6 +33,7 @@ app.get('/health', (req, res) => {
 app.use('/api', generateRoutes);
 app.use('/api', statusRoutes);
 app.use('/api', trendsRoutes);
+app.use('/api', nanoBananaRoutes);
 
 // Error handler
 app.use((error: any, req: any, res: any, next: any) => {
