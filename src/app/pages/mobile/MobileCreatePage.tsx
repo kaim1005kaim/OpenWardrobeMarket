@@ -5,7 +5,6 @@ import { supabase } from '../../lib/supabase';
 import BlobGlassCanvas from '../../../components/BlobGlassCanvas';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import QuestionBlobCanvas from '../../../components/QuestionBlobCanvas';
-import { getMorphConfig } from '../../../lib/questionMorphing';
 import './MobileCreatePage.css';
 
 interface MobileCreatePageProps {
@@ -61,12 +60,6 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
-  // 設問アニメーション用
-  const [morphType, setMorphType] = useState(0);
-  const [colorA, setColorA] = useState("#F4DDD4");
-  const [colorB, setColorB] = useState("#D4887A");
-  const [transition, setTransition] = useState(0);
-
   const currentQuestion = createQuestions[currentStep];
   const progress = ((currentStep + 1) / createQuestions.length) * 100;
 
@@ -80,19 +73,6 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   ];
 
   const currentPalette = PALETTES[Math.min(currentStep, PALETTES.length - 1)];
-
-  // 回答が変更されたら形状と色を更新
-  useEffect(() => {
-    const config = getMorphConfig(answers);
-    setMorphType(config.morphType);
-    setColorA(config.colorA);
-    setColorB(config.colorB);
-
-    // トランジションアニメーション
-    setTransition(0);
-    const timer = setTimeout(() => setTransition(1), 50);
-    return () => clearTimeout(timer);
-  }, [answers]);
 
   const handleSelect = (option: string) => {
     const questionId = currentQuestion.id;
@@ -252,10 +232,6 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
                   <QuestionBlobCanvas
                     active={!isGenerating}
-                    morphType={morphType}
-                    colorA={colorA}
-                    colorB={colorB}
-                    transition={transition}
                   />
                 </div>
                 {/* CREATEタイトル（エフェクトの上に重ねる） */}
@@ -321,12 +297,8 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 1 }}>
                   <BlobGlassCanvas
                     active={stage === "generating"}
-                    maskFeather={0.1}
                     targetA={currentPalette.a}
                     targetB={currentPalette.b}
-                    psScale={0.82}
-                    psSmooth={0.6}
-                    psDistort={0.90}
                   />
                   <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: '#666', fontSize: 14 }}>
                     PLEASE WAIT<br />生成中です…
