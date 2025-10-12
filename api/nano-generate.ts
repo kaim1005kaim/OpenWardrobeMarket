@@ -54,6 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[Nano Banana] Prompt:', fullPrompt);
 
+    // @ts-ignore - generationConfigはランタイムで動作するが型定義にない
     const resp = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: fullPrompt,
