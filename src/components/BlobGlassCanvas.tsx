@@ -74,13 +74,26 @@ Blob evalBlob(vec2 uv, float time, float seed, vec2 distortOffset){
   // ガラスエフェクトの歪みをシェイプ自体に適用
   st += distortOffset * 0.12;
 
-  // 半径を fbm 的に変形（"アメーバ"）
-  float n0 = snoise(st*2.8 + vec2(time*0.35, seed));
-  float n1 = snoise(st*6.5 + vec2(-time*0.75, seed*3.1));
-  float r  = 0.30 + 0.10*n0 + 0.06*abs(n1);
+  // 時間変化するタービュランス（アメーバのように動的に変形）
+  float turbTime1 = time * 0.4;
+  float turbTime2 = time * 0.6;
+  float turbTime3 = time * 0.3;
 
-  // SDF：内側（負）
-  float d = length(st) - r;
+  // 多層ノイズで複雑な変形
+  float n0 = snoise(st*2.8 + vec2(turbTime1, seed));
+  float n1 = snoise(st*6.5 + vec2(-turbTime2, seed*3.1));
+  float n2 = snoise(st*4.2 + vec2(turbTime3*0.7, seed*1.5));
+
+  // 外側の半径（時間で変化）
+  float rOuter = 0.32 + 0.12*n0 + 0.08*abs(n1) + 0.05*n2;
+
+  // 内側の穴の半径（ドーナツ形状）
+  float rInner = 0.08 + 0.04*sin(time*0.5 + seed);
+
+  // SDF：ドーナツ形状
+  float distOuter = length(st) - rOuter;
+  float distInner = length(st) - rInner;
+  float d = max(distOuter, -distInner); // ドーナツ
 
   // カラー：時間で滑らかに遷移（cosパレット）
   float ht = fract(0.08*time + seed*0.01);
@@ -88,17 +101,22 @@ Blob evalBlob(vec2 uv, float time, float seed, vec2 distortOffset){
     u_colA*0.45 + u_colB*0.15,
     vec3(0.40), vec3(1.0,0.9,0.8), vec3(0.05,0.33,0.67));
 
-  // 中心はテーマ寄りの"コア色"に（白くしない）
-  float core = smoothstep(0.20, 0.0, length(st));
-  vec3 coreCol = mix(u_colB, u_colA, 0.65);
-  vec3 col = mix(base, coreCol, core*0.55);
+  // 真ん中のコア（同じ色相で統一）
+  float coreDist = length(st);
+  float coreStrength = smoothstep(rInner + 0.05, rInner - 0.02, coreDist);
+  vec3 coreCol = mix(u_colA, u_colB, 0.5); // テーマ色の中間
+  vec3 col = mix(base, coreCol, coreStrength * 0.7);
 
   // 微細な縦筋（内部の流体感）
   col += 0.06 * snoise(vec2(st.y*9.0 + time*0.9, seed));
 
-  // ソフトな縁のハイライト
-  float edge = smoothstep(0.018, 0.0, abs(d));
-  col += 0.10 * edge;
+  // ソフトな縁のハイライト（外側）
+  float edgeOuter = smoothstep(0.018, 0.0, abs(distOuter));
+  col += 0.10 * edgeOuter;
+
+  // 内側の縁もハイライト
+  float edgeInner = smoothstep(0.015, 0.0, abs(distInner)) * step(distInner, 0.0);
+  col += 0.08 * edgeInner;
 
   float alpha = smoothstep(0.02, -0.03, d);
   Blob b; b.col = col; b.alpha = alpha; return b;

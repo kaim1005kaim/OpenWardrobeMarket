@@ -84,14 +84,33 @@ float shape2(vec2 st, float time){
   return smoothstep(0.03, -0.01, box);
 }
 
-// 形状3: 有機的パルス（ゆっくり変形）
+// 形状3: 有機的ドーナツ（タービュランスで動的変形）
 float shape3(vec2 st, float time){
   float ang = atan(st.y, st.x);
   float r = length(st);
-  float n0 = snoise(st * 5.0 + time * 0.4);
-  float n1 = snoise(vec2(ang * 3.0, r * 7.0) + time * 0.5);
-  float n2 = snoise(st * 2.5 - time * 0.25);
-  float dist = r - 0.30 - n0 * 0.18 - n1 * 0.12 - n2 * 0.08;
+
+  // 時間変化するタービュランス
+  float turbTime1 = time * 0.5;
+  float turbTime2 = time * 0.7;
+  float turbTime3 = time * 0.4;
+
+  // 多層ノイズで複雑な変形（アメーバのように）
+  float n0 = snoise(st * 5.0 + turbTime1);
+  float n1 = snoise(vec2(ang * 3.0, r * 7.0) + turbTime2);
+  float n2 = snoise(st * 2.5 - turbTime3);
+  float n3 = snoise(st * 3.8 + vec2(turbTime1*0.6, turbTime2*0.8));
+
+  // 外側の半径
+  float rOuter = 0.32 + n0 * 0.20 + n1 * 0.15 + n2 * 0.10;
+
+  // 内側の穴の半径（時間で変化）
+  float rInner = 0.08 + 0.04*sin(time*0.6) + n3 * 0.03;
+
+  // ドーナツSDF
+  float distOuter = r - rOuter;
+  float distInner = r - rInner;
+  float dist = max(distOuter, -distInner);
+
   return smoothstep(0.04, -0.02, dist);
 }
 
