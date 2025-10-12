@@ -86,6 +86,12 @@ export default function GlassRevealCanvas({
   leftToRight=true,
 }: Props){
   const ref = useRef<HTMLCanvasElement|null>(null);
+  const onDoneRef = useRef(onDone);
+
+  // onDoneが変わったらrefを更新（useEffect再実行は防ぐ）
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
 
   useEffect(() => {
     if(!ref.current) return;
@@ -102,16 +108,26 @@ export default function GlassRevealCanvas({
 
     // 画像とガラステクスチャの読み込み
     const loader = new THREE.TextureLoader();
+    let imgLoaded = false;
+    let glassLoaded = false;
+    let raf = 0;
+    let t0 = 0;
+
     const texImg = loader.load(imageUrl, () => {
       const w = ref.current!.clientWidth || texImg.image.width;
       const h = ref.current!.clientHeight || texImg.image.height;
       renderer.setSize(w, h, false);
       mat.uniforms.u_imgTexel.value.set(1/texImg.image.width, 1/texImg.image.height);
+      imgLoaded = true;
+      if (glassLoaded && !t0) startAnimation();
     });
     texImg.minFilter = THREE.LinearFilter; texImg.magFilter = THREE.LinearFilter;
     texImg.colorSpace = THREE.SRGBColorSpace;
 
-    const texGlass = loader.load(glassURL);
+    const texGlass = loader.load(glassURL, () => {
+      glassLoaded = true;
+      if (imgLoaded && !t0) startAnimation();
+    });
     texGlass.wrapS = texGlass.wrapT = THREE.RepeatWrapping;
     texGlass.minFilter = THREE.LinearFilter;
     texGlass.magFilter = THREE.LinearFilter;
@@ -135,10 +151,8 @@ export default function GlassRevealCanvas({
     });
     scene.add(new THREE.Mesh(geo, mat));
 
-    let raf = 0;
     const revealTotal = holdMs + revealMs + settleMs;
     const total = revealTotal + displayMs;
-    const t0 = performance.now();
 
     const render = () => {
       const t = performance.now() - t0;
@@ -152,13 +166,15 @@ export default function GlassRevealCanvas({
       renderer.render(scene, cam);
       if (t < total + 50) raf = requestAnimationFrame(render);
       else {
-        onDone?.();
+        onDoneRef.current?.();
         cancelAnimationFrame(raf);
       }
     };
 
-    // activeに関わらず常に開始（done状態でも表示を継続）
-    raf = requestAnimationFrame(render);
+    const startAnimation = () => {
+      t0 = performance.now();
+      raf = requestAnimationFrame(render);
+    };
 
     const onResize = () => {
       const w = ref.current!.clientWidth, h = ref.current!.clientHeight;
@@ -172,7 +188,7 @@ export default function GlassRevealCanvas({
       geo.dispose(); mat.dispose(); texImg.dispose(); texGlass.dispose();
       renderer.dispose();
     };
-  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, settleMs, displayMs, leftToRight, active, onDone]);
+  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, settleMs, displayMs, leftToRight]);
 
   return (
     <canvas
