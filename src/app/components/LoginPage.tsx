@@ -83,10 +83,13 @@ export function LoginPage() {
 
     setIsLoading(true)
     try {
+      // Use fixed apex domain to avoid www subdomain origin mismatch
+      const appOrigin = import.meta.env.VITE_PUBLIC_APP_URL ?? window.location.origin
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${new URL(appOrigin).origin}/auth/callback`,
+          queryParams: { prompt: 'select_account' }
         },
       })
       if (error) throw error
