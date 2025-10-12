@@ -4,6 +4,11 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
 
+// Vercel Functionのタイムアウトを60秒に設定
+export const config = {
+  maxDuration: 60,
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -78,8 +83,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       forcePathStyle: true,
     });
 
-    const R2_BUCKET = process.env.R2_BUCKET || 'owm-assets';
-    const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL || 'https://pub-4215f2149d4e4f369c2bde9f2769dfd4.r2.dev';
+    const R2_BUCKET = process.env.R2_BUCKET!;
+    const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL!;
 
     const now = new Date();
     const yyyy = now.getFullYear();
