@@ -61,12 +61,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } as any);
 
     console.log('[Gemini API] Generation response received');
+    console.log('[Gemini API] Response structure:', JSON.stringify({
+      hasCandidates: !!resp.candidates,
+      candidatesLength: resp.candidates?.length,
+      firstCandidate: resp.candidates?.[0] ? {
+        hasContent: !!resp.candidates[0].content,
+        hasParts: !!resp.candidates[0].content?.parts,
+        partsLength: resp.candidates[0].content?.parts?.length,
+        finishReason: resp.candidates[0].finishReason,
+        safetyRatings: resp.candidates[0].safetyRatings,
+      } : null,
+    }, null, 2));
 
     const parts: any[] = resp.candidates?.[0]?.content?.parts ?? [];
+    console.log('[Gemini API] Parts:', parts.map((p: any) => ({
+      hasInlineData: !!p.inlineData,
+      hasText: !!p.text,
+      keys: Object.keys(p),
+    })));
+
     const inline = parts.find((p: any) => p.inlineData)?.inlineData;
 
     if (!inline?.data) {
       console.error('[Gemini API] No image data in response');
+      console.error('[Gemini API] Full response:', JSON.stringify(resp, null, 2));
       return res.status(500).json({ error: 'No image generated' });
     }
 
