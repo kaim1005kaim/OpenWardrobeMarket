@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { MobileHomePage } from './pages/mobile/MobileHomePage';
 import { MobileGalleryPage } from './pages/mobile/MobileGalleryPage';
 import { MobileCreatePage } from './pages/mobile/MobileCreatePage';
 import { MobileMyPage } from './pages/mobile/MobileMyPage';
 import { LoginPage } from './components/LoginPage';
+import { WebViewWarning } from './components/mobile/WebViewWarning';
+import { isWebView } from './lib/utils/detectWebView';
 import './MobileApp.css';
 
 type MobilePage = 'login' | 'home' | 'gallery' | 'create' | 'mypage' | 'faq' | 'contact' | 'privacy';
@@ -12,6 +14,14 @@ type MobilePage = 'login' | 'home' | 'gallery' | 'create' | 'mypage' | 'faq' | '
 function MobileAppContent() {
   const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState<MobilePage>('home');
+  const [showWebViewWarning, setShowWebViewWarning] = useState(false);
+
+  useEffect(() => {
+    // WebView検出（未認証時のみ）
+    if (!user && isWebView()) {
+      setShowWebViewWarning(true);
+    }
+  }, [user]);
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page as MobilePage);
@@ -92,9 +102,17 @@ function MobileAppContent() {
   };
 
   return (
-    <div className="mobile-app">
-      {renderPage()}
-    </div>
+    <>
+      <div className="mobile-app">
+        {renderPage()}
+      </div>
+
+      {/* WebView Warning Modal */}
+      <WebViewWarning
+        isOpen={showWebViewWarning}
+        onClose={() => setShowWebViewWarning(false)}
+      />
+    </>
   );
 }
 
