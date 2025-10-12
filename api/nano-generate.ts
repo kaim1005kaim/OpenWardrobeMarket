@@ -62,9 +62,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[Vertex AI] Prompt:', fullPrompt);
 
-    // Imagen 3で画像生成
+    // Imagen 3 Fast (Nano Banana)で高速画像生成
     const generativeModel = vertexAI.preview.getGenerativeModel({
-      model: 'imagen-3.0-generate-001',
+      model: 'imagen-3.0-fast-generate-001',
     });
 
     const result = await generativeModel.generateContent({
@@ -137,7 +137,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .insert({
         user_id: user.id,
         provider: 'vertex-ai',
-        model: 'imagen-3.0-generate-001',
+        model: 'imagen-3.0-fast-generate-001',
         prompt,
         negative_prompt: negative,
         aspect_ratio: aspectRatio,
