@@ -84,11 +84,12 @@ export function LoginPage() {
     setIsLoading(true)
     try {
       // Use fixed apex domain to avoid www subdomain origin mismatch
-      const appOrigin = import.meta.env.VITE_PUBLIC_APP_URL ?? window.location.origin
+      const appOrigin = import.meta.env.VITE_PUBLIC_APP_URL || 'https://open-wardrobe-market.com'
+      const redirectUrl = appOrigin.replace(/^https?:\/\/www\./, 'https://')
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${new URL(appOrigin).origin}/auth/callback`,
+          redirectTo: `${redirectUrl}/auth/callback`,
           queryParams: { prompt: 'select_account' }
         },
       })
