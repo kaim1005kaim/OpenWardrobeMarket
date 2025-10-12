@@ -41,22 +41,22 @@ float field(vec2 p){
   // アスペクト補正
   p.x *= u_res.x/u_res.y;
 
-  // 3つのメタボールを時間でスイング
+  // 3つのメタボールを時間でスイング（サイズ大きく）
   float t = u_time*0.35;
-  vec2 c0 = vec2( 0.0 + 0.22*sin(t+u_seed),  0.02 + 0.18*cos(t*0.9+u_seed));
-  vec2 c1 = vec2(-0.18 + 0.17*cos(t*0.7+2.0),-0.10 + 0.19*sin(t*1.1+1.3));
-  vec2 c2 = vec2( 0.20 + 0.15*sin(t*0.6+3.1),-0.04 + 0.16*cos(t*0.8+0.7));
+  vec2 c0 = vec2( 0.0 + 0.35*sin(t+u_seed),  0.02 + 0.30*cos(t*0.9+u_seed));
+  vec2 c1 = vec2(-0.28 + 0.28*cos(t*0.7+2.0),-0.15 + 0.32*sin(t*1.1+1.3));
+  vec2 c2 = vec2( 0.32 + 0.25*sin(t*0.6+3.1),-0.06 + 0.28*cos(t*0.8+0.7));
   g_center = (c0+c1+c2)/3.0;
 
   // スカラー場：exp(-k r^2) の和
-  float k = 6.0;
+  float k = 5.5;  // 少し下げてサイズ大きく
   float F = 0.0;
   F += exp(-k*dot(p-c0,p-c0));
   F += exp(-k*dot(p-c1,p-c1));
   F += exp(-k*dot(p-c2,p-c2));
 
   // 低周波ノイズで輪郭をわずかに揺らす
-  F += 0.15*fbm(p*1.2 + vec2(t*0.2, -t*0.17));
+  F += 0.12*fbm(p*1.0 + vec2(t*0.2, -t*0.17));  // 周波数下げる
 
   return F;
 }
@@ -66,40 +66,39 @@ void main(){
   float F = field(uv);
   vec2 center = g_center;
 
-  // iso面（内外の境界）
-  float iso = 0.95;
+  // iso面（内外の境界） - iso値下げて滑らかに
+  float iso = 0.88;
   float d = iso - F;              // 負:内側 / 正:外側
-  float edge = smoothstep(0.02, 0.0, abs(d));
-  float alpha = smoothstep(0.015, -0.035, d);  // ふちで自然にフェード
-
-  // ---- 色（核→内→縁） ----
-  // 核は重心からの距離 + 低周波でゆらぎ
-  vec2 uvCorr = uv; uvCorr.x *= u_res.x/u_res.y;
-  vec2 centCorr = center; centCorr.x *= u_res.x/u_res.y;
-  float rCore = length(uvCorr - centCorr);
-  float coreMask = smoothstep(0.45, 0.0, rCore + 0.12*fbm(uv*1.1 + u_time*0.15));
+  float edge = smoothstep(0.03, 0.0, abs(d));
+  float alpha = smoothstep(0.02, -0.05, d);  // 幅広げて滑らか
 
   // 時間で色相をわずかに往復（全体のトーン変化）
   float w = 0.5 + 0.5*sin(u_time*0.25);
   vec3 baseA = mix(u_colA, u_colB, 0.15*w);
   vec3 baseB = mix(u_colB, u_colA, 0.10*(1.0-w));
 
-  // 内部ベース色
-  vec3 col = mix(baseA, baseB, 0.5 + 0.5*fbm(uv*2.0 + u_time*0.1));
-  // 核の加算（内側のみ）
-  col = mix(col, u_coreCol, coreMask * 0.85);
-  // 縁ハイライト
-  col += 0.12*edge;
-
   // ---- ガラス縦スリット屈折（水平のみ） ----
+  // まず屈折用のオフセットを計算
   float g = texture2D(u_glass, vUv).r;
   float gL = texture2D(u_glass, vUv + vec2(-1.0/u_res.x, 0.0)).r;
   float dx = (g - gL);
-  vec2 offset = vec2(dx, 0.0) * u_refract * 0.75;
 
-  // 屈折は"表示色"ではなく"座標サンプル"に適用
-  // 背景は透過なので、ここでは色だけオフセットして再評価の代替として軽量化
-  col = mix(col, col, 1.0); // no-op（構造保持）
+  // 屈折を適用したUVで再サンプリング
+  vec2 distortedUv = uv + vec2(dx, 0.0) * u_refract * 2.5;
+  vec2 distortedUvCorr = distortedUv; distortedUvCorr.x *= u_res.x/u_res.y;
+
+  // 屈折後の色を再計算
+  vec3 col = mix(baseA, baseB, 0.5 + 0.5*fbm(distortedUv*2.0 + u_time*0.1));
+
+  // 核は屈折後の座標で
+  vec2 distortedCentCorr = center; distortedCentCorr.x *= u_res.x/u_res.y;
+  float rCoreDistorted = length(distortedUvCorr - distortedCentCorr);
+  float coreMaskDistorted = smoothstep(0.45, 0.0, rCoreDistorted + 0.12*fbm(distortedUv*1.1 + u_time*0.15));
+
+  // 核の加算（内側のみ）
+  col = mix(col, u_coreCol, coreMaskDistorted * 0.85);
+  // 縁ハイライト
+  col += 0.12*edge;
 
   gl_FragColor = vec4(col, alpha);
 }
