@@ -115,7 +115,7 @@ export function LoginPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -124,9 +124,17 @@ export function LoginPage() {
       })
       if (error) throw error
 
+      // サインアップ後、自動ログインされたセッションをクリア
+      if (data.session) {
+        await supabase.auth.signOut()
+      }
+
       alert('確認メールを送信しました。メールのリンクをクリックして登録を完了してください。')
       setPageMode('login')
       setAuthMode('password')
+      setEmail('')
+      setPassword('')
+      setConfirmPassword('')
     } catch (error: any) {
       console.error('Signup error:', error)
       setError(error.message || '登録に失敗しました')
