@@ -113,11 +113,11 @@ void main(){
 
   // ===== 擬似ガラス効果（縦スリット陰影） =====
   // 1) ガラステクスチャをタイルして縦スリット強調
-  vec2 gUv = vec2(vUv.x * u_glassScale, vUv.y);
-  float h = texture2D(u_glass, gUv).r;
+  vec2 ribUv = vec2(vUv.x * u_glassScale, vUv.y);
+  float ribHeight = texture2D(u_glass, ribUv).r;
 
   // ハイパスっぽくメリハリを付ける
-  float rib = smoothstep(0.35, 0.65, h);
+  float rib = smoothstep(0.35, 0.65, ribHeight);
   rib = pow(abs(rib - 0.5) * 2.0, 0.9);
 
   // 2) 合成：色の明暗＋アルファへも少し反映
