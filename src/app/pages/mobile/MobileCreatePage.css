@@ -31,15 +31,19 @@
   justify-content: center;
 }
 
-.create-logo {
+.create-logo-btn {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+  background: transparent;
+  border: none;
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.1em;
   color: white;
+  cursor: pointer;
+  padding: 8px 16px;
 }
 
 /* Content */

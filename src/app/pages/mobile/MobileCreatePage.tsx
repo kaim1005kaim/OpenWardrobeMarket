@@ -292,7 +292,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
             <path d="M3 12H21M3 6H21M3 18H21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </button>
-        <div className="create-logo">CREATE</div>
+        <button className="create-logo-btn" onClick={() => onNavigate?.('home')}>OWM</button>
       </header>
 
       <div className="create-content">

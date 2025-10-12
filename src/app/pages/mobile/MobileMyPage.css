@@ -27,29 +27,33 @@
   gap: 16px;
 }
 
-.header-text {
+.header-text-btn {
+  background: none;
+  border: none;
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 2px;
   color: #000000;
+  cursor: pointer;
+  padding: 4px 8px;
 }
 
 /* Title Section */
 .title-section {
   position: relative;
-  padding: 40px 20px 20px;
+  padding: 8px 20px 80px;
   text-align: center;
   background: #EEECE6;
 }
 
 .page-title {
   font-family: "Trajan Pro 3", "Cinzel", serif;
-  font-size: 36px;
+  font-size: 56px;
   font-weight: 400;
-  letter-spacing: 4px;
+  letter-spacing: 2px;
   color: #000000;
-  margin: 0 0 20px 0;
+  margin: 0;
   position: relative;
   z-index: 1;
 }
@@ -59,10 +63,12 @@
   height: 120px;
   border-radius: 50%;
   overflow: hidden;
-  margin: -40px auto 0;
-  background: #FFFFFF;
-  border: 3px solid #EEECE6;
-  position: relative;
+  background: #D0CEC8;
+  border: none;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 2;
 }
 

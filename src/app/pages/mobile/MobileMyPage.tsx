@@ -58,7 +58,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
               </svg>
             </button>
             <div className="header-actions">
-              <span className="header-text">OWM</span>
+              <button className="header-text-btn" onClick={() => onNavigate?.('home')}>OWM</button>
             </div>
           </div>
 
@@ -81,7 +81,6 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
                 <polyline points="6 9 9 12 12 9" />
               </svg>
             </button>
-            <div className="profile-badge">SUBSCRIBED</div>
             <div className="profile-rating">
               <span className="star">★</span>
               <span className="star">★</span>
@@ -89,6 +88,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
               <span className="star">★</span>
               <span className="star empty">☆</span>
             </div>
+            <div className="profile-badge">SUBSCRIBED</div>
             <p className="profile-bio">
               プロフィール文章が表示されます。プロフィール文章が表示されます。プロフィール文章が表示されます。プロフィール文章が表示されます。
             </p>
