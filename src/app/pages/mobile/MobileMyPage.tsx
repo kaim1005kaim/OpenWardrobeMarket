@@ -196,7 +196,8 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
                           id: item.id,
                           src: item.image_url || item.preview_url || '',
                           title: item.prompt || 'Generated Design',
-                          category: 'Generated',
+                          tags: ['Generated'],
+                          type: 'generated',
                           price: 0,
                           likes: 0
                         };
