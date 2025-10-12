@@ -12,6 +12,55 @@
   overflow: hidden;
 }
 
+/* Mode Toggle */
+.mode-toggle {
+  position: absolute;
+  top: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+}
+
+.mode-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 12px;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.mode-btn.active {
+  border-color: white;
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mode-btn:hover:not(:disabled) {
+  border-color: white;
+  color: white;
+}
+
+.mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Magic Link Description */
+.magic-link-description {
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  margin: 0 0 20px 0;
+}
+
 .error-message {
   background: rgba(255, 0, 0, 0.1);
   border: 1px solid rgba(255, 0, 0, 0.5);

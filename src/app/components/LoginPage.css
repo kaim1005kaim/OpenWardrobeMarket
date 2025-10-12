@@ -45,6 +45,101 @@
   z-index: 10;
 }
 
+/* Mode Toggle */
+.login-mode-toggle {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.login-mode-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 12px;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.login-mode-btn.active {
+  border-color: white;
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.login-mode-btn:hover:not(:disabled) {
+  border-color: white;
+  color: white;
+}
+
+.login-mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Messages */
+.login-error-message {
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.5);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 12px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.login-success-message {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.magic-link-info {
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  margin: 0 0 20px 0;
+}
+
+/* Submit Button */
+.login-submit-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  padding: 12px;
+  margin-top: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.login-submit-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.login-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .brand-title {
   font-family: "Trajan Pro 3", "Cinzel", serif;
   font-weight: 400;

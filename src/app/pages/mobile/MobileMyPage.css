@@ -228,6 +228,51 @@
   min-height: 300px;
 }
 
+/* Loading and Empty States */
+.loading-message {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 20px;
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 14px;
+  color: #999999;
+}
+
+.empty-message {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.empty-message p {
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 14px;
+  color: #666666;
+  margin: 0;
+}
+
+.empty-message .create-btn {
+  background: #000000;
+  color: #FFFFFF;
+  border: none;
+  padding: 12px 24px;
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.empty-message .create-btn:active {
+  background: #333333;
+  transform: scale(0.98);
+}
+
 .asset-card {
   aspect-ratio: 3 / 4;
   position: relative;

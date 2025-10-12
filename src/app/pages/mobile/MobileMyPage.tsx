@@ -4,6 +4,7 @@ import { BottomNavigation } from '../../components/mobile/BottomNavigation';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
 import { useAuth } from '../../lib/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { Asset } from '../../lib/types';
 import './MobileMyPage.css';
 
@@ -13,17 +14,56 @@ interface MobileMyPageProps {
 
 type TabType = 'publish' | 'drafts' | 'collections' | 'own';
 
+interface GenerationHistory {
+  id: string;
+  user_id: string;
+  image_url: string;
+  preview_url: string | null;
+  prompt: string | null;
+  created_at: string;
+  completion_status: string;
+  is_public: boolean;
+}
+
 export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const { user } = useAuth();
   const [activeSection, setActiveSection] = useState<'design' | 'setting'>('design');
-  const [activeTab, setActiveTab] = useState<TabType>('publish');
+  const [activeTab, setActiveTab] = useState<TabType>('own');
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [generationHistory, setGenerationHistory] = useState<GenerationHistory[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    fetchAssets(activeTab);
-  }, [activeTab]);
+    if (activeTab === 'own') {
+      fetchGenerationHistory();
+    } else {
+      fetchAssets(activeTab);
+    }
+  }, [activeTab, user]);
+
+  const fetchGenerationHistory = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('generation_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('completion_status', 'completed')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setGenerationHistory(data || []);
+    } catch (error) {
+      console.error('Error fetching generation history:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchAssets = async (tab: TabType) => {
     // TODO: Fetch from API based on tab
@@ -143,7 +183,46 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
 
               {/* Grid */}
               <div className="assets-grid">
-                {assets.length > 0 ? (
+                {isLoading ? (
+                  <div className="loading-message">読み込み中...</div>
+                ) : activeTab === 'own' && generationHistory.length > 0 ? (
+                  generationHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      className="asset-card"
+                      onClick={() => {
+                        // Convert generation history to Asset format for modal
+                        const assetFromHistory: Asset = {
+                          id: item.id,
+                          src: item.image_url || item.preview_url || '',
+                          title: item.prompt || 'Generated Design',
+                          category: 'Generated',
+                          price: 0,
+                          likes: 0
+                        };
+                        setSelectedAsset(assetFromHistory);
+                      }}
+                    >
+                      <div className="card-image">
+                        <img
+                          src={item.image_url || item.preview_url || 'https://via.placeholder.com/300?text=No+Image'}
+                          alt={item.prompt || 'Generated Design'}
+                          loading="lazy"
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : activeTab === 'own' && generationHistory.length === 0 ? (
+                  <div className="empty-message">
+                    <p>まだ作成したデザインがありません</p>
+                    <button
+                      className="create-btn"
+                      onClick={() => onNavigate?.('create')}
+                    >
+                      デザインを作成する
+                    </button>
+                  </div>
+                ) : assets.length > 0 ? (
                   assets.map((asset) => (
                     <div
                       key={asset.id}
