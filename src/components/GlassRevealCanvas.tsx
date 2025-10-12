@@ -9,7 +9,6 @@ void main(){ vUv = uv; gl_Position = vec4(position.xy,0.,1.); }
 
 // Glass Stripe Reveal: 縦ストライプのシャッターエフェクト + 画像フェードイン
 const FRAG = `
-#extension GL_OES_standard_derivatives : enable
 precision highp float;
 varying vec2 vUv;
 uniform sampler2D u_img;
@@ -157,6 +156,8 @@ export default function GlassRevealCanvas({
       fragmentShader: FRAG,
       transparent: true,
     });
+    // dFdx/dFdy を使うため derivatives 拡張を有効化（WebGL1対応）
+    mat.extensions.derivatives = true;
     scene.add(new THREE.Mesh(geo, mat));
 
     const fadeInMs = 400;  // フェードイン時間

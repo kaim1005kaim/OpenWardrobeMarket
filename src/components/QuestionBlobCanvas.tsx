@@ -9,7 +9,7 @@ void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
 
 // ---- メタボールSDF + fBm + ガラス縦スリット ----
 const FRAG = /* glsl */`
-#extension GL_OES_standard_derivatives : enable
+
 precision highp float;
 varying vec2 vUv;
 
@@ -171,6 +171,8 @@ export default function BlobGlassCanvas({
       },
       vertexShader: VERT, fragmentShader: FRAG, transparent: true
     });
+    // dFdx/dFdy を使うため derivatives 拡張を有効化（WebGL1対応）
+    mat.extensions.derivatives = true;
     const mesh = new THREE.Mesh(geo,mat); scene.add(mesh);
 
     let raf=0; const t0=performance.now();
