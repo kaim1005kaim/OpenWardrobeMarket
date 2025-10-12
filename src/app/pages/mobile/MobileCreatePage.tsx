@@ -47,13 +47,14 @@ const createQuestions: Question[] = [
   },
 ];
 
-type Stage = "idle" | "generating" | "revealing" | "done";
+type Stage = "idle" | "generating" | "revealing";
 
 export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [stage, setStage] = useState<Stage>("idle");
+  const [showButtons, setShowButtons] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStatus, setGenerationStatus] = useState('');
@@ -197,8 +198,18 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   };
 
   const handleRevealDone = () => {
-    setStage("done");
-    // isGenerating は done 状態でも true のままにして、生成完了画面を表示
+    console.log('[MobileCreatePage] handleRevealDone called - showing buttons');
+    setShowButtons(true);
+  };
+
+  const handlePublish = () => {
+    console.log('[MobileCreatePage] handlePublish called');
+    // TODO: 公開処理
+  };
+
+  const handleSaveDraft = () => {
+    console.log('[MobileCreatePage] handleSaveDraft called');
+    // TODO: ドラフト保存処理
   };
 
   const handleMenuNavigate = (page: string) => {
@@ -306,79 +317,24 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 </div>
               )}
 
-              {/* 受信後の"Glass Stripe Reveal" */}
+              {/* 受信後の"Glass Stripe Reveal" → 完成品表示（同じCanvas） */}
               {stage === "revealing" && imageUrl && (
                 <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
                   <GlassRevealCanvas
                     imageUrl={imageUrl}
+                    showButtons={showButtons}
+                    onRevealDone={handleRevealDone}
+                    onPublish={handlePublish}
+                    onSaveDraft={handleSaveDraft}
                     stripes={48}
                     jitter={0.08}
                     strength={0.9}
-                    holdMs={600}
+                    holdMs={3000}
                     revealMs={1200}
-                    settleMs={400}
-                    displayMs={5000}
                     leftToRight={true}
                     active={true}
-                    onDone={handleRevealDone}
                   />
                 </div>
-              )}
-
-              {/* 完成表示（完成品画像＋ボタン） */}
-              {stage === "done" && imageUrl && (
-                <>
-                  <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
-                    <img
-                      src={imageUrl}
-                      alt="Generated outfit"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </div>
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    padding: '24px 16px',
-                    display: 'flex',
-                    gap: 12,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)',
-                    zIndex: 3
-                  }}>
-                    <button
-                      style={{
-                        flex: 1,
-                        padding: '14px 20px',
-                        background: 'rgba(255,255,255,0.95)',
-                        border: 'none',
-                        borderRadius: 12,
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                        fontSize: 15
-                      }}
-                      onClick={() => alert('ドラフト保存機能は実装予定です')}
-                    >
-                      ドラフトに保存
-                    </button>
-                    <button
-                      style={{
-                        flex: 1,
-                        padding: '14px 20px',
-                        background: '#000',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 12,
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                        fontSize: 15
-                      }}
-                      onClick={() => onNavigate?.('mypage')}
-                    >
-                      公開する
-                    </button>
-                  </div>
-                </>
               )}
             </div>
           )}

@@ -60,15 +60,16 @@ void main(){
 
 type Props = {
   imageUrl: string;                // 完成画像URL
-  onDone?: () => void;
+  onRevealDone?: () => void;       // リビール完了時（エフェクトOFF状態維持）
+  showButtons?: boolean;           // 公開ボタン表示フラグ
+  onPublish?: () => void;          // 公開ボタン押下時
+  onSaveDraft?: () => void;        // ドラフト保存ボタン押下時
   active?: boolean;                // 互換性のため
   stripes?: number;                // default 48
   jitter?: number;                 // default 0.08
   strength?: number;               // default 0.9
-  holdMs?: number;                 // default 600
-  revealMs?: number;               // default 1200
-  settleMs?: number;               // default 400
-  displayMs?: number;              // default 5000 (完成画像を表示する時間)
+  holdMs?: number;                 // default 3000 (エフェクトON状態で待機)
+  revealMs?: number;               // default 1200 (左→右に解除)
   leftToRight?: boolean;           // default true
 
   // 旧パラメータ（互換性のため無視）
@@ -77,21 +78,25 @@ type Props = {
   glassScale?: [number, number];
   glassRotate?: number;
   maskFeather?: number;
+  settleMs?: number;
+  displayMs?: number;
+  onDone?: () => void;
 };
 
 export default function GlassRevealCanvas({
-  imageUrl, onDone, active = true,
+  imageUrl, onRevealDone, showButtons = false, onPublish, onSaveDraft,
+  active = true,
   stripes=48, jitter=0.08, strength=0.9,
-  holdMs=600, revealMs=1200, settleMs=400, displayMs=5000,
+  holdMs=3000, revealMs=1200,
   leftToRight=true,
 }: Props){
   const ref = useRef<HTMLCanvasElement|null>(null);
-  const onDoneRef = useRef(onDone);
+  const onRevealDoneRef = useRef(onRevealDone);
 
-  // onDoneが変わったらrefを更新（useEffect再実行は防ぐ）
+  // onRevealDoneが変わったらrefを更新（useEffect再実行は防ぐ）
   useEffect(() => {
-    onDoneRef.current = onDone;
-  }, [onDone]);
+    onRevealDoneRef.current = onRevealDone;
+  }, [onRevealDone]);
 
   useEffect(() => {
     if(!ref.current) return;
@@ -151,24 +156,29 @@ export default function GlassRevealCanvas({
     });
     scene.add(new THREE.Mesh(geo, mat));
 
-    const revealTotal = holdMs + revealMs + settleMs;
-    const total = revealTotal + displayMs;
+    const total = holdMs + revealMs;
 
     const render = () => {
       const t = performance.now() - t0;
       let p = 0;
-      if (t <= holdMs) p = 0;
-      else if (t <= holdMs + revealMs) p = (t - holdMs) / revealMs;         // 0→1
-      else if (t <= revealTotal) p = 1.0;                                   // リビール完了
-      else if (t <= total) p = 1.0;                                         // 完成画像を表示
+      if (t <= holdMs) {
+        p = 0;  // エフェクトON状態で待機
+      } else if (t <= total) {
+        p = (t - holdMs) / revealMs;  // 0→1 左から右に解除
+      } else {
+        p = 1.0;  // エフェクトOFF状態を維持
+      }
       (mat.uniforms.u_progress.value as number) = p;
 
       renderer.render(scene, cam);
-      if (t < total + 50) raf = requestAnimationFrame(render);
-      else {
-        onDoneRef.current?.();
-        cancelAnimationFrame(raf);
+
+      // リビール完了時に一度だけonRevealDone呼び出し
+      if (t >= total && t < total + 50) {
+        onRevealDoneRef.current?.();
       }
+
+      // アニメーションは継続（エフェクトOFF状態を表示し続ける）
+      raf = requestAnimationFrame(render);
     };
 
     const startAnimation = () => {
@@ -188,12 +198,61 @@ export default function GlassRevealCanvas({
       geo.dispose(); mat.dispose(); texImg.dispose(); texGlass.dispose();
       renderer.dispose();
     };
-  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, settleMs, displayMs, leftToRight]);
+  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, leftToRight]);
 
   return (
-    <canvas
-      ref={ref}
-      style={{ width: "100%", height: "100%", display: "block", pointerEvents: "none" }}
-    />
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <canvas
+        ref={ref}
+        style={{ width: "100%", height: "100%", display: "block", pointerEvents: "none" }}
+      />
+      {showButtons && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: "20px",
+            background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)",
+            display: "flex",
+            gap: "12px",
+            justifyContent: "center",
+            pointerEvents: "auto",
+          }}
+        >
+          <button
+            onClick={onSaveDraft}
+            style={{
+              padding: "12px 24px",
+              fontSize: "16px",
+              fontWeight: 600,
+              color: "#fff",
+              background: "rgba(255,255,255,0.2)",
+              border: "1px solid rgba(255,255,255,0.3)",
+              borderRadius: "8px",
+              cursor: "pointer",
+            }}
+          >
+            ドラフトに保存
+          </button>
+          <button
+            onClick={onPublish}
+            style={{
+              padding: "12px 24px",
+              fontSize: "16px",
+              fontWeight: 600,
+              color: "#000",
+              background: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+            }}
+          >
+            公開する
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
