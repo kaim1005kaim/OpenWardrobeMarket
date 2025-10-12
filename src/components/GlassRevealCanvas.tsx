@@ -162,7 +162,7 @@ export default function GlassRevealCanvas({
     scene.add(new THREE.Mesh(geo, mat));
 
     const fadeInMs = 400;  // フェードイン時間
-    const settleMs = 300;  // リビール完了後の安定時間
+    const settleMs = 700;  // リビール完了後の安定時間（エフェクト完全OFF確認用）
     const total = fadeInMs + holdMs + revealMs + settleMs;
 
     let revealDoneCalled = false;

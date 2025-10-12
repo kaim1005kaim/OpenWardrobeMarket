@@ -76,8 +76,8 @@ void main(){
   float gL = texture2D(u_glass, vUv + vec2(-1.0/u_res.x, 0.0)).r;
   float dx = (g - gL);  // X軸方向の勾配
 
-  // 水平方向にのみ屈折オフセット
-  vec2 refractOffset = vec2(dx * u_refract * 0.015, 0.0);
+  // 水平方向にのみ屈折オフセット（強度を大幅に上げる）
+  vec2 refractOffset = vec2(dx * u_refract * 0.08, 0.0);
 
   // 形状評価（元のUV）
   float F = field(uv);
