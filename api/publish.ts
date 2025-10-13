@@ -173,9 +173,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (error) {
     console.error('[Publish] Error:', error);
-    res.status(500).json({ 
+    console.error('[Publish] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('[Publish] Supabase URL configured:', !!supabaseUrl);
+    console.error('[Publish] Supabase Key configured:', !!supabaseAnonKey);
+
+    res.status(500).json({
       error: 'Publication failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     });
   }
 }
