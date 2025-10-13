@@ -59,7 +59,11 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
       if (catalogResponse.ok) {
         const catalogData = await catalogResponse.json();
         if (catalogData.images && catalogData.images.length > 0) {
-          catalogItems = catalogData.images;
+          // カタログアイテムにcreator: 'OWM'を追加
+          catalogItems = catalogData.images.map((item: any) => ({
+            ...item,
+            creator: 'OWM',
+          }));
         }
       }
 
