@@ -69,8 +69,23 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       const { posterUrl } = await composeRes.json();
       console.log('[MobilePublishFormPage] Poster composed:', posterUrl);
 
-      // 2. Supabaseに保存（TODO: 実装）
-      // await saveToSupabase({ ...publishData, posterUrl, originalUrl: imageUrl });
+      // 2. Supabaseに保存
+      const publishRes = await fetch(`${apiUrl}/api/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...publishData,
+          posterUrl,
+          originalUrl: imageUrl,
+        }),
+      });
+
+      if (!publishRes.ok) {
+        throw new Error('公開に失敗しました');
+      }
+
+      const { item } = await publishRes.json();
+      console.log('[MobilePublishFormPage] Item published:', item.id);
 
       // 3. 完了画面に遷移
       if (onPublish) {

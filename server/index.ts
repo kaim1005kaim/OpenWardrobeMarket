@@ -7,6 +7,7 @@ import { statusRoutes } from './routes/status';
 import { trendsRoutes } from './routes/trends';
 import { router as nanoBananaRoutes } from './routes/nanobanana';
 import composePosterRoutes from './routes/compose-poster';
+import publishRoutes from './routes/publish';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -36,6 +37,7 @@ app.use('/api', statusRoutes);
 app.use('/api', trendsRoutes);
 app.use('/api', nanoBananaRoutes);
 app.use('/api/compose-poster', composePosterRoutes);
+app.use('/api/publish', publishRoutes);
 
 // Error handler
 app.use((error: any, req: any, res: any, next: any) => {

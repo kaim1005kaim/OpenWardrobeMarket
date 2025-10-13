@@ -26,16 +26,50 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
   const fetchAssets = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/catalog');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.images && data.images.length > 0) {
-          setAssets(data.images);
-        } else {
-          // Fallback: ダミーデータ
-          setAssets(generateDummyAssets(30));
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+
+      // 1. 公開されたアイテムを取得
+      const publishedResponse = await fetch(`${apiUrl}/api/publish`);
+      let publishedItems: Asset[] = [];
+
+      if (publishedResponse.ok) {
+        const publishedData = await publishedResponse.json();
+        if (publishedData.items && publishedData.items.length > 0) {
+          // published_itemsをAsset型に変換
+          publishedItems = publishedData.items.map((item: any) => ({
+            id: item.id,
+            url: item.poster_url, // ポスターURLを表示
+            title: item.title,
+            description: item.description,
+            price: item.price,
+            likes: item.likes || 0,
+            saves: 0,
+            tags: item.tags || [],
+            width: 1080,
+            height: 1350,
+          }));
+          console.log('[MobileGalleryPage] Loaded published items:', publishedItems.length);
         }
+      }
+
+      // 2. カタログデータを取得
+      const catalogResponse = await fetch('/api/catalog');
+      let catalogItems: Asset[] = [];
+
+      if (catalogResponse.ok) {
+        const catalogData = await catalogResponse.json();
+        if (catalogData.images && catalogData.images.length > 0) {
+          catalogItems = catalogData.images;
+        }
+      }
+
+      // 3. 公開アイテムをカタログの上に表示
+      if (publishedItems.length > 0) {
+        setAssets([...publishedItems, ...catalogItems]);
+      } else if (catalogItems.length > 0) {
+        setAssets(catalogItems);
       } else {
+        // Fallback: ダミーデータ
         setAssets(generateDummyAssets(30));
       }
     } catch (error) {
