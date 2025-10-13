@@ -1,7 +1,49 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '../src/app/lib/supabase';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+const supabaseUrl = process.env.VITE_SUPABASE_URL!;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // GET - 公開アイテム一覧を取得
+  if (req.method === 'GET') {
+    try {
+      const limit = Number(req.query.limit) || 50;
+      const offset = Number(req.query.offset) || 0;
+
+      const { data, error } = await supabase
+        .from('published_items')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) throw error;
+
+      return res.status(200).json({
+        success: true,
+        items: data,
+        count: data.length
+      });
+    } catch (error) {
+      console.error('[Publish GET] Error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -13,14 +55,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     description,
     tags,
     price,
-    image_url
+    image_url,
+    posterUrl,
+    originalUrl,
+    saleType,
+    category
   } = req.body;
 
   // バリデーション
-  if (!asset_id || !user_id || !title || !price || !image_url) {
-    return res.status(400).json({ 
+  if (!title || !category || !posterUrl || !originalUrl) {
+    return res.status(400).json({
       error: 'Missing required fields',
-      required: ['asset_id', 'user_id', 'title', 'price', 'image_url']
+      required: ['title', 'category', 'posterUrl', 'originalUrl']
     });
   }
 
@@ -71,19 +117,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: publishData, error: publishError } = await supabase
       .from('published_items')
       .insert({
-        user_id,
-        image_id: asset_id,
+        user_id: user_id || null,
+        image_id: asset_id || null,
         title: title.trim(),
         description: description?.trim() || '',
-        price: Math.round(price),
+        price: Math.round(price || 0),
         tags: tags || [],
-        status: 'active',
-        metadata: {
-          source: 'ai_generated',
-          published_from: 'app',
-          original_prompt: req.body.original_prompt || null,
-          generation_params: req.body.generation_params || null
-        }
+        category: category,
+        poster_url: posterUrl,
+        original_url: originalUrl,
+        sale_type: saleType || 'buyout',
+        is_active: true
       })
       .select()
       .single();
