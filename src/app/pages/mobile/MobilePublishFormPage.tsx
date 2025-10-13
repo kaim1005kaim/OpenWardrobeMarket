@@ -42,6 +42,13 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
   };
 
   const handlePublish = async () => {
+    // ログインチェック
+    if (!user?.id) {
+      alert('ログインが必要です');
+      onNavigate?.('login');
+      return;
+    }
+
     // バリデーション
     if (!title.trim()) {
       alert('タイトルを入力してください');
@@ -104,7 +111,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
         ...publishData,
         posterUrl,
         originalUrl: imageUrl,
-        user_id: user?.id || '00000000-0000-0000-0000-000000000001', // ログインユーザーのIDを使用、未ログインの場合はダミーID
+        user_id: user!.id, // ログインユーザーのID（handlePublish冒頭でチェック済み）
       };
       console.log('[MobilePublishFormPage] requestBody keys:', Object.keys(requestBody));
       console.log('[MobilePublishFormPage] requestBody.posterUrl:', requestBody.posterUrl);
