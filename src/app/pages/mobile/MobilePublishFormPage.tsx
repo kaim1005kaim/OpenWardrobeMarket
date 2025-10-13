@@ -56,14 +56,21 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
 
       // 1. ポスター合成APIを呼び出し
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+      console.log('[MobilePublishFormPage] API URL:', apiUrl);
+      console.log('[MobilePublishFormPage] Image URL:', imageUrl);
+
       const composeRes = await fetch(`${apiUrl}/api/compose-poster`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageUrl }),
       });
 
+      console.log('[MobilePublishFormPage] Compose response status:', composeRes.status);
+
       if (!composeRes.ok) {
-        throw new Error('ポスター合成に失敗しました');
+        const errorText = await composeRes.text();
+        console.error('[MobilePublishFormPage] Compose error response:', errorText);
+        throw new Error(`ポスター合成に失敗しました: ${composeRes.status} - ${errorText}`);
       }
 
       const { posterUrl } = await composeRes.json();
