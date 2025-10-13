@@ -54,27 +54,33 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
     try {
       console.log('[MobilePublishFormPage] Starting publish process...');
 
-      // 1. ポスター合成APIを呼び出し
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
       console.log('[MobilePublishFormPage] API URL:', apiUrl);
       console.log('[MobilePublishFormPage] Image URL:', imageUrl);
 
-      const composeRes = await fetch(`${apiUrl}/api/compose-poster`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl }),
-      });
+      let posterUrl = imageUrl; // デフォルトはオリジナル画像
 
-      console.log('[MobilePublishFormPage] Compose response status:', composeRes.status);
+      // 1. ポスター合成APIを呼び出し（失敗してもスキップ）
+      try {
+        const composeRes = await fetch(`${apiUrl}/api/compose-poster`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl }),
+        });
 
-      if (!composeRes.ok) {
-        const errorText = await composeRes.text();
-        console.error('[MobilePublishFormPage] Compose error response:', errorText);
-        throw new Error(`ポスター合成に失敗しました: ${composeRes.status} - ${errorText}`);
+        console.log('[MobilePublishFormPage] Compose response status:', composeRes.status);
+
+        if (composeRes.ok) {
+          const composeData = await composeRes.json();
+          posterUrl = composeData.posterUrl;
+          console.log('[MobilePublishFormPage] Poster composed:', posterUrl);
+        } else {
+          const errorText = await composeRes.text();
+          console.warn('[MobilePublishFormPage] Compose failed, using original image:', errorText);
+        }
+      } catch (composeError) {
+        console.warn('[MobilePublishFormPage] Compose API unavailable, using original image:', composeError);
       }
-
-      const { posterUrl } = await composeRes.json();
-      console.log('[MobilePublishFormPage] Poster composed:', posterUrl);
 
       // 2. Supabaseに保存
       const publishRes = await fetch(`${apiUrl}/api/publish`, {
@@ -88,7 +94,9 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       });
 
       if (!publishRes.ok) {
-        throw new Error('公開に失敗しました');
+        const errorText = await publishRes.text();
+        console.error('[MobilePublishFormPage] Publish error response:', errorText);
+        throw new Error(`公開に失敗しました: ${publishRes.status}`);
       }
 
       const { item } = await publishRes.json();
