@@ -40,6 +40,17 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
   };
 
   const handlePublish = async () => {
+    // バリデーション
+    if (!title.trim()) {
+      alert('タイトルを入力してください');
+      return;
+    }
+
+    if (!category) {
+      alert('カテゴリーを選択してください');
+      return;
+    }
+
     const tags = [tag1, tag2, tag3].filter(t => t.trim() !== '');
 
     const publishData: PublishData = {
