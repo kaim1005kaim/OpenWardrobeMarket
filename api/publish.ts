@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .from('published_items')
         .select(`
           *,
-          user_profiles!inner(username, avatar_url)
+          user_profiles(username, avatar_url)
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false })

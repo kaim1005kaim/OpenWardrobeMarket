@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
+import { useAuth } from '../../lib/AuthContext';
 import './MobilePublishFormPage.css';
 
 interface MobilePublishFormPageProps {
@@ -20,6 +21,7 @@ export interface PublishData {
 }
 
 export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generationData }: MobilePublishFormPageProps) {
+  const { user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -102,7 +104,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
         ...publishData,
         posterUrl,
         originalUrl: imageUrl,
-        user_id: '00000000-0000-0000-0000-000000000001', // TODO: 実際のログインユーザーIDを使用
+        user_id: user?.id || '00000000-0000-0000-0000-000000000001', // ログインユーザーのIDを使用、未ログインの場合はダミーID
       };
       console.log('[MobilePublishFormPage] requestBody keys:', Object.keys(requestBody));
       console.log('[MobilePublishFormPage] requestBody.posterUrl:', requestBody.posterUrl);
