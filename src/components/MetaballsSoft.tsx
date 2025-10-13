@@ -148,7 +148,7 @@ function AnimatedCubes({
           key={i}
           strength={1.1}
           subtract={9}
-          color={palette[i % palette.length]}
+          color={new THREE.Color(palette[i % palette.length])}
           position={positions[i] || b.base}
         />
       ))}

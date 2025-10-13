@@ -157,6 +157,7 @@ export default function GlassRevealCanvas({
       transparent: true,
     });
     // dFdx/dFdy を使うため derivatives 拡張を有効化（WebGL1対応）
+    // @ts-ignore - derivatives プロパティは型定義にないが実行時には存在する
     mat.extensions.derivatives = true;
     scene.add(new THREE.Mesh(geo, mat));
 

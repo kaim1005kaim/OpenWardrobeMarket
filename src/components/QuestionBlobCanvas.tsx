@@ -263,6 +263,7 @@ export default function QuestionBlobCanvas({
       vertexShader: VERT, fragmentShader: FRAG, transparent: true
     });
     // dFdx/dFdy を使うため derivatives 拡張を有効化（WebGL1対応）
+    // @ts-ignore - derivatives プロパティは型定義にないが実行時には存在する
     mat.extensions.derivatives = true;
     const mesh = new THREE.Mesh(geo,mat); scene.add(mesh);
 
