@@ -12,62 +12,106 @@ interface MobileMyPageProps {
   onNavigate?: (page: string) => void;
 }
 
-type TabType = 'publish' | 'drafts' | 'collections' | 'own';
-
-interface GenerationHistory {
-  id: string;
-  user_id: string;
-  image_url: string;
-  preview_url: string | null;
-  prompt: string | null;
-  created_at: string;
-  completion_status: string;
-  is_public: boolean;
-}
+type TabType = 'publish' | 'drafts' | 'collections';
 
 export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const { user } = useAuth();
   const [activeSection, setActiveSection] = useState<'design' | 'setting'>('design');
-  const [activeTab, setActiveTab] = useState<TabType>('own');
+  const [activeTab, setActiveTab] = useState<TabType>('publish');
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [generationHistory, setGenerationHistory] = useState<GenerationHistory[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (activeTab === 'own') {
-      fetchGenerationHistory();
-    } else {
-      fetchAssets(activeTab);
-    }
+    fetchAssets(activeTab);
   }, [activeTab, user]);
 
-  const fetchGenerationHistory = async () => {
+  const fetchAssets = async (tab: TabType) => {
     if (!user) return;
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('generation_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('completion_status', 'completed')
-        .order('created_at', { ascending: false });
+      if (tab === 'publish') {
+        // 公開済みアイテムを取得
+        const { data, error } = await supabase
+          .from('published_items')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setGenerationHistory(data || []);
+        const publishedAssets: Asset[] = (data || []).map((item: any) => ({
+          id: item.id,
+          src: item.poster_url || item.original_url,
+          title: item.title,
+          tags: item.tags || [],
+          price: item.price,
+          likes: item.likes || 0,
+          w: 800,
+          h: 1168,
+        }));
+
+        setAssets(publishedAssets);
+      } else if (tab === 'drafts') {
+        // ドラフト（未公開の生成画像）を取得
+        const { data, error } = await supabase
+          .from('generation_history')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('completion_status', 'completed')
+          .eq('is_public', false)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const draftAssets: Asset[] = (data || []).map((item: any) => ({
+          id: item.id,
+          src: item.image_url || item.preview_url || '',
+          title: item.prompt || 'Generated Design',
+          tags: ['Generated'],
+          type: 'generated' as const,
+          price: 0,
+          likes: 0,
+          w: 800,
+          h: 1168,
+        }));
+
+        setAssets(draftAssets);
+      } else if (tab === 'collections') {
+        // お気に入りアイテムを取得
+        const { data, error } = await supabase
+          .from('likes')
+          .select(`
+            *,
+            published_items!inner(*)
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const collectionAssets: Asset[] = (data || []).map((item: any) => ({
+          id: item.published_items.id,
+          src: item.published_items.poster_url || item.published_items.original_url,
+          title: item.published_items.title,
+          tags: item.published_items.tags || [],
+          price: item.published_items.price,
+          likes: item.published_items.likes || 0,
+          w: 800,
+          h: 1168,
+        }));
+
+        setAssets(collectionAssets);
+      }
     } catch (error) {
-      console.error('Error fetching generation history:', error);
+      console.error(`Error fetching ${tab} assets:`, error);
+      setAssets([]);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const fetchAssets = async (tab: TabType) => {
-    // TODO: Fetch from API based on tab
-    setAssets(generateDummyAssets(12));
   };
 
   const handleMenuNavigate = (page: string) => {
@@ -173,56 +217,12 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
                 >
                   Collections
                 </button>
-                <button
-                  className={`tab-btn ${activeTab === 'own' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('own')}
-                >
-                  Own
-                </button>
               </div>
 
               {/* Grid */}
               <div className="assets-grid">
                 {isLoading ? (
                   <div className="loading-message">読み込み中...</div>
-                ) : activeTab === 'own' && generationHistory.length > 0 ? (
-                  generationHistory.map((item) => (
-                    <div
-                      key={item.id}
-                      className="asset-card"
-                      onClick={() => {
-                        // Convert generation history to Asset format for modal
-                        const assetFromHistory: Asset = {
-                          id: item.id,
-                          src: item.image_url || item.preview_url || '',
-                          title: item.prompt || 'Generated Design',
-                          tags: ['Generated'],
-                          type: 'generated',
-                          price: 0,
-                          likes: 0
-                        };
-                        setSelectedAsset(assetFromHistory);
-                      }}
-                    >
-                      <div className="card-image">
-                        <img
-                          src={item.image_url || item.preview_url || 'https://via.placeholder.com/300?text=No+Image'}
-                          alt={item.prompt || 'Generated Design'}
-                          loading="lazy"
-                        />
-                      </div>
-                    </div>
-                  ))
-                ) : activeTab === 'own' && generationHistory.length === 0 ? (
-                  <div className="empty-message">
-                    <p>まだ作成したデザインがありません</p>
-                    <button
-                      className="create-btn"
-                      onClick={() => onNavigate?.('create')}
-                    >
-                      デザインを作成する
-                    </button>
-                  </div>
                 ) : assets.length > 0 ? (
                   assets.map((asset) => (
                     <div
@@ -232,8 +232,8 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
                     >
                       <div className="card-image">
                         <img src={asset.src} alt={asset.title} loading="lazy" />
-                        {Math.random() > 0.5 && (
-                          <div className="sold-badge">SOLD</div>
+                        {activeTab === 'publish' && asset.price && (
+                          <div className="price-badge">¥{asset.price.toLocaleString()}</div>
                         )}
                       </div>
                     </div>
@@ -241,6 +241,14 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
                 ) : (
                   <div className="empty-state">
                     <p>まだ{getTabLabel(activeTab)}がありません</p>
+                    {activeTab === 'drafts' && (
+                      <button
+                        className="create-btn"
+                        onClick={() => onNavigate?.('create')}
+                      >
+                        デザインを作成する
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -287,26 +295,6 @@ function getTabLabel(tab: TabType): string {
     publish: '公開作品',
     drafts: '下書き',
     collections: 'コレクション',
-    own: '自分用作品',
   };
   return labels[tab];
-}
-
-// Dummy data
-function generateDummyAssets(count: number): Asset[] {
-  return Array.from({ length: count }).map((_, i) => {
-    const id = `mypage-${Date.now()}-${i}`;
-    return {
-      id,
-      src: `https://picsum.photos/seed/${id}/600/800`,
-      w: 600,
-      h: 800,
-      title: `Design ${i + 1}`,
-      tags: ['minimal', 'street'],
-      colors: ['black', 'white'],
-      price: Math.floor(Math.random() * 30000) + 10000,
-      creator: 'You',
-      likes: Math.floor(Math.random() * 100),
-    };
-  });
 }
