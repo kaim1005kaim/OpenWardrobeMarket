@@ -8,6 +8,7 @@ import './MobileCreatePage.css';
 
 interface MobileCreatePageProps {
   onNavigate?: (page: string) => void;
+  onPublishRequest?: (imageUrl: string, generationData: any) => void;
 }
 
 interface Question {
@@ -48,7 +49,7 @@ const createQuestions: Question[] = [
 
 type Stage = "idle" | "generating" | "revealing";
 
-export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
+export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreatePageProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -230,9 +231,13 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
   const handlePublish = () => {
     console.log('[MobileCreatePage] handlePublish called - navigating to publishForm');
-    // TODO: 公開フォームページに遷移（ポスター合成APIを呼び出す）
-    // 現在は単純にギャラリーに遷移
-    onNavigate?.('gallery');
+    if (imageUrl && onPublishRequest) {
+      // 公開フォームページに画像URLと生成データを渡す
+      onPublishRequest(imageUrl, { answers });
+    } else {
+      // フォールバック
+      onNavigate?.('gallery');
+    }
   };
 
   const handleSaveDraft = () => {

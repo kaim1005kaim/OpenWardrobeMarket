@@ -38,7 +38,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
     }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     const tags = [tag1, tag2, tag3].filter(t => t.trim() !== '');
 
     const publishData: PublishData = {
@@ -50,8 +50,34 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       price
     };
 
-    if (onPublish) {
-      onPublish(publishData);
+    try {
+      console.log('[MobilePublishFormPage] Starting publish process...');
+
+      // 1. ポスター合成APIを呼び出し
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+      const composeRes = await fetch(`${apiUrl}/api/compose-poster`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl }),
+      });
+
+      if (!composeRes.ok) {
+        throw new Error('ポスター合成に失敗しました');
+      }
+
+      const { posterUrl } = await composeRes.json();
+      console.log('[MobilePublishFormPage] Poster composed:', posterUrl);
+
+      // 2. Supabaseに保存（TODO: 実装）
+      // await saveToSupabase({ ...publishData, posterUrl, originalUrl: imageUrl });
+
+      // 3. 完了画面に遷移
+      if (onPublish) {
+        onPublish({ ...publishData, posterUrl });
+      }
+    } catch (error) {
+      console.error('[MobilePublishFormPage] Publish error:', error);
+      alert(error instanceof Error ? error.message : '公開に失敗しました');
     }
   };
 

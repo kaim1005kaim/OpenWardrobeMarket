@@ -19,6 +19,10 @@ function MobileAppContent() {
   const [currentPage, setCurrentPage] = useState<MobilePage>('home');
   const [showWebViewWarning, setShowWebViewWarning] = useState(false);
 
+  // 公開フロー用のstate
+  const [publishImageUrl, setPublishImageUrl] = useState<string | null>(null);
+  const [publishGenerationData, setPublishGenerationData] = useState<any>(null);
+
   useEffect(() => {
     // WebView検出（未認証時のみ）
     if (!user && isWebView()) {
@@ -68,7 +72,34 @@ function MobileAppContent() {
         return <MobileCreateTopPage onNavigate={handleNavigate} onStartCreate={() => setCurrentPage('createQuestions')} />;
 
       case 'createQuestions':
-        return <MobileCreatePage onNavigate={handleNavigate} />;
+        return <MobileCreatePage
+          onNavigate={handleNavigate}
+          onPublishRequest={(imageUrl, generationData) => {
+            setPublishImageUrl(imageUrl);
+            setPublishGenerationData(generationData);
+            setCurrentPage('publishForm');
+          }}
+        />;
+
+      case 'publishForm':
+        if (!publishImageUrl) return <MobileHomePage onNavigate={handleNavigate} />;
+        return <MobilePublishFormPage
+          imageUrl={publishImageUrl}
+          generationData={publishGenerationData}
+          onNavigate={handleNavigate}
+          onPublish={(data) => {
+            console.log('[MobileApp] Publishing with data:', data);
+            // ここでポスター合成とSupabase保存を行う（実装は後で）
+            setCurrentPage('publishComplete');
+          }}
+        />;
+
+      case 'publishComplete':
+        if (!publishImageUrl) return <MobileHomePage onNavigate={handleNavigate} />;
+        return <MobilePublishCompletePage
+          imageUrl={publishImageUrl}
+          onNavigate={handleNavigate}
+        />;
 
       case 'mypage':
         return <MobileMyPage onNavigate={handleNavigate} />;
