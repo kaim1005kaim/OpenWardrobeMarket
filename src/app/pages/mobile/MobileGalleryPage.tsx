@@ -29,27 +29,35 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
 
       // 1. 公開されたアイテムを取得
-      const publishedResponse = await fetch(`${apiUrl}/api/publish`);
       let publishedItems: Asset[] = [];
 
-      if (publishedResponse.ok) {
-        const publishedData = await publishedResponse.json();
-        if (publishedData.items && publishedData.items.length > 0) {
-          // published_itemsをAsset型に変換
-          publishedItems = publishedData.items.map((item: any) => ({
-            id: item.id,
-            src: item.poster_url || item.original_url, // poster_urlがない場合はoriginal_urlを使用
-            title: item.title,
-            tags: item.tags || [],
-            colors: [],
-            price: item.price,
-            creator: item.username || 'JOHN DEANNA', // APIから取得したusernameを使用
-            likes: item.likes || 0,
-            w: 800,
-            h: 1168,
-          }));
-          console.log('[MobileGalleryPage] Loaded published items:', publishedItems.length);
+      try {
+        const publishedResponse = await fetch(`${apiUrl}/api/publish`);
+
+        if (publishedResponse.ok) {
+          const publishedData = await publishedResponse.json();
+          if (publishedData.items && publishedData.items.length > 0) {
+            // published_itemsをAsset型に変換
+            publishedItems = publishedData.items.map((item: any) => ({
+              id: item.id,
+              src: item.poster_url || item.original_url, // poster_urlがない場合はoriginal_urlを使用
+              title: item.title,
+              tags: item.tags || [],
+              colors: [],
+              price: item.price,
+              creator: item.username || 'Anonymous', // APIから取得したusernameを使用
+              likes: item.likes || 0,
+              w: 800,
+              h: 1168,
+            }));
+            console.log('[MobileGalleryPage] Loaded published items:', publishedItems.length);
+          }
+        } else {
+          const errorText = await publishedResponse.text();
+          console.error('[MobileGalleryPage] Failed to fetch published items:', publishedResponse.status, errorText);
         }
+      } catch (error) {
+        console.error('[MobileGalleryPage] Error fetching published items:', error);
       }
 
       // 2. カタログデータを取得
