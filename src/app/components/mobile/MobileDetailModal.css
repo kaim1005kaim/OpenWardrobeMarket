@@ -152,6 +152,42 @@
   margin-bottom: 20px;
 }
 
+/* Owner Actions */
+.detail-owner-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.detail-toggle-publish-btn,
+.detail-delete-btn {
+  flex: 1;
+  padding: 16px;
+  background: transparent;
+  border: 1px solid #1a3d3d;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #1a3d3d;
+  cursor: pointer;
+  text-transform: none;
+  transition: all 0.2s;
+}
+
+.detail-toggle-publish-btn:active,
+.detail-delete-btn:active {
+  background: rgba(26, 61, 61, 0.05);
+}
+
+.detail-delete-btn {
+  border-color: #d32f2f;
+  color: #d32f2f;
+}
+
+.detail-delete-btn:active {
+  background: rgba(211, 47, 47, 0.05);
+}
+
 .detail-description {
   margin-bottom: 40px;
 }

@@ -323,7 +323,7 @@
 .create-design-btn {
   width: 100%;
   padding: 16px 24px;
-  background: #FFFFFF;
+  background: transparent;
   border: 2px solid #000000;
   border-radius: 8px;
   font-family: 'Noto Sans CJK JP', sans-serif;
@@ -335,7 +335,7 @@
 }
 
 .create-design-btn:active {
-  background: #F5F5F5;
+  background: rgba(0, 0, 0, 0.05);
   transform: scale(0.98);
 }
 

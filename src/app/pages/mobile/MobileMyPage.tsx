@@ -130,19 +130,73 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
     if (!user) return;
 
     try {
-      // generation_historyのis_publicを更新
-      const { error } = await supabase
-        .from('generation_history')
-        .update({ is_public: isPublic })
-        .eq('id', assetId)
-        .eq('user_id', user.id);
+      if (isPublic) {
+        // 公開する：generation_historyからデータを取得してpublished_itemsに登録
+        const { data: historyData, error: historyError } = await supabase
+          .from('generation_history')
+          .select('*')
+          .eq('id', assetId)
+          .eq('user_id', user.id)
+          .single();
 
-      if (error) throw error;
+        if (historyError) throw historyError;
+
+        // published_itemsに登録（公開フォームをスキップする簡易版）
+        const { error: publishError } = await supabase
+          .from('published_items')
+          .insert({
+            user_id: user.id,
+            title: historyData.prompt || 'Generated Design',
+            description: '',
+            poster_url: historyData.image_url,
+            original_url: historyData.image_url,
+            price: 36323, // デフォルト価格
+            tags: ['Generated'],
+            category: 'minimal',
+            sale_type: 'buyout',
+            is_active: true,
+          });
+
+        if (publishError) throw publishError;
+
+        // generation_historyのis_publicを更新
+        const { error: updateError } = await supabase
+          .from('generation_history')
+          .update({ is_public: true })
+          .eq('id', assetId)
+          .eq('user_id', user.id);
+
+        if (updateError) throw updateError;
+
+        alert('ギャラリーに公開しました');
+      } else {
+        // 非公開にする：generation_historyのis_publicをfalseに
+        const { error } = await supabase
+          .from('generation_history')
+          .update({ is_public: false })
+          .eq('id', assetId)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        // published_itemsから削除
+        const { error: deleteError } = await supabase
+          .from('published_items')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('original_url', (await supabase
+            .from('generation_history')
+            .select('image_url')
+            .eq('id', assetId)
+            .single()).data?.image_url);
+
+        if (deleteError) console.warn('Failed to delete from published_items:', deleteError);
+
+        alert('非公開にしました（Draftsに移動）');
+      }
 
       // アセットリストを再取得
       await fetchAssets(activeTab);
-
-      alert(isPublic ? '公開しました' : '非公開にしました');
     } catch (error) {
       console.error('Error toggling publish:', error);
       alert('更新に失敗しました');
