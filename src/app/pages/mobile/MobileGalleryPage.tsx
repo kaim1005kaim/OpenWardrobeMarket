@@ -43,7 +43,7 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
             tags: item.tags || [],
             colors: [],
             price: item.price,
-            creator: 'JOHN DEANNA', // TODO: 実際のユーザー名を使用
+            creator: item.username || 'JOHN DEANNA', // APIから取得したusernameを使用
             likes: item.likes || 0,
             w: 800,
             h: 1168,

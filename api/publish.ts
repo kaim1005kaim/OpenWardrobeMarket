@@ -28,17 +28,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const { data, error } = await supabase
         .from('published_items')
-        .select('*')
+        .select(`
+          *,
+          user_profiles!inner(username, avatar_url)
+        `)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (error) throw error;
 
+      // user_profilesデータをフラット化
+      const itemsWithUsername = data?.map((item: any) => ({
+        ...item,
+        username: item.user_profiles?.username || 'Anonymous',
+        avatar_url: item.user_profiles?.avatar_url || null,
+        user_profiles: undefined // ネストを削除
+      })) || [];
+
       return res.status(200).json({
         success: true,
-        items: data,
-        count: data.length
+        items: itemsWithUsername,
+        count: itemsWithUsername.length
       });
     } catch (error) {
       console.error('[Publish GET] Error:', error);
