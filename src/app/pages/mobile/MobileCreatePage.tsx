@@ -369,50 +369,43 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               </div>
             </>
           ) : (
-            <div className="viewer-container" style={{ position: 'relative', width: '100%', aspectRatio: '3/4', marginTop: '32px' }}>
-              {/* 生成中のProcedural（フェードアウト可能） */}
-              {stage === "generating" && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                    zIndex: 1
-                  }}
-                >
-                  <MetaballsSoft animated={true} />
-                  <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center' }}>
-                    <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 24, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
-                      PLEASE WAIT
-                    </div>
-                    <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
-                      お待ちください
-                    </div>
+            <>
+              {/* 画像コンテナ - 横幅いっぱいに表示 */}
+              <div className="viewer-container" style={{ position: 'relative', width: 'calc(100% + 40px)', aspectRatio: '3/4', marginTop: '32px', marginBottom: '24px', marginLeft: '-20px', marginRight: '-20px' }}>
+                {/* 生成中のProcedural（フェードアウト可能） */}
+                {stage === "generating" && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      zIndex: 1
+                    }}
+                  >
+                    <MetaballsSoft animated={true} />
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* メタボールフェードアウト用オーバーレイ */}
-              {stage === "revealing" && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                    zIndex: 1,
-                    opacity: 1,
-                    animation: 'fadeOut 0.4s ease-out forwards'
-                  }}
-                >
-                  <MetaballsSoft animated={true} />
-                </div>
-              )}
+                {/* メタボールフェードアウト用オーバーレイ */}
+                {stage === "revealing" && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      zIndex: 1,
+                      opacity: 1,
+                      animation: 'fadeOut 0.4s ease-out forwards'
+                    }}
+                  >
+                    <MetaballsSoft animated={true} />
+                  </div>
+                )}
 
-              {/* 受信後の"Glass Stripe Reveal" → 完成品表示（同じCanvas） */}
-              {stage === "revealing" && imageUrl && (
-                <>
+                {/* 受信後の"Glass Stripe Reveal" → 完成品表示（同じCanvas） */}
+                {stage === "revealing" && imageUrl && (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
                     <GlassRevealCanvas
                       imageUrl={imageUrl}
@@ -429,31 +422,43 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                       active={true}
                     />
                   </div>
-                  {/* シャッターエフェクト中は「PLEASE WAIT」表示 */}
-                  {!showButtons && (
-                    <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', zIndex: 3 }}>
-                      <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 24, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
-                        PLEASE WAIT
-                      </div>
-                      <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
-                        お待ちください
-                      </div>
-                    </div>
-                  )}
-                  {/* ボタン表示時に「PERFECT」メッセージ表示 */}
-                  {showButtons && (
-                    <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', zIndex: 3 }}>
-                      <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 28, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
-                        PERFECT
-                      </div>
-                      <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
-                        世界でひとつのデザインが出来上がりました
-                      </div>
-                    </div>
-                  )}
-                </>
+                )}
+              </div>
+
+              {/* テキスト表示エリア（画像の下） */}
+              {stage === "generating" && (
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                  <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 20, fontWeight: 300, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
+                    PLEASE WAIT
+                  </div>
+                  <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
+                    お待ちください
+                  </div>
+                </div>
               )}
-            </div>
+
+              {stage === "revealing" && !showButtons && (
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                  <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 20, fontWeight: 300, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
+                    PLEASE WAIT
+                  </div>
+                  <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
+                    お待ちください
+                  </div>
+                </div>
+              )}
+
+              {stage === "revealing" && showButtons && (
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                  <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 20, fontWeight: 300, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
+                    PERFECT
+                  </div>
+                  <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
+                    世界でひとつのデザインが出来上がりました
+                  </div>
+                </div>
+              )}
+            </>
           )}
       </div>
 
