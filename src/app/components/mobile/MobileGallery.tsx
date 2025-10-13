@@ -24,6 +24,14 @@ export function MobileGallery({
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
+  if (assets.length === 0) {
+    return (
+      <div className="mobile-gallery-empty">
+        まだ作品がありません
+      </div>
+    );
+  }
+
   // 無限スクロール
   useEffect(() => {
     if (!onLoadMore) return;

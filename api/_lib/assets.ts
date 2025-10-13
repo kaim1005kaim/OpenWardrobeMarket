@@ -38,6 +38,41 @@ export type SerializedAssetOptions = {
   likedIds?: Set<string>;
 };
 
+const ALLOWED_PREFIXES = ['catalog/', 'usergen/', 'generated/'];
+
+function matchesAllowedPrefix(value: string | null | undefined) {
+  if (!value) return false;
+  const lower = value.toLowerCase();
+  return ALLOWED_PREFIXES.some((prefix) => lower.includes(prefix));
+}
+
+export function assetIsAllowed(row: Record<string, any>): boolean {
+  const keys = [
+    row.final_key,
+    row.raw_key,
+    row.r2_key,
+    row.image_key,
+    row.poster_key,
+    row.raw_path,
+    row.raw_r2_key,
+    row.final_r2_key
+  ]
+    .filter(Boolean)
+    .map(String);
+
+  const urls = [
+    row.final_url,
+    row.raw_url,
+    row.r2_url,
+    row.image_url,
+    row.poster_url
+  ]
+    .filter(Boolean)
+    .map(String);
+
+  return keys.some(matchesAllowedPrefix) || urls.some(matchesAllowedPrefix);
+}
+
 let cachedAdminClient: SupabaseClient | null = null;
 
 export function getServiceSupabase(): SupabaseClient {

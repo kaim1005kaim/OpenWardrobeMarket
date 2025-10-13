@@ -3,6 +3,7 @@ import {
   getAuthUser,
   getServiceSupabase,
   serializeAsset,
+  assetIsAllowed,
   type SerializedAsset,
   type SerializedAssetOptions
 } from '../_lib/assets';
@@ -48,10 +49,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error) {
       console.error('[api/assets] Supabase error:', error);
+      if ((error as any).code === '42P01') {
+        return res.status(200).json({ assets: [], cursor: null });
+      }
       return res.status(500).json({ error: 'Failed to fetch assets', details: error.message });
     }
 
     if (!data || data.length === 0) {
+      return res.status(200).json({ assets: [], cursor: null });
+    }
+
+    const filtered = data.filter(assetIsAllowed);
+
+    if (filtered.length === 0) {
       return res.status(200).json({ assets: [], cursor: null });
     }
 
@@ -88,16 +98,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (likedAssetsError) {
           console.error('[api/assets] Failed to fetch liked assets:', likedAssetsError.message);
+          if ((likedAssetsError as any).code === '42P01') {
+            return res.status(200).json({ assets: [], cursor: null });
+          }
           return res.status(500).json({ error: 'Failed to fetch liked assets' });
         }
 
+        const filteredLiked = (likedAssets || []).filter(assetIsAllowed);
+
+        if (filteredLiked.length === 0) {
+          return res.status(200).json({ assets: [], cursor: null });
+        }
+
         const serializedLiked = await Promise.all(
-          (likedAssets || []).map((row) =>
+          filteredLiked.map((row) =>
             serializeAsset(row, { kind: kindParam, includeRaw: kindParam === 'raw', likedIds })
           )
         );
 
-        const tail = likedAssets && likedAssets.length > 0 ? likedAssets[likedAssets.length - 1] : null;
+        const tail = filteredLiked.length > 0 ? filteredLiked[filteredLiked.length - 1] : null;
 
         return res.status(200).json({
           assets: serializedLiked,
@@ -113,11 +132,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     const assets: SerializedAsset[] = await Promise.all(
-      data.map((row) => serializeAsset(row, serializerOptions))
+      filtered.map((row) => serializeAsset(row, serializerOptions))
     );
 
-    const tail = data.length === 0 ? null : data[data.length - 1];
-    const nextCursor = data.length === limitValue ? tail?.created_at ?? null : null;
+    const tail = filtered.length === 0 ? null : filtered[filtered.length - 1];
+    const nextCursor = filtered.length === limitValue ? tail?.created_at ?? null : null;
 
     return res.status(200).json({
       assets,

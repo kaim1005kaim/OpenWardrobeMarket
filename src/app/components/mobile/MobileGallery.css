@@ -7,6 +7,15 @@
   column-gap: 12px;
 }
 
+.mobile-gallery-empty {
+  padding: 160px 20px;
+  text-align: center;
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: #666666;
+}
+
 /* Clean Mode */
 .gallery-card.clean {
   background: #FFFFFF;

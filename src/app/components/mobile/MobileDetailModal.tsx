@@ -6,8 +6,6 @@ import './MobileDetailModal.css';
 interface MobileDetailModalProps {
   asset: Asset;
   onClose: () => void;
-  onLike?: () => void;
-  onSave?: () => void;
   onPurchase?: () => void;
   onTogglePublish?: (assetId: string, isPublic: boolean) => Promise<void>;
   onDelete?: (assetId: string) => Promise<void>;

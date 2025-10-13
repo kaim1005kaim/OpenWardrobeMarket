@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { MobileLayout } from '../../components/mobile/MobileLayout';
-import { BottomNavigation } from '../../components/mobile/BottomNavigation';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
 import { useAuth } from '../../lib/AuthContext';
@@ -75,7 +74,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
 
     setIsLoadingAssets(true);
     try {
-      const { assets } = await fetchAssetsFromApi({ scope: 'mine', kind: 'final', limit: 80 });
+      const { assets } = await fetchAssetsFromApi({ scope: 'mine', kind: 'raw', limit: 80 });
       setMyAssets(assets.map(mapAsset));
     } catch (error) {
       console.error('[MobileMyPage] Failed to load assets:', error);
@@ -111,6 +110,13 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
     }
     fetchMyAssets();
   }, [user, fetchMyAssets]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (activeTab === 'publish' || activeTab === 'drafts') {
+      fetchMyAssets();
+    }
+  }, [activeTab, user, fetchMyAssets]);
 
   useEffect(() => {
     if (activeTab === 'collections' && user) {

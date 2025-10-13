@@ -97,13 +97,12 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
           }
         }
 
-        // final fallback
-        setAssets(generateDummyAssets(24));
+        setAssets([]);
         setHasMore(false);
       } catch (error) {
         console.error('[MobileGalleryPage] Failed to fetch assets:', error);
         if (reset) {
-          setAssets(generateDummyAssets(24));
+          setAssets([]);
           setHasMore(false);
         }
       } finally {

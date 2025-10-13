@@ -10,7 +10,6 @@ import {
   deleteAsset,
   toggleLike
 } from '../../lib/api/assets';
-import MetaballsSoft from '../../../components/MetaballsSoft';
 import './MobileHomePage.css';
 
 interface MobileHomePageProps {
@@ -64,7 +63,7 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
       setRecommendedAssets(publicAssets.map(mapApiAsset));
     } catch (error) {
       console.error('[MobileHomePage] Failed to load recommended assets:', error);
-      setRecommendedAssets(generateDummyAssets(10));
+      setRecommendedAssets([]);
     } finally {
       setIsLoading(false);
     }
@@ -177,13 +176,19 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
 
         {/* Card Swiper */}
         <div className="card-swiper-section">
-          <CardSwiper
-            assets={recommendedAssets}
-            onCardClick={setSelectedAsset}
-            autoAdvanceInterval={recommendedAssets.length > 1 ? 3000 : undefined}
-            onIndexChange={setActiveIndex}
-          />
-          {isLoading && (
+          {recommendedAssets.length > 0 ? (
+            <CardSwiper
+              assets={recommendedAssets}
+              onCardClick={setSelectedAsset}
+              autoAdvanceInterval={recommendedAssets.length > 1 ? 3600 : undefined}
+              onIndexChange={setActiveIndex}
+            />
+          ) : (
+            <div className="home-empty-state">
+              まだ提案はありません
+            </div>
+          )}
+          {isLoading && recommendedAssets.length === 0 && (
             <div className="home-loading-indicator">
               Loading...
             </div>

@@ -272,14 +272,11 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
       <div className="create-content">
           {!isGenerating ? (
             <>
-              {/* CREATEタイトル + 設問アニメーション */}
-              <div style={{ position: 'relative', width: 'calc(100% + 40px)', height: '320px', marginTop: '0', marginBottom: '32px', marginLeft: '-20px', marginRight: '-20px', zIndex: 60 }}>
-                {/* アニメーション背景 - 横と上は画面いっぱい */}
-                <div style={{ position: 'absolute', top: '-60px', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+              <div className="create-hero">
+                <div className="create-hero__canvas">
                   <MetaballsSoft ref={metaballRef} animated={true} />
                 </div>
-                {/* CREATEタイトル（エフェクトの上に重ねる） */}
-                <div style={{ position: 'absolute', top: '8px', left: '20px', right: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 70 }}>
+                <div className="create-hero__title">
                   <h1 className="create-title">CREATE</h1>
                 </div>
               </div>

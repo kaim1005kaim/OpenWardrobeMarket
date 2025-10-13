@@ -61,6 +61,33 @@
   line-height: 1;
 }
 
+.create-hero {
+  position: relative;
+  width: calc(100% + 40px);
+  height: 320px;
+  margin: -20px -20px 28px;
+  pointer-events: none;
+  z-index: 70;
+}
+
+.create-hero__canvas {
+  position: absolute;
+  inset: -90px 0 -10px;
+  overflow: visible;
+}
+
+.create-hero__title {
+  position: absolute;
+  top: 24px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 80;
+}
+
 /* Content */
 .create-content {
   margin-top: 60px;

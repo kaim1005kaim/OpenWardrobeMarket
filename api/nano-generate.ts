@@ -156,9 +156,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[Gemini API] Generation complete:', row.id);
 
+    const tagSet = new Set<string>();
+    if (Array.isArray(answers?.vibe)) tagSet.add(answers.vibe[0]);
+    if (Array.isArray(answers?.silhouette)) tagSet.add(answers.silhouette[0]);
+    if (Array.isArray(answers?.color)) tagSet.add(answers.color[0]);
+    if (Array.isArray(answers?.occasion)) tagSet.add(answers.occasion[0]);
+    if (Array.isArray(answers?.season)) tagSet.add(answers.season[0]);
+
+    const tags = Array.from(tagSet).filter(Boolean);
+
+    const { data: assetRecord, error: assetError } = await supabaseAdmin
+      .from('assets')
+      .insert({
+        user_id: user.id,
+        title: row.prompt || 'Generated Design',
+        description: '',
+        tags: tags.length ? tags : ['generated'],
+        status: 'private',
+        raw_key: key,
+        raw_url: null,
+        final_key: null,
+        final_url: null,
+        file_size: buffer.byteLength
+      })
+      .select('id')
+      .single();
+
+    if (assetError) {
+      console.error('[Gemini API] Failed to create asset record:', assetError);
+    }
+
     // 同期処理なので即座にURLを返す
     return res.status(200).json({
       id: row.id,
+      assetId: assetRecord?.id ?? null,
       url: publicUrl,
       path: key,
       status: 'completed'

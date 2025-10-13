@@ -199,7 +199,7 @@
   padding: 10px 12px;
   border-radius: 10px;
   font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   color: #222222;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -223,12 +223,12 @@
 
 .account-menu-item .badge {
   font-family: 'Montserrat', sans-serif;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #000000;
-  color: #FFFFFF;
+  background: #1a3d3d;
+  color: #ffffff;
 }
 
 .account-menu-item .account-menu-label {
@@ -244,7 +244,7 @@
 }
 
 .account-menu-item .account-menu-label .email {
-  font-size: 10px;
+  font-size: 9px;
   color: #777777;
 }
 

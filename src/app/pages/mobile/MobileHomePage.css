@@ -66,8 +66,7 @@ body.menu-open .mobile-home-header .hamburger-btn {
 }
 
 .gallery-search-trigger {
-  margin-top: 80px;
-  margin-bottom: 24px;
+  margin: 0 auto 32px;
 }
 
 /* RECOMMEND Title */
@@ -85,7 +84,8 @@ body.menu-open .mobile-home-header .hamburger-btn {
 
 /* GALLERY Page Content */
 .gallery-page-content {
-  margin-top: -30px;
+  margin-top: 0;
+  padding: 90px 20px 0;
 }
 
 /* GALLERY Title */
@@ -96,7 +96,7 @@ body.menu-open .mobile-home-header .hamburger-btn {
   letter-spacing: 0.02em;
   color: #000000;
   text-align: center;
-  margin: 35px 0 -120px 0;
+  margin: 24px 0 -120px 0;
   position: relative;
   z-index: 1;
   cursor: pointer;
@@ -227,8 +227,9 @@ body.menu-open .mobile-home-header .hamburger-btn {
 
 /* Gallery layout link */
 .gallery-layout-link {
-  display: inline-block;
+  display: block;
   margin: 4px auto 48px;
+  text-align: center;
   font-family: 'Montserrat', sans-serif;
   font-size: 12px;
   letter-spacing: 0.12em;
@@ -254,6 +255,15 @@ body.menu-open .mobile-home-header .hamburger-btn {
   font-size: 12px;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.6);
+}
+
+.home-empty-state {
+  text-align: center;
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 120px 20px;
 }
 
 /* Footer */

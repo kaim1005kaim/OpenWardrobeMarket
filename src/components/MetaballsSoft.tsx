@@ -114,7 +114,7 @@ function AnimatedCubes({
     // 滑らかなイージング（バネなし）
     const impactStrength = linearProgress > 0 ? easeInOutCubic(1 - linearProgress) * linearProgress : 0;
 
-    const newPositions = balls.map((b, i) => {
+    const targetPositions = balls.map((b, i) => {
       const baseX = b.base[0] + a * (Math.sin(t * 1.2 + b.phase) * 0.30 + Math.sin(t * 0.35 + i) * 0.05);
       const baseY = b.base[1] + a * (Math.cos(t * 0.9 + b.phase + 1.0) * 0.28 + Math.cos(t * 0.31 + i * 1.7) * 0.05);
       const baseZ = b.base[2] + a * (Math.sin(t * 0.7 + b.phase + 2.0) * 0.22 + Math.sin(t * 0.27 + i * 0.7) * 0.04);
@@ -290,8 +290,21 @@ function AnimatedCubes({
 
       return [finalX, finalY, finalZ] as [number, number, number];
     });
+    
+    setPositions((prev) => {
+      if (!prev.length) {
+        return targetPositions;
+      }
 
-    setPositions(newPositions);
+      return targetPositions.map((target, idx) => {
+        const previous = prev[idx] || balls[idx].base;
+        return [
+          previous[0] + (target[0] - previous[0]) * 0.18,
+          previous[1] + (target[1] - previous[1]) * 0.18,
+          previous[2] + (target[2] - previous[2]) * 0.18,
+        ] as [number, number, number];
+      });
+    });
   });
 
   return (
@@ -354,7 +367,7 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
     }));
 
     return (
-      <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      <div style={{ width: "100%", height: "100%", position: "relative", pointerEvents: 'none' }}>
         <Canvas
           gl={{ alpha: true, premultipliedAlpha: false, antialias: true }}
           onCreated={({ gl }) => {
