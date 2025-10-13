@@ -94,6 +94,9 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       }
 
       // 2. Supabaseに保存
+      console.log('[MobilePublishFormPage] posterUrl:', posterUrl);
+      console.log('[MobilePublishFormPage] imageUrl (originalUrl):', imageUrl);
+
       const requestBody = {
         ...publishData,
         posterUrl,
