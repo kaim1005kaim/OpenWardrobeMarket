@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Asset } from '../../lib/types';
+import { useAuth } from '../../lib/AuthContext';
 import './MobileDetailModal.css';
 
 interface MobileDetailModalProps {
@@ -8,15 +9,22 @@ interface MobileDetailModalProps {
   onLike?: () => void;
   onSave?: () => void;
   onPurchase?: () => void;
+  onTogglePublish?: (assetId: string, isPublic: boolean) => Promise<void>;
+  onDelete?: (assetId: string) => Promise<void>;
   similarAssets?: Asset[];
+  isOwner?: boolean; // 自分の画像かどうか
 }
 
 export function MobileDetailModal({
   asset,
   onClose,
   onPurchase,
-  similarAssets = []
+  onTogglePublish,
+  onDelete,
+  similarAssets = [],
+  isOwner = false,
 }: MobileDetailModalProps) {
+  const { user } = useAuth();
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => {
@@ -64,9 +72,31 @@ export function MobileDetailModal({
             <div className="detail-price">¥{asset.price?.toLocaleString()}</div>
           </div>
 
-          <button className="detail-buy-btn" onClick={onPurchase}>
-            BUY
-          </button>
+          {isOwner ? (
+            <div className="detail-owner-actions">
+              <button
+                className="detail-toggle-publish-btn"
+                onClick={() => onTogglePublish?.(asset.id, !asset.isPublic)}
+              >
+                {asset.isPublic ? '非公開にする' : '公開する'}
+              </button>
+              <button
+                className="detail-delete-btn"
+                onClick={async () => {
+                  if (confirm('本当に削除しますか？')) {
+                    await onDelete?.(asset.id);
+                    onClose();
+                  }
+                }}
+              >
+                削除
+              </button>
+            </div>
+          ) : (
+            <button className="detail-buy-btn" onClick={onPurchase}>
+              BUY
+            </button>
+          )}
 
           <div className="detail-description">
             <p>

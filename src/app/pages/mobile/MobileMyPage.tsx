@@ -52,6 +52,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
           likes: item.likes || 0,
           w: 800,
           h: 1168,
+          isPublic: true,
         }));
 
         setAssets(publishedAssets);
@@ -77,6 +78,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
           likes: 0,
           w: 800,
           h: 1168,
+          isPublic: false,
         }));
 
         setAssets(draftAssets);
@@ -122,6 +124,52 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
 
   const getSimilarAssets = (asset: Asset) => {
     return assets.filter(a => a.id !== asset.id).slice(0, 6);
+  };
+
+  const handleTogglePublish = async (assetId: string, isPublic: boolean) => {
+    if (!user) return;
+
+    try {
+      // generation_historyのis_publicを更新
+      const { error } = await supabase
+        .from('generation_history')
+        .update({ is_public: isPublic })
+        .eq('id', assetId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // アセットリストを再取得
+      await fetchAssets(activeTab);
+
+      alert(isPublic ? '公開しました' : '非公開にしました');
+    } catch (error) {
+      console.error('Error toggling publish:', error);
+      alert('更新に失敗しました');
+    }
+  };
+
+  const handleDelete = async (assetId: string) => {
+    if (!user) return;
+
+    try {
+      // generation_historyから削除
+      const { error } = await supabase
+        .from('generation_history')
+        .delete()
+        .eq('id', assetId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // アセットリストを再取得
+      await fetchAssets(activeTab);
+
+      alert('削除しました');
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+      alert('削除に失敗しました');
+    }
   };
 
   return (
@@ -283,7 +331,10 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
           onLike={() => console.log('Liked')}
           onSave={() => console.log('Saved')}
           onPurchase={() => console.log('Purchase')}
+          onTogglePublish={handleTogglePublish}
+          onDelete={handleDelete}
           similarAssets={getSimilarAssets(selectedAsset)}
+          isOwner={true} // MyPage内なので全て自分の画像
         />
       )}
     </>
