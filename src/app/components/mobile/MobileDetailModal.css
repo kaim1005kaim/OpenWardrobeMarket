@@ -54,6 +54,16 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.detail-bookmark-btn.active {
+  background: #111;
+  color: #fff;
+}
+
+.detail-bookmark-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* Image */
 .detail-image {
   width: 100%;
@@ -186,6 +196,14 @@
 
 .detail-delete-btn:active {
   background: rgba(211, 47, 47, 0.05);
+}
+
+.detail-likes {
+  margin: 12px 0 20px;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #666;
 }
 
 .detail-description {

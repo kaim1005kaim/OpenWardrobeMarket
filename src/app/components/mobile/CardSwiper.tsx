@@ -1,21 +1,97 @@
-import React, { useState, useRef, TouchEvent } from 'react';
+import React, { useState, useRef, TouchEvent, useEffect, useCallback } from 'react';
 import { Asset } from '../../lib/types';
 
 interface CardSwiperProps {
   assets: Asset[];
   onCardClick: (asset: Asset) => void;
+  autoAdvanceInterval?: number;
+  onIndexChange?: (index: number) => void;
+  initialIndex?: number;
 }
 
-export function CardSwiper({ assets, onCardClick }: CardSwiperProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+export function CardSwiper({
+  assets,
+  onCardClick,
+  autoAdvanceInterval,
+  onIndexChange,
+  initialIndex
+}: CardSwiperProps) {
+  const [currentIndex, setCurrentIndexState] = useState(initialIndex ?? 0);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [offsetX, setOffsetX] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const autoTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const assetsLengthRef = useRef(assets.length);
+
+  useEffect(() => {
+    assetsLengthRef.current = assets.length;
+  }, [assets.length]);
+
+  const updateIndex = useCallback(
+    (value: number | ((prev: number) => number)) => {
+      setCurrentIndexState((prev) => {
+        if (assets.length === 0) return 0;
+        const nextValue = typeof value === 'function' ? (value as (prev: number) => number)(prev) : value;
+        const bounded = ((nextValue % assets.length) + assets.length) % assets.length;
+        if (bounded !== prev) {
+          onIndexChange?.(bounded);
+        } else if (typeof value !== 'function') {
+          onIndexChange?.(bounded);
+        }
+        return bounded;
+      });
+    },
+    [assets.length, onIndexChange]
+  );
+
+  useEffect(() => {
+    if (typeof initialIndex === 'number') {
+      updateIndex(initialIndex);
+    }
+  }, [initialIndex, updateIndex]);
+
+  useEffect(() => {
+    // Reset index if assets list shrinks dramatically
+    if (currentIndex >= assets.length && assets.length > 0) {
+      updateIndex(0);
+    }
+  }, [assets.length, currentIndex, updateIndex]);
+
+  const restartAutoTimer = useCallback(() => {
+    if (!autoAdvanceInterval || assets.length <= 1) {
+      if (autoTimerRef.current) {
+        clearInterval(autoTimerRef.current);
+        autoTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (autoTimerRef.current) {
+      clearInterval(autoTimerRef.current);
+    }
+
+    autoTimerRef.current = setInterval(() => {
+      updateIndex((prev) => prev + 1);
+    }, autoAdvanceInterval);
+  }, [autoAdvanceInterval, assets.length, updateIndex]);
+
+  useEffect(() => {
+    restartAutoTimer();
+    return () => {
+      if (autoTimerRef.current) {
+        clearInterval(autoTimerRef.current);
+      }
+    };
+  }, [restartAutoTimer]);
 
   const handleTouchStart = (e: TouchEvent) => {
     setIsDragging(true);
     setStartX(e.touches[0].clientX);
+    if (autoTimerRef.current) {
+      clearInterval(autoTimerRef.current);
+      autoTimerRef.current = null;
+    }
   };
 
   const handleTouchMove = (e: TouchEvent) => {
@@ -30,16 +106,15 @@ export function CardSwiper({ assets, onCardClick }: CardSwiperProps) {
 
     // Swipe threshold: 50px
     if (Math.abs(offsetX) > 50) {
-      if (offsetX > 0 && currentIndex > 0) {
-        // Swipe right - go to previous
-        setCurrentIndex(currentIndex - 1);
-      } else if (offsetX < 0 && currentIndex < assets.length - 1) {
-        // Swipe left - go to next
-        setCurrentIndex(currentIndex + 1);
+      if (offsetX > 0) {
+        updateIndex((prev) => prev - 1);
+      } else if (offsetX < 0) {
+        updateIndex((prev) => prev + 1);
       }
     }
 
     setOffsetX(0);
+    restartAutoTimer();
   };
 
   const handleCardClick = (asset: Asset, index: number) => {
@@ -53,11 +128,11 @@ export function CardSwiper({ assets, onCardClick }: CardSwiperProps) {
     const offset = isDragging ? offsetX : 0;
 
     // Calculate position and scale
-    const translateX = diff * 20 + offset * 0.5;
-    const translateZ = -Math.abs(diff) * 100;
-    const scale = 1 - Math.abs(diff) * 0.1;
-    const opacity = diff === 0 ? 1 : 0.6 - Math.abs(diff) * 0.2;
-    const rotateY = diff * 5;
+    const translateX = diff * 55 + offset * 0.45;
+    const translateZ = -Math.abs(diff) * 120;
+    const scale = 1 - Math.abs(diff) * 0.08;
+    const opacity = diff === 0 ? 1 : Math.max(0.2, 0.55 - Math.abs(diff) * 0.15);
+    const rotateY = diff * 4;
 
     return {
       transform: `translateX(${translateX}px) translateZ(${translateZ}px) scale(${scale}) rotateY(${rotateY}deg)`,
@@ -99,7 +174,19 @@ export function CardSwiper({ assets, onCardClick }: CardSwiperProps) {
           <div
             key={index}
             className={`pagination-dot ${index === currentIndex ? 'active' : ''}`}
-            onClick={() => setCurrentIndex(index)}
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              updateIndex(index);
+              restartAutoTimer();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                updateIndex(index);
+                restartAutoTimer();
+              }
+            }}
           />
         ))}
       </div>

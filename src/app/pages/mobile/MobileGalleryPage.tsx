@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MobileLayout } from '../../components/mobile/MobileLayout';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { GalleryViewMode } from '../../components/mobile/GalleryViewSwitcher';
 import { MobileGallery } from '../../components/mobile/MobileGallery';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
-import { Asset } from '../../lib/types';
+import { SearchModal } from '../../components/mobile/SearchModal';
+import { SearchTrigger } from '../../components/mobile/SearchTrigger';
+import { Asset, AssetStatus } from '../../lib/types';
+import { useAuth } from '../../lib/AuthContext';
+import {
+  fetchAssets as fetchAssetsFromApi,
+  updateAssetStatus,
+  deleteAsset,
+  toggleLike
+} from '../../lib/api/assets';
 import './MobileHomePage.css';
 
 interface MobileGalleryPageProps {
@@ -12,97 +21,102 @@ interface MobileGalleryPageProps {
 }
 
 export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
+  const { user } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [viewMode, setViewMode] = useState<GalleryViewMode>('poster');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // カタログデータを取得
   useEffect(() => {
-    fetchAssets();
+    fetchInitialAssets();
   }, []);
 
-  const fetchAssets = async () => {
-    setIsLoading(true);
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+  const mapApiAsset = useCallback(
+    (asset: Asset): Asset => ({
+      ...asset,
+      src: asset.finalUrl ?? asset.src,
+      isPublic: asset.status === 'public',
+      liked: asset.isLiked ?? asset.liked,
+      creator: asset.creator || (asset.userId === user?.id ? 'You' : asset.creator || 'OWM Creator')
+    }),
+    [user?.id]
+  );
 
-      // 1. 公開されたアイテムを取得
-      let publishedItems: Asset[] = [];
+  const fetchInitialAssets = useCallback(async () => {
+    setCursor(null);
+    setHasMore(true);
+    setAssets([]);
+    await fetchMore(true);
+  }, []);
 
+  const fetchMore = useCallback(
+    async (reset = false) => {
+      if (isLoading) return;
+      setIsLoading(true);
       try {
-        const publishedResponse = await fetch(`${apiUrl}/api/publish`);
+        const { assets: fetched, cursor: nextCursor } = await fetchAssetsFromApi({
+          scope: 'public',
+          kind: 'final',
+          limit: 24,
+          cursor: reset ? null : cursor
+        });
 
-        if (publishedResponse.ok) {
-          const publishedData = await publishedResponse.json();
-          if (publishedData.items && publishedData.items.length > 0) {
-            // published_itemsをAsset型に変換
-            publishedItems = publishedData.items.map((item: any) => ({
-              id: item.id,
-              src: item.poster_url || item.original_url, // poster_urlがない場合はoriginal_urlを使用
-              title: item.title,
-              tags: item.tags || [],
-              colors: [],
-              price: item.price,
-              creator: item.username || 'Anonymous', // APIから取得したusernameを使用
-              likes: item.likes || 0,
-              w: 800,
-              h: 1168,
+        if (fetched.length > 0) {
+          const mapped = fetched.map(mapApiAsset);
+          setAssets((prev) => (reset ? mapped : [...prev, ...mapped]));
+          setCursor(nextCursor);
+          setHasMore(Boolean(nextCursor));
+          return;
+        }
+
+        if (!reset) {
+          setHasMore(false);
+          return;
+        }
+
+        // fallback to catalog samples
+        const catalogResponse = await fetch('/api/catalog');
+        if (catalogResponse.ok) {
+          const catalogData = await catalogResponse.json();
+          if (Array.isArray(catalogData.images) && catalogData.images.length) {
+            const catalogItems: Asset[] = catalogData.images.map((item: any) => ({
+              ...item,
+              creator: 'OWM',
+              status: 'public',
+              isPublic: true,
+              userId: null
             }));
-            console.log('[MobileGalleryPage] Loaded published items:', publishedItems.length);
+            setAssets(catalogItems);
+            setHasMore(false);
+            return;
           }
-        } else {
-          const errorText = await publishedResponse.text();
-          console.error('[MobileGalleryPage] Failed to fetch published items:', publishedResponse.status, errorText);
         }
+
+        // final fallback
+        setAssets(generateDummyAssets(24));
+        setHasMore(false);
       } catch (error) {
-        console.error('[MobileGalleryPage] Error fetching published items:', error);
-      }
-
-      // 2. カタログデータを取得
-      const catalogResponse = await fetch('/api/catalog');
-      let catalogItems: Asset[] = [];
-
-      if (catalogResponse.ok) {
-        const catalogData = await catalogResponse.json();
-        if (catalogData.images && catalogData.images.length > 0) {
-          // カタログアイテムにcreator: 'OWM'を追加
-          catalogItems = catalogData.images.map((item: any) => ({
-            ...item,
-            creator: 'OWM',
-          }));
+        console.error('[MobileGalleryPage] Failed to fetch assets:', error);
+        if (reset) {
+          setAssets(generateDummyAssets(24));
+          setHasMore(false);
         }
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [cursor, isLoading, mapApiAsset]
+  );
 
-      // 3. 公開アイテムをカタログの上に表示
-      if (publishedItems.length > 0) {
-        setAssets([...publishedItems, ...catalogItems]);
-      } else if (catalogItems.length > 0) {
-        setAssets(catalogItems);
-      } else {
-        // Fallback: ダミーデータ
-        setAssets(generateDummyAssets(30));
-      }
-    } catch (error) {
-      console.error('Failed to load catalog:', error);
-      setAssets(generateDummyAssets(30));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadMore = () => {
-    if (isLoading) return;
-    setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      const moreAssets = generateDummyAssets(20);
-      setAssets((prev) => [...prev, ...moreAssets]);
-      setIsLoading(false);
-    }, 1000);
-  };
+  const loadMore = useCallback(() => {
+    if (!hasMore || isLoading) return;
+    fetchMore(false);
+  }, [fetchMore, hasMore, isLoading]);
 
   const handleAssetClick = (asset: Asset) => {
     setSelectedAsset(asset);
@@ -120,18 +134,54 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
     }
   };
 
-  const handleLike = () => {
-    console.log('Liked:', selectedAsset?.id);
-  };
+  const handleToggleFavorite = useCallback(
+    async (assetId: string, shouldLike: boolean) => {
+      await toggleLike(assetId, shouldLike);
+      setAssets((prev) =>
+        prev.map((asset) =>
+          asset.id === assetId
+            ? {
+                ...asset,
+                liked: shouldLike,
+                isLiked: shouldLike,
+                likes: Math.max(0, (asset.likes || 0) + (shouldLike ? 1 : -1))
+              }
+            : asset
+        )
+      );
 
-  const handleSave = () => {
-    console.log('Saved:', selectedAsset?.id);
-  };
+      setSelectedAsset((prev) =>
+        prev && prev.id === assetId
+          ? {
+              ...prev,
+              liked: shouldLike,
+              isLiked: shouldLike,
+              likes: Math.max(0, (prev.likes || 0) + (shouldLike ? 1 : -1))
+            }
+          : prev
+      );
+    },
+    []
+  );
 
-  const handlePurchase = () => {
-    console.log('Purchase:', selectedAsset?.id);
-    // TODO: Navigate to purchase page
-  };
+  const handleTogglePublish = useCallback(
+    async (assetId: string, nextStatus: AssetStatus) => {
+      const updated = await updateAssetStatus(assetId, nextStatus);
+      const mapped = mapApiAsset(updated);
+      setAssets((prev) => prev.map((asset) => (asset.id === assetId ? mapped : asset)));
+      setSelectedAsset((prev) => (prev && prev.id === assetId ? mapped : prev));
+    },
+    [mapApiAsset]
+  );
+
+  const handleDelete = useCallback(
+    async (assetId: string) => {
+      await deleteAsset(assetId);
+      setAssets((prev) => prev.filter((asset) => asset.id !== assetId));
+      setSelectedAsset((prev) => (prev && prev.id === assetId ? null : prev));
+    },
+    []
+  );
 
   // Get similar assets
   const getSimilarAssets = (asset: Asset) => {
@@ -150,12 +200,18 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
         isMenuOpen={isMenuOpen}
       >
         <div className="gallery-page-content">
+          <SearchTrigger
+            tone="dark"
+            placeholder="Search"
+            className="gallery-search-trigger"
+            onClick={() => setIsSearchOpen(true)}
+          />
           <h1 className="gallery-title" onClick={handleTitleClick}>GALLERY</h1>
           <MobileGallery
             assets={assets}
             viewMode={viewMode}
             onAssetClick={handleAssetClick}
-            onLoadMore={loadMore}
+            onLoadMore={hasMore ? loadMore : undefined}
             isLoading={isLoading}
           />
         </div>
@@ -171,12 +227,25 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
         <MobileDetailModal
           asset={selectedAsset}
           onClose={() => setSelectedAsset(null)}
-          onLike={handleLike}
-          onSave={handleSave}
-          onPurchase={handlePurchase}
+          onPurchase={() => console.log('Purchase:', selectedAsset?.id)}
+          onTogglePublish={(assetId, makePublic) =>
+            handleTogglePublish(assetId, makePublic ? 'public' : 'private')
+          }
+          onDelete={handleDelete}
+          onToggleFavorite={handleToggleFavorite}
           similarAssets={getSimilarAssets(selectedAsset)}
+          isOwner={selectedAsset.userId === user?.id}
         />
       )}
+
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onSearch={(query) => {
+          console.log('Search:', query);
+          setIsSearchOpen(false);
+        }}
+      />
     </>
   );
 }
@@ -219,6 +288,9 @@ function generateDummyAssets(count: number): Asset[] {
       price: Math.floor(Math.random() * 30000) + 10000,
       creator: creators[i % creators.length],
       likes: Math.floor(Math.random() * 100),
+      status: 'public',
+      isPublic: true,
+      userId: null
     };
   });
 }

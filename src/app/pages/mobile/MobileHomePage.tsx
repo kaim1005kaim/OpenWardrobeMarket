@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
-import { SearchModal } from '../../components/mobile/SearchModal';
 import { CardSwiper } from '../../components/mobile/CardSwiper';
-import { Asset } from '../../lib/types';
+import { Asset, AssetStatus } from '../../lib/types';
+import { useAuth } from '../../lib/AuthContext';
+import {
+  fetchAssets as fetchAssetsFromApi,
+  updateAssetStatus,
+  deleteAsset,
+  toggleLike
+} from '../../lib/api/assets';
 import MetaballsSoft from '../../../components/MetaballsSoft';
 import './MobileHomePage.css';
 
@@ -12,20 +18,57 @@ interface MobileHomePageProps {
 }
 
 export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
+  const { user } = useAuth();
   const [recommendedAssets, setRecommendedAssets] = useState<Asset[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const [viewMode, setViewMode] = useState<'home' | 'gallery'>('home');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchRecommended();
   }, []);
 
-  const fetchRecommended = async () => {
-    // TODO: Fetch from API
-    setRecommendedAssets(generateDummyAssets(10));
-  };
+  const mapApiAsset = useCallback(
+    (asset: Asset): Asset => ({
+      ...asset,
+      src: asset.rawUrl ?? asset.finalUrl ?? asset.src,
+      isPublic: asset.status === 'public',
+      liked: asset.isLiked ?? asset.liked,
+      creator: asset.creator || (asset.userId === user?.id ? 'You' : 'OWM Creator')
+    }),
+    [user?.id]
+  );
+
+  const fetchRecommended = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { assets } = await fetchAssetsFromApi({
+        scope: 'mine',
+        kind: 'raw',
+        limit: 20
+      });
+
+      if (assets.length > 0) {
+        setRecommendedAssets(assets.map(mapApiAsset));
+        return;
+      }
+
+      // fallback to public assets if user has none
+      const { assets: publicAssets } = await fetchAssetsFromApi({
+        scope: 'public',
+        kind: 'final',
+        limit: 20
+      });
+
+      setRecommendedAssets(publicAssets.map(mapApiAsset));
+    } catch (error) {
+      console.error('[MobileHomePage] Failed to load recommended assets:', error);
+      setRecommendedAssets(generateDummyAssets(10));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [mapApiAsset]);
 
   const handleMenuNavigate = (page: string) => {
     if (onNavigate) {
@@ -38,6 +81,74 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
       .filter(a => a.id !== asset.id)
       .slice(0, 6);
   };
+
+  const handleToggleFavorite = useCallback(
+    async (assetId: string, shouldLike: boolean) => {
+      try {
+        await toggleLike(assetId, shouldLike);
+        setRecommendedAssets((prev) =>
+          prev.map((asset) =>
+            asset.id === assetId
+              ? {
+                  ...asset,
+                  liked: shouldLike,
+                  isLiked: shouldLike,
+                  likes: Math.max(0, (asset.likes || 0) + (shouldLike ? 1 : -1))
+                }
+              : asset
+          )
+        );
+
+        setSelectedAsset((prev) =>
+          prev && prev.id === assetId
+            ? {
+                ...prev,
+                liked: shouldLike,
+                isLiked: shouldLike,
+                likes: Math.max(0, (prev.likes || 0) + (shouldLike ? 1 : -1))
+              }
+            : prev
+        );
+      } catch (error) {
+        console.error('[MobileHomePage] toggle favorite failed:', error);
+        throw error;
+      }
+    },
+    []
+  );
+
+  const handleTogglePublish = useCallback(
+    async (assetId: string, nextStatus: AssetStatus) => {
+      try {
+        const updated = await updateAssetStatus(assetId, nextStatus);
+        const mapped = mapApiAsset(updated);
+
+        setRecommendedAssets((prev) =>
+          prev.map((asset) => (asset.id === assetId ? mapped : asset))
+        );
+
+        setSelectedAsset((prev) => (prev && prev.id === assetId ? mapped : prev));
+      } catch (error) {
+        console.error('[MobileHomePage] toggle publish failed:', error);
+        throw error;
+      }
+    },
+    [mapApiAsset]
+  );
+
+  const handleDeleteAsset = useCallback(
+    async (assetId: string) => {
+      try {
+        await deleteAsset(assetId);
+        setRecommendedAssets((prev) => prev.filter((asset) => asset.id !== assetId));
+        setSelectedAsset((prev) => (prev && prev.id === assetId ? null : prev));
+      } catch (error) {
+        console.error('[MobileHomePage] delete asset failed:', error);
+        throw error;
+      }
+    },
+    []
+  );
 
   return (
     <>
@@ -58,15 +169,8 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
           <div className="owm-logo">OWM</div>
         </header>
 
-        {/* Search bar */}
-        <div className="search-container" onClick={() => setIsSearchOpen(true)}>
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search..."
-            readOnly
-          />
-        </div>
+        {/* Spacer to maintain layout consistency */}
+        <div className="home-spacer" aria-hidden="true" />
 
         {/* RECOMMEND Title */}
         <h1 className="recommend-title">RECOMMEND</h1>
@@ -76,7 +180,14 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
           <CardSwiper
             assets={recommendedAssets}
             onCardClick={setSelectedAsset}
+            autoAdvanceInterval={recommendedAssets.length > 1 ? 3000 : undefined}
+            onIndexChange={setActiveIndex}
           />
+          {isLoading && (
+            <div className="home-loading-indicator">
+              Loading...
+            </div>
+          )}
         </div>
 
         {/* CTA Button */}
@@ -87,19 +198,12 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
           あなただけのデザインを完成させよう
         </button>
 
-        {/* View Mode Toggle */}
+        {/* Gallery Layout Link */}
         <button
-          className="view-toggle-btn"
+          className="gallery-layout-link"
           onClick={() => onNavigate?.('gallery')}
         >
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <rect width="32" height="32" rx="16" fill="white" fillOpacity="0.9"/>
-            {viewMode === 'home' ? (
-              <path d="M12 10H20M12 16H20M12 22H20" stroke="#1a3d3d" strokeWidth="2" strokeLinecap="round"/>
-            ) : (
-              <path d="M10 10H14V14H10V10ZM18 10H22V14H18V10ZM10 18H14V22H10V18ZM18 18H22V22H18V18Z" stroke="#1a3d3d" strokeWidth="2" strokeLinecap="round"/>
-            )}
-          </svg>
+          ギャラリーレイアウトを見る
         </button>
 
         {/* Footer */}
@@ -131,20 +235,22 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
         onNavigate={handleMenuNavigate}
       />
 
-      <SearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        onSearch={(query) => console.log('Search:', query)}
-      />
-
       {selectedAsset && (
         <MobileDetailModal
           asset={selectedAsset}
           onClose={() => setSelectedAsset(null)}
-          onLike={() => console.log('Liked')}
-          onSave={() => console.log('Saved')}
           onPurchase={() => console.log('Purchase')}
+          onTogglePublish={(assetId, isPublic) =>
+            handleTogglePublish(assetId, isPublic ? 'public' : 'private')
+          }
+          onDelete={async (assetId) => {
+            await handleDeleteAsset(assetId);
+          }}
+          onToggleFavorite={async (assetId, shouldLike) => {
+            await handleToggleFavorite(assetId, shouldLike);
+          }}
           similarAssets={getSimilarAssets(selectedAsset)}
+          isOwner={selectedAsset.userId === user?.id}
         />
       )}
     </>
@@ -186,6 +292,9 @@ function generateDummyAssets(count: number): Asset[] {
       price: Math.floor(Math.random() * 30000) + 10000,
       creator: creators[i % creators.length],
       likes: Math.floor(Math.random() * 100),
+      status: 'public',
+      isPublic: true,
+      userId: null
     };
   });
 }

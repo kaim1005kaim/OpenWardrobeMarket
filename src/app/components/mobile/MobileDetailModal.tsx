@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Asset } from '../../lib/types';
 import { useAuth } from '../../lib/AuthContext';
 import './MobileDetailModal.css';
@@ -11,8 +11,9 @@ interface MobileDetailModalProps {
   onPurchase?: () => void;
   onTogglePublish?: (assetId: string, isPublic: boolean) => Promise<void>;
   onDelete?: (assetId: string) => Promise<void>;
+  onToggleFavorite?: (assetId: string, shouldLike: boolean) => Promise<void>;
   similarAssets?: Asset[];
-  isOwner?: boolean; // 自分の画像かどうか
+  isOwner?: boolean;
 }
 
 export function MobileDetailModal({
@@ -21,10 +22,19 @@ export function MobileDetailModal({
   onPurchase,
   onTogglePublish,
   onDelete,
+  onToggleFavorite,
   similarAssets = [],
-  isOwner = false,
+  isOwner = false
 }: MobileDetailModalProps) {
   const { user } = useAuth();
+  const initialPublic = useMemo(() => (asset.status ? asset.status === 'public' : !!asset.isPublic), [asset]);
+  const initialLiked = useMemo(() => asset.isLiked ?? asset.liked ?? false, [asset]);
+
+  const [isPublic, setIsPublic] = useState(initialPublic);
+  const [isLiked, setIsLiked] = useState(initialLiked);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isFavoriteProcessing, setIsFavoriteProcessing] = useState(false);
+
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => {
@@ -32,27 +42,70 @@ export function MobileDetailModal({
     };
   }, []);
 
+  useEffect(() => {
+    setIsPublic(asset.status ? asset.status === 'public' : !!asset.isPublic);
+    setIsLiked(asset.isLiked ?? asset.liked ?? false);
+  }, [asset]);
+
+  const handleTogglePublish = async () => {
+    if (!onTogglePublish) return;
+    try {
+      setIsPublishing(true);
+      const next = !isPublic;
+      await onTogglePublish(asset.id, next);
+      setIsPublic(next);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    if (!confirm('本当に削除しますか？')) return;
+    await onDelete(asset.id);
+    onClose();
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!onToggleFavorite) return;
+    try {
+      setIsFavoriteProcessing(true);
+      const next = !isLiked;
+      await onToggleFavorite(asset.id, next);
+      setIsLiked(next);
+    } finally {
+      setIsFavoriteProcessing(false);
+    }
+  };
+
+  const priceDisplay = asset.price != null ? `¥${Number(asset.price).toLocaleString()}` : '—';
+  const baseLikes = asset.likes ?? 0;
+  const likesDelta = (isLiked ? 1 : 0) - (initialLiked ? 1 : 0);
+  const totalLikes = Math.max(0, baseLikes + likesDelta);
+
   return (
     <div className="detail-modal-overlay">
       <div className="detail-modal-backdrop" onClick={onClose} />
 
       <div className="detail-modal-container">
-        {/* Header */}
         <div className="detail-modal-header">
           <button className="detail-close-btn" onClick={onClose}>
             ×
           </button>
-          <button className="detail-bookmark-btn">
-            ♡
+          <button
+            className={`detail-bookmark-btn ${isLiked ? 'active' : ''}`}
+            onClick={handleToggleFavorite}
+            disabled={isFavoriteProcessing || !onToggleFavorite}
+            aria-pressed={isLiked}
+          >
+            {isLiked ? '♥' : '♡'}
           </button>
         </div>
 
-        {/* Image */}
         <div className="detail-image">
           <img src={asset.src} alt={asset.title} />
         </div>
 
-        {/* Info */}
         <div className="detail-info">
           <h2 className="detail-title">{asset.title}</h2>
 
@@ -69,26 +122,19 @@ export function MobileDetailModal({
               <div className="detail-from">FROM</div>
               <div className="detail-creator-name">{asset.creator || 'JOHN DEANNA'}</div>
             </div>
-            <div className="detail-price">¥{asset.price?.toLocaleString()}</div>
+            <div className="detail-price">{priceDisplay}</div>
           </div>
 
           {isOwner ? (
             <div className="detail-owner-actions">
               <button
                 className="detail-toggle-publish-btn"
-                onClick={() => onTogglePublish?.(asset.id, !asset.isPublic)}
+                onClick={handleTogglePublish}
+                disabled={isPublishing || !onTogglePublish}
               >
-                {asset.isPublic ? '非公開にする' : '公開する'}
+                {isPublic ? '非公開にする' : '公開する'}
               </button>
-              <button
-                className="detail-delete-btn"
-                onClick={async () => {
-                  if (confirm('本当に削除しますか？')) {
-                    await onDelete?.(asset.id);
-                    onClose();
-                  }
-                }}
-              >
+              <button className="detail-delete-btn" onClick={handleDelete}>
                 削除
               </button>
             </div>
@@ -96,6 +142,12 @@ export function MobileDetailModal({
             <button className="detail-buy-btn" onClick={onPurchase}>
               BUY
             </button>
+          )}
+
+          {onToggleFavorite && (
+            <div className="detail-likes">
+              <span>{totalLikes}</span> likes
+            </div>
           )}
 
           <div className="detail-description">
@@ -108,7 +160,6 @@ export function MobileDetailModal({
           </div>
         </div>
 
-        {/* Similar */}
         {similarAssets.length > 0 && (
           <div className="detail-similar">
             <h3 className="detail-similar-title">SIMILAR DESIGNS</h3>

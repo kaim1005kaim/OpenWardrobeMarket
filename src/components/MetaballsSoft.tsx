@@ -12,8 +12,28 @@ interface AnimatedCubesProps {
   impactTrigger: number;
 }
 
-// 5種類のアニメーションパターン
-type AnimationType = 'explosion' | 'wave' | 'spiral' | 'pulse' | 'scatter';
+// 20種類のアニメーションパターン
+type AnimationType =
+  | 'explosion'
+  | 'wave'
+  | 'spiral'
+  | 'pulse'
+  | 'scatter'
+  | 'orbit'
+  | 'ripple'
+  | 'cascade'
+  | 'helix'
+  | 'swell'
+  | 'tilt'
+  | 'flare'
+  | 'bounce'
+  | 'twist'
+  | 'shear'
+  | 'vortex'
+  | 'fragments'
+  | 'breath'
+  | 'tremor'
+  | 'fields';
 
 function AnimatedCubes({
   animated,
@@ -56,7 +76,28 @@ function AnimatedCubes({
       lastImpactTrigger.current = impactTrigger;
 
       // ランダムにアニメーションタイプを選択
-      const types: AnimationType[] = ['explosion', 'wave', 'spiral', 'pulse', 'scatter'];
+      const types: AnimationType[] = [
+        'explosion',
+        'wave',
+        'spiral',
+        'pulse',
+        'scatter',
+        'orbit',
+        'ripple',
+        'cascade',
+        'helix',
+        'swell',
+        'tilt',
+        'flare',
+        'bounce',
+        'twist',
+        'shear',
+        'vortex',
+        'fragments',
+        'breath',
+        'tremor',
+        'fields'
+      ];
       animationTypeRef.current = types[Math.floor(Math.random() * types.length)];
     }
   }, [impactTrigger]);
@@ -125,6 +166,118 @@ function AnimatedCubes({
             offsetX = scatterX * impactStrength * 0.5;
             offsetY = scatterY * impactStrength * 0.5;
             offsetZ = scatterZ * impactStrength * 0.2;
+            break;
+          }
+          case 'orbit': {
+            const orbitRadius = 0.25 + impactStrength * 0.35;
+            const orbitAngle = angle + impactStrength * Math.PI * 1.5;
+            offsetX = Math.cos(orbitAngle) * orbitRadius;
+            offsetY = Math.sin(orbitAngle) * orbitRadius * 0.8;
+            offsetZ = Math.sin(orbitAngle * 0.6) * impactStrength * 0.25;
+            break;
+          }
+          case 'ripple': {
+            const rippleDelay = i * 0.08;
+            const strength = Math.max(0, impactStrength - rippleDelay);
+            const rippleAngle = angle + strength * Math.PI * 2;
+            offsetX = Math.cos(rippleAngle) * strength * 0.45;
+            offsetY = Math.sin(strength * Math.PI) * 0.35;
+            offsetZ = Math.sin(rippleAngle * 0.5) * strength * 0.2;
+            break;
+          }
+          case 'cascade': {
+            const stagger = i * 0.12;
+            const fall = Math.max(0, impactStrength - stagger);
+            offsetY = -fall * 0.6;
+            offsetX = Math.sin(angle + fall * Math.PI * 0.5) * fall * 0.25;
+            offsetZ = Math.cos(angle + fall) * fall * 0.18;
+            break;
+          }
+          case 'helix': {
+            const helixAngle = angle * 2 + impactStrength * Math.PI * 1.2;
+            offsetX = Math.cos(helixAngle) * impactStrength * 0.4;
+            offsetZ = Math.sin(helixAngle) * impactStrength * 0.25;
+            offsetY = Math.sin(i * 0.5 + impactStrength * Math.PI) * 0.5;
+            break;
+          }
+          case 'swell': {
+            const swell = 0.3 + impactStrength * 0.7;
+            offsetX = baseX * swell - baseX;
+            offsetY = baseY * swell - baseY;
+            offsetZ = baseZ * swell * 0.4 - baseZ * 0.4;
+            break;
+          }
+          case 'tilt': {
+            const tiltAngle = impactStrength * Math.PI + i * 0.3;
+            offsetX = Math.sin(tiltAngle) * 0.4;
+            offsetY = Math.cos(tiltAngle) * impactStrength * 0.45;
+            offsetZ = Math.sin(tiltAngle * 0.7) * impactStrength * 0.18;
+            break;
+          }
+          case 'flare': {
+            const flareStrength = impactStrength * impactStrength;
+            const direction = new THREE.Vector3(1, 1, 0.3).normalize();
+            offsetX = direction.x * flareStrength * 0.6 * (i % 2 === 0 ? 1 : -1);
+            offsetY = direction.y * flareStrength * 0.6;
+            offsetZ = direction.z * flareStrength * 0.3;
+            break;
+          }
+          case 'bounce': {
+            const bounce = Math.abs(Math.sin(impactStrength * Math.PI * 1.2)) * 0.6;
+            offsetY = bounce * (1 - i * 0.05);
+            offsetX = Math.sin(angle) * bounce * 0.2;
+            offsetZ = Math.cos(angle) * bounce * 0.15;
+            break;
+          }
+          case 'twist': {
+            const twistAngle = impactStrength * Math.PI * 2 + i * 0.1;
+            offsetX = baseX * Math.cos(twistAngle) - baseY * Math.sin(twistAngle);
+            offsetY = baseX * Math.sin(twistAngle) + baseY * Math.cos(twistAngle) - baseY;
+            offsetZ = Math.sin(twistAngle * 0.5) * 0.25;
+            break;
+          }
+          case 'shear': {
+            const shearFactor = (impactStrength - 0.3) * 1.2;
+            offsetX = baseY * shearFactor * 0.6;
+            offsetY = baseX * shearFactor * 0.4;
+            offsetZ = Math.sin(angle + shearFactor) * 0.15;
+            break;
+          }
+          case 'vortex': {
+            const vortexAngle = impactStrength * Math.PI * 2 + angle;
+            const radius = 0.2 + impactStrength * 0.3;
+            offsetX = Math.cos(vortexAngle) * radius;
+            offsetY = Math.sin(vortexAngle) * radius;
+            offsetZ = -impactStrength * 0.3;
+            break;
+          }
+          case 'fragments': {
+            const randomSeed = Math.sin(b.phase + i * 3.1);
+            offsetX = randomSeed * impactStrength * 0.6;
+            offsetY = Math.cos(b.phase + i * 2.5) * impactStrength * 0.5;
+            offsetZ = Math.sin(b.phase * 0.7 + i) * impactStrength * 0.25;
+            break;
+          }
+          case 'breath': {
+            const breathScale = 1 + Math.sin(impactStrength * Math.PI) * 0.35;
+            offsetX = baseX * (breathScale - 1);
+            offsetY = baseY * (breathScale - 1);
+            offsetZ = baseZ * (breathScale - 1) * 0.3;
+            break;
+          }
+          case 'tremor': {
+            const tremorStrength = impactStrength * 0.45;
+            const tremorPhase = t * 4 + i;
+            offsetX = Math.sin(tremorPhase) * tremorStrength * 0.12;
+            offsetY = Math.cos(tremorPhase * 1.2) * tremorStrength * 0.12;
+            offsetZ = Math.sin(tremorPhase * 0.7) * tremorStrength * 0.08;
+            break;
+          }
+          case 'fields': {
+            const fieldAngle = (i / balls.length) * Math.PI;
+            offsetX = Math.cos(fieldAngle) * impactStrength * 0.45;
+            offsetY = Math.sin(fieldAngle) * impactStrength * 0.45;
+            offsetZ = Math.sin(impactStrength * Math.PI * 0.8) * 0.25;
             break;
           }
         }

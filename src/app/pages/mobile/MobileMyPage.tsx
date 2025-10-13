@@ -1,11 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { MobileLayout } from '../../components/mobile/MobileLayout';
 import { BottomNavigation } from '../../components/mobile/BottomNavigation';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { Asset } from '../../lib/types';
+import { Asset, AssetStatus } from '../../lib/types';
+import {
+  fetchAssets as fetchAssetsFromApi,
+  updateAssetStatus,
+  deleteAsset,
+  toggleLike
+} from '../../lib/api/assets';
 import './MobileMyPage.css';
 
 interface MobileMyPageProps {
@@ -18,18 +24,16 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const { user } = useAuth();
   const [activeSection, setActiveSection] = useState<'design' | 'setting'>('design');
   const [activeTab, setActiveTab] = useState<TabType>('publish');
-  const [assets, setAssets] = useState<Asset[]>([]);
+  const [myAssets, setMyAssets] = useState<Asset[]>([]);
+  const [collectionAssets, setCollectionAssets] = useState<Asset[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingAssets, setIsLoadingAssets] = useState(false);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   const [isBioExpanded, setIsBioExpanded] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const accountTriggerRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    fetchAssets(activeTab);
-  }, [activeTab, user]);
 
   useEffect(() => {
     if (!showAccountMenu) return;
@@ -52,94 +56,67 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showAccountMenu]);
 
-  const fetchAssets = async (tab: TabType) => {
-    if (!user) return;
+  const mapAsset = useCallback(
+    (asset: Asset): Asset => ({
+      ...asset,
+      src: asset.finalUrl ?? asset.rawUrl ?? asset.src,
+      isPublic: asset.status === 'public',
+      liked: asset.isLiked ?? asset.liked,
+      creator: asset.creator || (asset.userId === user?.id ? 'You' : asset.creator || 'OWM Creator')
+    }),
+    [user?.id]
+  );
 
-    setIsLoading(true);
-    try {
-      if (tab === 'publish') {
-        // 公開済みアイテムを取得
-        const { data, error } = await supabase
-          .from('published_items')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        const publishedAssets: Asset[] = (data || []).map((item: any) => ({
-          id: item.id,
-          src: item.poster_url || item.original_url,
-          title: item.title,
-          tags: item.tags || [],
-          price: item.price,
-          likes: item.likes || 0,
-          w: 800,
-          h: 1168,
-          isPublic: true,
-        }));
-
-        setAssets(publishedAssets);
-      } else if (tab === 'drafts') {
-        // ドラフト（未公開の生成画像）を取得
-        const { data, error } = await supabase
-          .from('generation_history')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('completion_status', 'completed')
-          .eq('is_public', false)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        const draftAssets: Asset[] = (data || []).map((item: any) => ({
-          id: item.id,
-          src: item.image_url || item.preview_url || '',
-          title: item.prompt || 'Generated Design',
-          tags: ['Generated'],
-          type: 'generated' as const,
-          price: 0,
-          likes: 0,
-          w: 800,
-          h: 1168,
-          isPublic: false,
-        }));
-
-        setAssets(draftAssets);
-      } else if (tab === 'collections') {
-        // お気に入りアイテムを取得
-        const { data, error } = await supabase
-          .from('likes')
-          .select(`
-            *,
-            published_items!inner(*)
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        const collectionAssets: Asset[] = (data || []).map((item: any) => ({
-          id: item.published_items.id,
-          src: item.published_items.poster_url || item.published_items.original_url,
-          title: item.published_items.title,
-          tags: item.published_items.tags || [],
-          price: item.published_items.price,
-          likes: item.published_items.likes || 0,
-          w: 800,
-          h: 1168,
-        }));
-
-        setAssets(collectionAssets);
-      }
-    } catch (error) {
-      console.error(`Error fetching ${tab} assets:`, error);
-      setAssets([]);
-    } finally {
-      setIsLoading(false);
+  const fetchMyAssets = useCallback(async () => {
+    if (!user) {
+      setMyAssets([]);
+      return;
     }
-  };
+
+    setIsLoadingAssets(true);
+    try {
+      const { assets } = await fetchAssetsFromApi({ scope: 'mine', kind: 'final', limit: 80 });
+      setMyAssets(assets.map(mapAsset));
+    } catch (error) {
+      console.error('[MobileMyPage] Failed to load assets:', error);
+      setMyAssets([]);
+    } finally {
+      setIsLoadingAssets(false);
+    }
+  }, [mapAsset, user]);
+
+  const fetchCollectionAssets = useCallback(async () => {
+    if (!user) {
+      setCollectionAssets([]);
+      return;
+    }
+
+    setIsLoadingCollections(true);
+    try {
+      const { assets } = await fetchAssetsFromApi({ scope: 'liked', kind: 'final', limit: 80 });
+      setCollectionAssets(assets.map(mapAsset));
+    } catch (error) {
+      console.error('[MobileMyPage] Failed to load liked assets:', error);
+      setCollectionAssets([]);
+    } finally {
+      setIsLoadingCollections(false);
+    }
+  }, [mapAsset, user]);
+
+  useEffect(() => {
+    if (!user) {
+      setMyAssets([]);
+      setCollectionAssets([]);
+      return;
+    }
+    fetchMyAssets();
+  }, [user, fetchMyAssets]);
+
+  useEffect(() => {
+    if (activeTab === 'collections' && user) {
+      fetchCollectionAssets();
+    }
+  }, [activeTab, user, fetchCollectionAssets]);
 
   const handleMenuNavigate = (page: string) => {
     if (onNavigate) {
@@ -167,106 +144,108 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   };
 
   const getSimilarAssets = (asset: Asset) => {
-    return assets.filter(a => a.id !== asset.id).slice(0, 6);
+    return myAssets.filter((a) => a.id !== asset.id).slice(0, 6);
   };
 
-  const handleTogglePublish = async (assetId: string, isPublic: boolean) => {
-    if (!user) return;
+  const displayedAssets = useMemo(() => {
+    if (activeTab === 'publish') {
+      return myAssets.filter((asset) => asset.status === 'public');
+    }
+    if (activeTab === 'drafts') {
+      return myAssets.filter((asset) => asset.status !== 'public');
+    }
+    return collectionAssets;
+  }, [activeTab, myAssets, collectionAssets]);
 
+  const isCurrentTabLoading = activeTab === 'collections' ? isLoadingCollections : isLoadingAssets;
+
+  const handleTogglePublish = async (assetId: string, makePublic: boolean) => {
     try {
-      if (isPublic) {
-        // 公開する：generation_historyからデータを取得してpublished_itemsに登録
-        const { data: historyData, error: historyError } = await supabase
-          .from('generation_history')
-          .select('*')
-          .eq('id', assetId)
-          .eq('user_id', user.id)
-          .single();
+      const nextStatus: AssetStatus = makePublic ? 'public' : 'private';
+      const updated = await updateAssetStatus(assetId, nextStatus);
+      const mapped = mapAsset(updated);
 
-        if (historyError) throw historyError;
-
-        // published_itemsに登録（公開フォームをスキップする簡易版）
-        const { error: publishError } = await supabase
-          .from('published_items')
-          .insert({
-            user_id: user.id,
-            title: historyData.prompt || 'Generated Design',
-            description: '',
-            poster_url: historyData.image_url,
-            original_url: historyData.image_url,
-            price: 36323, // デフォルト価格
-            tags: ['Generated'],
-            category: 'minimal',
-            sale_type: 'buyout',
-            is_active: true,
-          });
-
-        if (publishError) throw publishError;
-
-        // generation_historyのis_publicを更新
-        const { error: updateError } = await supabase
-          .from('generation_history')
-          .update({ is_public: true })
-          .eq('id', assetId)
-          .eq('user_id', user.id);
-
-        if (updateError) throw updateError;
-
-        alert('ギャラリーに公開しました');
-      } else {
-        // 非公開にする：generation_historyのis_publicをfalseに
-        const { error } = await supabase
-          .from('generation_history')
-          .update({ is_public: false })
-          .eq('id', assetId)
-          .eq('user_id', user.id);
-
-        if (error) throw error;
-
-        // published_itemsから削除
-        const { error: deleteError } = await supabase
-          .from('published_items')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('original_url', (await supabase
-            .from('generation_history')
-            .select('image_url')
-            .eq('id', assetId)
-            .single()).data?.image_url);
-
-        if (deleteError) console.warn('Failed to delete from published_items:', deleteError);
-
-        alert('非公開にしました（Draftsに移動）');
-      }
-
-      // アセットリストを再取得
-      await fetchAssets(activeTab);
+      setMyAssets((prev) => prev.map((asset) => (asset.id === assetId ? mapped : asset)));
+      setCollectionAssets((prev) =>
+        prev.map((asset) => (asset.id === assetId ? mapped : asset))
+      );
+      setSelectedAsset((prev) => (prev && prev.id === assetId ? mapped : prev));
     } catch (error) {
-      console.error('Error toggling publish:', error);
+      console.error('[MobileMyPage] Error toggling publish:', error);
       alert('更新に失敗しました');
     }
   };
 
   const handleDelete = async (assetId: string) => {
-    if (!user) return;
-
     try {
-      // generation_historyから削除
-      const { error } = await supabase
-        .from('generation_history')
-        .delete()
-        .eq('id', assetId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      // アセットリストを再取得
-      await fetchAssets(activeTab);
-
-      alert('削除しました');
+      await deleteAsset(assetId);
+      setMyAssets((prev) => prev.filter((asset) => asset.id !== assetId));
+      setCollectionAssets((prev) => prev.filter((asset) => asset.id !== assetId));
+      setSelectedAsset((prev) => (prev && prev.id === assetId ? null : prev));
     } catch (error) {
-      console.error('Error deleting asset:', error);
+      console.error('[MobileMyPage] Error deleting asset:', error);
       alert('削除に失敗しました');
+    }
+  };
+
+  const handleToggleFavorite = async (assetId: string, shouldLike: boolean) => {
+    try {
+      await toggleLike(assetId, shouldLike);
+
+      setMyAssets((prev) =>
+        prev.map((asset) =>
+          asset.id === assetId
+            ? {
+                ...asset,
+                liked: shouldLike,
+                isLiked: shouldLike,
+                likes: Math.max(0, (asset.likes || 0) + (shouldLike ? 1 : -1))
+              }
+            : asset
+        )
+      );
+
+      setCollectionAssets((prev) => {
+        if (shouldLike) {
+          // Ensure liked asset is present
+          const exists = prev.some((asset) => asset.id === assetId);
+          if (exists) {
+            return prev.map((asset) =>
+              asset.id === assetId
+                ? {
+                    ...asset,
+                    liked: true,
+                    isLiked: true,
+                    likes: Math.max(0, (asset.likes || 0) + 1)
+                  }
+                : asset
+            );
+          }
+          return prev;
+        }
+        return prev.filter((asset) => asset.id !== assetId);
+      });
+
+      setSelectedAsset((prev) =>
+        prev && prev.id === assetId
+          ? {
+              ...prev,
+              liked: shouldLike,
+              isLiked: shouldLike,
+              likes: Math.max(0, (prev.likes || 0) + (shouldLike ? 1 : -1))
+            }
+          : prev
+      );
+
+      if (!shouldLike && activeTab === 'collections') {
+        setCollectionAssets((prev) => prev.filter((asset) => asset.id !== assetId));
+      }
+      if (shouldLike && activeTab === 'collections') {
+        fetchCollectionAssets();
+      }
+    } catch (error) {
+      console.error('[MobileMyPage] Error toggling favorite:', error);
+      alert('お気に入りの更新に失敗しました');
     }
   };
 
@@ -401,10 +380,10 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
 
               {/* Grid */}
               <div className="assets-grid">
-                {isLoading ? (
+                {isCurrentTabLoading ? (
                   <div className="loading-message">読み込み中...</div>
-                ) : assets.length > 0 ? (
-                  assets.map((asset) => (
+                ) : displayedAssets.length > 0 ? (
+                  displayedAssets.map((asset) => (
                     <div
                       key={asset.id}
                       className="asset-card"
@@ -452,13 +431,12 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
         <MobileDetailModal
           asset={selectedAsset}
           onClose={() => setSelectedAsset(null)}
-          onLike={() => console.log('Liked')}
-          onSave={() => console.log('Saved')}
           onPurchase={() => console.log('Purchase')}
           onTogglePublish={handleTogglePublish}
           onDelete={handleDelete}
+          onToggleFavorite={handleToggleFavorite}
           similarAssets={getSimilarAssets(selectedAsset)}
-          isOwner={true} // MyPage内なので全て自分の画像
+          isOwner={selectedAsset.userId === user?.id}
         />
       )}
     </>

@@ -292,16 +292,6 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                 )}
               </div>
 
-              {/* Progress bar */}
-              <div className="progress-container">
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-                </div>
-                <p className="progress-text">
-                  {currentStep + 1} / {createQuestions.length}
-                </p>
-              </div>
-
               {/* Options */}
               <div className="options-container">
                 {currentQuestion.options.map((option) => (
@@ -318,49 +308,15 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                 ))}
               </div>
 
-              {/* 設問2以降のリセット・戻るボタン */}
-              {currentStep >= 1 && (
-                <div style={{ display: 'flex', gap: '12px', width: '100%', maxWidth: '600px', margin: '0 auto 16px' }}>
-                  <button
-                    className="reset-btn"
-                    onClick={handleReset}
-                    style={{
-                      flex: 1,
-                      height: '48px',
-                      background: 'transparent',
-                      border: '1px solid #000',
-                      borderRadius: 0,
-                      fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif",
-                      fontSize: '14px',
-                      fontWeight: 400,
-                      color: '#000',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    はじめからやり直す
-                  </button>
-                  <button
-                    className="back-btn"
-                    onClick={handleBack}
-                    style={{
-                      flex: 1,
-                      height: '48px',
-                      background: 'transparent',
-                      border: '1px solid #000',
-                      borderRadius: 0,
-                      fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif",
-                      fontSize: '14px',
-                      fontWeight: 400,
-                      color: '#000',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    一つ前に戻る
-                  </button>
+              {/* Progress bar */}
+              <div className="progress-container">
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${progress}%` }}></div>
                 </div>
-              )}
+                <p className="progress-text">
+                  {currentStep + 1} / {createQuestions.length}
+                </p>
+              </div>
 
               {/* Navigation */}
               <div className="nav-buttons">
@@ -372,6 +328,18 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                   {currentStep === createQuestions.length - 1 ? '生成する' : '次へ'}
                 </button>
               </div>
+
+              {/* 設問2以降のリセット・戻るボタン */}
+              {currentStep >= 1 && (
+                <div className="secondary-nav-buttons">
+                  <button className="reset-btn" onClick={handleReset}>
+                    はじめからやり直す
+                  </button>
+                  <button className="back-btn" onClick={handleBack}>
+                    一つ前に戻る
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <>

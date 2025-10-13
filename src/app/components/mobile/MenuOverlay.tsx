@@ -45,7 +45,7 @@ export function MenuOverlay({ isOpen, onClose, onNavigate }: MenuOverlayProps) {
         </button>
 
         <nav className="menu-nav-main">
-          <button onClick={() => handleNavigate('home')}>HOME</button>
+          <button onClick={() => handleNavigate('home')}>TOP</button>
           <button onClick={() => handleNavigate('gallery')}>GALLERY</button>
           <button onClick={() => handleNavigate('create')}>CREATE</button>
           <button onClick={() => handleNavigate('mypage')}>MY PAGE</button>

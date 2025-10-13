@@ -59,31 +59,15 @@ body.menu-open .mobile-home-header .hamburger-btn {
   font-weight: 300;
 }
 
-/* Search */
-.search-container {
-  margin-top: 50px;
-  padding: 0 30px;
+/* Spacer to keep hero rhythm */
+.home-spacer {
+  margin-top: 60px;
+  height: 48px;
 }
 
-.search-input {
-  width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
-  display: block;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  padding: 12px 0;
-  font-family: "Trajan Pro 3", "Cinzel", serif;
-  font-size: 14px;
-  letter-spacing: 0.05em;
-  color: white;
-  text-align: center;
-  outline: none;
-}
-
-.search-input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+.gallery-search-trigger {
+  margin-top: 80px;
+  margin-bottom: 24px;
 }
 
 /* RECOMMEND Title */
@@ -121,8 +105,8 @@ body.menu-open .mobile-home-header .hamburger-btn {
 /* Card Swiper Section */
 .card-swiper-section {
   margin-top: 0;
-  padding: 40px 0;
-  min-height: 600px;
+  padding: 40px 0 48px 0;
+  min-height: 580px;
   position: relative;
   z-index: 10;
 }
@@ -137,7 +121,7 @@ body.menu-open .mobile-home-header .hamburger-btn {
 .card-swiper {
   position: relative;
   width: 100%;
-  height: 580px;
+  height: 560px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -145,7 +129,8 @@ body.menu-open .mobile-home-header .hamburger-btn {
 
 .swiper-card {
   position: absolute;
-  width: 280px;
+  width: 300px;
+  max-width: 80vw;
   height: 490px;
   cursor: pointer;
   transform-style: preserve-3d;
@@ -193,21 +178,31 @@ body.menu-open .mobile-home-header .hamburger-btn {
   display: flex;
   justify-content: center;
   gap: 8px;
-  margin-top: -20px;
+  margin-top: -12px;
 }
 
 .pagination-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.25);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.2s ease, background 0.2s ease;
 }
 
 .pagination-dot.active {
   background: white;
-  transform: scale(1.2);
+  transform: scale(1.3);
+}
+
+.pagination-dot:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.pagination-dot:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
 }
 
 /* CTA Button */
@@ -230,20 +225,35 @@ body.menu-open .mobile-home-header .hamburger-btn {
   border-color: white;
 }
 
-/* View Toggle Button */
-.view-toggle-btn {
-  position: absolute;
-  top: 610px;
-  right: 30px;
-  background: transparent;
+/* Gallery layout link */
+.gallery-layout-link {
+  display: inline-block;
+  margin: 4px auto 48px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  text-decoration: underline;
+  background: none;
   border: none;
   cursor: pointer;
-  z-index: 90;
-  transition: transform 0.3s ease;
+  transition: opacity 0.2s ease;
 }
 
-.view-toggle-btn:active {
-  transform: scale(0.95);
+.gallery-layout-link:focus-visible,
+.gallery-layout-link:active {
+  opacity: 0.7;
+  outline: none;
+}
+
+.home-loading-indicator {
+  margin-top: 32px;
+  text-align: center;
+  font-family: 'Noto Sans CJK JP', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* Footer */
