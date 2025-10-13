@@ -225,12 +225,16 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
   const handlePublish = () => {
     console.log('[MobileCreatePage] handlePublish called');
-    // TODO: 公開処理
+    // TODO: 実際の公開処理（Supabaseへの保存など）
+    // 一旦HOMEに遷移
+    onNavigate?.('home');
   };
 
   const handleSaveDraft = () => {
     console.log('[MobileCreatePage] handleSaveDraft called');
-    // TODO: ドラフト保存処理
+    // TODO: 実際のドラフト保存処理（Supabaseへの保存など）
+    // 一旦HOMEに遷移
+    onNavigate?.('home');
   };
 
   const handleMenuNavigate = (page: string) => {
