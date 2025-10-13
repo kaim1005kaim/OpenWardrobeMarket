@@ -38,15 +38,15 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
           // published_itemsをAsset型に変換
           publishedItems = publishedData.items.map((item: any) => ({
             id: item.id,
-            url: item.poster_url || item.original_url, // poster_urlがない場合はoriginal_urlを使用
+            src: item.poster_url || item.original_url, // poster_urlがない場合はoriginal_urlを使用
             title: item.title,
-            description: item.description,
-            price: item.price,
-            likes: item.likes || 0,
-            saves: 0,
             tags: item.tags || [],
-            width: 1080,
-            height: 1350,
+            colors: [],
+            price: item.price,
+            creator: 'JOHN DEANNA', // TODO: 実際のユーザー名を使用
+            likes: item.likes || 0,
+            w: 800,
+            h: 1168,
           }));
           console.log('[MobileGalleryPage] Loaded published items:', publishedItems.length);
         }
