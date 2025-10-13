@@ -96,12 +96,16 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       // 2. Supabaseに保存
       console.log('[MobilePublishFormPage] posterUrl:', posterUrl);
       console.log('[MobilePublishFormPage] imageUrl (originalUrl):', imageUrl);
+      console.log('[MobilePublishFormPage] publishData:', publishData);
 
       const requestBody = {
         ...publishData,
         posterUrl,
         originalUrl: imageUrl,
       };
+      console.log('[MobilePublishFormPage] requestBody keys:', Object.keys(requestBody));
+      console.log('[MobilePublishFormPage] requestBody.posterUrl:', requestBody.posterUrl);
+      console.log('[MobilePublishFormPage] requestBody.originalUrl:', requestBody.originalUrl);
       console.log('[MobilePublishFormPage] Publishing with data:', requestBody);
 
       const publishRes = await fetch(`${apiUrl}/api/publish`, {
