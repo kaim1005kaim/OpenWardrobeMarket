@@ -18,7 +18,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  z-index: 100;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.create-header > * {
+  pointer-events: auto;
 }
 
 .hamburger-btn {

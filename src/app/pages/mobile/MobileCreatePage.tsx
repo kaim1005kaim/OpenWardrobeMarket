@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { buildPrompt, type Answers } from '../../../lib/prompt/buildMobile';
 import { supabase } from '../../lib/supabase';
-import MetaballsSoft from '../../../components/MetaballsSoft';
+import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/MetaballsSoft';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import './MobileCreatePage.css';
 
@@ -59,6 +59,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const [generationStatus, setGenerationStatus] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const metaballRef = useRef<MetaballsSoftHandle>(null);
 
   const currentQuestion = createQuestions[currentStep];
   const progress = ((currentStep + 1) / createQuestions.length) * 100;
@@ -79,6 +80,9 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     const currentAnswers = answers[questionId] || [];
 
     console.log('Selected:', { questionId, option, currentAnswers });
+
+    // メタボールにインパクトをトリガー
+    metaballRef.current?.triggerImpact();
 
     if (currentQuestion.multiSelect) {
       // Multi-select: toggle
@@ -118,6 +122,10 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
   const handleNext = () => {
     console.log('handleNext called, currentStep:', currentStep, 'answers:', answers);
+
+    // 色変更 + インパクト
+    metaballRef.current?.changePalette();
+
     if (currentStep < createQuestions.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -172,11 +180,25 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || '生成に失敗しました');
+        let errorMessage = '生成に失敗しました';
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // JSONパースに失敗した場合はステータステキストを使用
+          errorMessage = `${errorMessage} (${res.status}: ${res.statusText})`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const { id, url, status } = await res.json();
+      let responseData;
+      try {
+        responseData = await res.json();
+      } catch (e) {
+        throw new Error('サーバーからの応答が不正です。APIサーバーが起動しているか確認してください。');
+      }
+
+      const { id, url, status } = responseData;
       console.log('Generation completed:', { id, url, status });
 
       // Nano Bananaは同期処理なので即座にURLが返る
@@ -237,13 +259,13 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           {!isGenerating ? (
             <>
               {/* CREATEタイトル + 設問アニメーション */}
-              <div style={{ position: 'relative', width: '100%', height: '320px', marginTop: '0', marginBottom: '32px' }}>
-                {/* アニメーション背景 */}
-                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
-                  <MetaballsSoft animated={true} />
+              <div style={{ position: 'relative', width: 'calc(100% + 40px)', height: '320px', marginTop: '0', marginBottom: '32px', marginLeft: '-20px', marginRight: '-20px', zIndex: 60 }}>
+                {/* アニメーション背景 - 横と上は画面いっぱい */}
+                <div style={{ position: 'absolute', top: '-60px', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+                  <MetaballsSoft ref={metaballRef} animated={true} />
                 </div>
                 {/* CREATEタイトル（エフェクトの上に重ねる） */}
-                <div style={{ position: 'absolute', top: '8px', left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                <div style={{ position: 'absolute', top: '8px', left: '20px', right: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 70 }}>
                   <h1 className="create-title">CREATE</h1>
                 </div>
               </div>
