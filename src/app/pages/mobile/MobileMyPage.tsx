@@ -25,6 +25,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const [isBioExpanded, setIsBioExpanded] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
+  const accountTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     fetchAssets(activeTab);
@@ -35,7 +36,14 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
 
     const handleClickOutside = (event: MouseEvent) => {
       if (!accountMenuRef.current) return;
-      if (!accountMenuRef.current.contains(event.target as Node)) {
+      const targetNode = event.target as Node;
+      if (
+        accountMenuRef.current.contains(targetNode) ||
+        accountTriggerRef.current?.contains(targetNode)
+      ) {
+        return;
+      }
+      if (!accountMenuRef.current.contains(targetNode)) {
         setShowAccountMenu(false);
       }
     };
@@ -141,7 +149,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
 
   const navigateToAuth = async (mode: 'signup' | 'login') => {
     try {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' });
     } catch (error) {
       console.error('Failed to sign out before switching account:', error);
     }
@@ -301,6 +309,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
               className="profile-name-btn"
               onClick={() => setShowAccountMenu((prev) => !prev)}
               aria-expanded={showAccountMenu}
+              ref={accountTriggerRef}
             >
               {user?.user_metadata?.username || user?.email?.split('@')[0] || 'JOHN DEANNA'}
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
