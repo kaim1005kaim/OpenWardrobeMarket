@@ -113,8 +113,13 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
         throw new Error(`公開に失敗しました: ${publishRes.status}`);
       }
 
-      const { item } = await publishRes.json();
-      console.log('[MobilePublishFormPage] Item published:', item.id);
+      const responseData = await publishRes.json();
+      console.log('[MobilePublishFormPage] Publish response:', responseData);
+
+      const item = responseData.item || responseData.asset;
+      if (item?.id) {
+        console.log('[MobilePublishFormPage] Item published:', item.id);
+      }
 
       // 3. 完了画面に遷移
       if (onPublish) {
