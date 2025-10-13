@@ -2,14 +2,17 @@ import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { MobileHomePage } from './pages/mobile/MobileHomePage';
 import { MobileGalleryPage } from './pages/mobile/MobileGalleryPage';
+import { MobileCreateTopPage } from './pages/mobile/MobileCreateTopPage';
 import { MobileCreatePage } from './pages/mobile/MobileCreatePage';
+import { MobilePublishFormPage, type PublishData } from './pages/mobile/MobilePublishFormPage';
+import { MobilePublishCompletePage } from './pages/mobile/MobilePublishCompletePage';
 import { MobileMyPage } from './pages/mobile/MobileMyPage';
 import { LoginPage } from './components/LoginPage';
 import { WebViewWarning } from './components/mobile/WebViewWarning';
 import { isWebView } from './lib/utils/detectWebView';
 import './MobileApp.css';
 
-type MobilePage = 'login' | 'home' | 'gallery' | 'create' | 'mypage' | 'faq' | 'contact' | 'privacy';
+type MobilePage = 'login' | 'home' | 'gallery' | 'create' | 'createQuestions' | 'publishForm' | 'publishComplete' | 'mypage' | 'faq' | 'contact' | 'privacy';
 
 function MobileAppContent() {
   const { user, loading } = useAuth();
@@ -62,6 +65,9 @@ function MobileAppContent() {
         return <MobileGalleryPage onNavigate={handleNavigate} />;
 
       case 'create':
+        return <MobileCreateTopPage onNavigate={handleNavigate} onStartCreate={() => setCurrentPage('createQuestions')} />;
+
+      case 'createQuestions':
         return <MobileCreatePage onNavigate={handleNavigate} />;
 
       case 'mypage':

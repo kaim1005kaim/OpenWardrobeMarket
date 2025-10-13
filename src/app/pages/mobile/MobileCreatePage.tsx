@@ -139,6 +139,11 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     }
   };
 
+  const handleReset = () => {
+    setCurrentStep(0);
+    setAnswers({});
+  };
+
   const handleGenerate = async () => {
     setStage("generating");
     setIsGenerating(true);
@@ -224,17 +229,17 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   };
 
   const handlePublish = () => {
-    console.log('[MobileCreatePage] handlePublish called');
-    // TODO: 実際の公開処理（Supabaseへの保存など）
-    // 一旦HOMEに遷移
-    onNavigate?.('home');
+    console.log('[MobileCreatePage] handlePublish called - navigating to publishForm');
+    // TODO: 公開フォームページに遷移（ポスター合成APIを呼び出す）
+    // 現在は単純にギャラリーに遷移
+    onNavigate?.('gallery');
   };
 
   const handleSaveDraft = () => {
-    console.log('[MobileCreatePage] handleSaveDraft called');
-    // TODO: 実際のドラフト保存処理（Supabaseへの保存など）
-    // 一旦HOMEに遷移
-    onNavigate?.('home');
+    console.log('[MobileCreatePage] handleSaveDraft called - navigating to mypage');
+    // TODO: ドラフト保存処理
+    // マイページのDraftsタブに保存
+    onNavigate?.('mypage');
   };
 
   const handleMenuNavigate = (page: string) => {
@@ -308,13 +313,52 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 ))}
               </div>
 
+              {/* 設問2以降のリセット・戻るボタン */}
+              {currentStep >= 1 && (
+                <div style={{ display: 'flex', gap: '12px', width: '100%', maxWidth: '600px', margin: '0 auto 16px' }}>
+                  <button
+                    className="reset-btn"
+                    onClick={handleReset}
+                    style={{
+                      flex: 1,
+                      height: '48px',
+                      background: 'transparent',
+                      border: '1px solid #000',
+                      borderRadius: 0,
+                      fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif",
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      color: '#000',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    はじめからやり直す
+                  </button>
+                  <button
+                    className="back-btn"
+                    onClick={handleBack}
+                    style={{
+                      flex: 1,
+                      height: '48px',
+                      background: 'transparent',
+                      border: '1px solid #000',
+                      borderRadius: 0,
+                      fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif",
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      color: '#000',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    一つ前に戻る
+                  </button>
+                </div>
+              )}
+
               {/* Navigation */}
               <div className="nav-buttons">
-                {currentStep > 0 && (
-                  <button className="nav-btn secondary" onClick={handleBack}>
-                    戻る
-                  </button>
-                )}
                 <button
                   className="nav-btn primary"
                   onClick={handleNext}
@@ -338,8 +382,13 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   }}
                 >
                   <MetaballsSoft animated={true} />
-                  <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: '#666', fontSize: 14 }}>
-                    PLEASE WAIT<br />生成中です…
+                  <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center' }}>
+                    <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 24, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
+                      PLEASE WAIT
+                    </div>
+                    <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
+                      お待ちください
+                    </div>
                   </div>
                 </div>
               )}
@@ -363,22 +412,46 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
               {/* 受信後の"Glass Stripe Reveal" → 完成品表示（同じCanvas） */}
               {stage === "revealing" && imageUrl && (
-                <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
-                  <GlassRevealCanvas
-                    imageUrl={imageUrl}
-                    showButtons={showButtons}
-                    onRevealDone={handleRevealDone}
-                    onPublish={handlePublish}
-                    onSaveDraft={handleSaveDraft}
-                    stripes={48}
-                    jitter={0.08}
-                    strength={0.9}
-                    holdMs={3000}
-                    revealMs={1200}
-                    leftToRight={true}
-                    active={true}
-                  />
-                </div>
+                <>
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
+                    <GlassRevealCanvas
+                      imageUrl={imageUrl}
+                      showButtons={showButtons}
+                      onRevealDone={handleRevealDone}
+                      onPublish={handlePublish}
+                      onSaveDraft={handleSaveDraft}
+                      stripes={48}
+                      jitter={0.08}
+                      strength={0.9}
+                      holdMs={3000}
+                      revealMs={1200}
+                      leftToRight={true}
+                      active={true}
+                    />
+                  </div>
+                  {/* シャッターエフェクト中は「PLEASE WAIT」表示 */}
+                  {!showButtons && (
+                    <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', zIndex: 3 }}>
+                      <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 24, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
+                        PLEASE WAIT
+                      </div>
+                      <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
+                        お待ちください
+                      </div>
+                    </div>
+                  )}
+                  {/* ボタン表示時に「PERFECT」メッセージ表示 */}
+                  {showButtons && (
+                    <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', zIndex: 3 }}>
+                      <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 28, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
+                        PERFECT
+                      </div>
+                      <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
+                        世界でひとつのデザインが出来上がりました
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

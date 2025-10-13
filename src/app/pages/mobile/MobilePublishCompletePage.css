@@ -1,0 +1,104 @@
+.mobile-publish-complete-page {
+  min-height: 100vh;
+  background: #EEECE6;
+  display: flex;
+  flex-direction: column;
+}
+
+.complete-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: #EEECE6;
+  z-index: 100;
+}
+
+.complete-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px 40px;
+}
+
+.complete-title {
+  font-family: 'Trajan Pro', serif;
+  font-size: 48px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: #000;
+  margin: 0 0 32px 0;
+  text-align: center;
+}
+
+.complete-image-container {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 3/4;
+  border-radius: 16px;
+  overflow: hidden;
+  margin: 0 0 24px 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.complete-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.complete-message {
+  font-family: 'Noto Sans CJK JP', 'Noto Sans JP', sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  color: #000;
+  margin: 0 0 48px 0;
+  text-align: center;
+}
+
+.complete-buttons {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.view-gallery-btn,
+.create-new-btn {
+  width: 100%;
+  height: 56px;
+  border-radius: 0;
+  font-family: 'Noto Sans CJK JP', 'Noto Sans JP', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-gallery-btn {
+  background: transparent;
+  border: 1px solid #000;
+  color: #000;
+}
+
+.view-gallery-btn:hover {
+  background: #00000010;
+}
+
+.create-new-btn {
+  background: #F5F3ED;
+  border: 1px solid #00000010;
+  color: #000;
+}
+
+.create-new-btn:hover {
+  background: #E5E3DD;
+}

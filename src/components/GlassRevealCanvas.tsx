@@ -13,7 +13,8 @@ precision highp float;
 varying vec2 vUv;
 uniform sampler2D u_img;
 uniform sampler2D u_glass;
-uniform vec2  u_res;        // 画素数
+uniform vec2  u_res;        // キャンバス解像度
+uniform vec2  u_imgRes;     // 画像の元解像度
 uniform float u_progress;   // 0..1 (0=ガラス最大,1=クリア)
 uniform float u_fadeIn;     // 0..1 (画像のフェードイン)
 uniform float u_strength;   // 屈折強度係数
@@ -26,6 +27,15 @@ uniform bool  u_leftToRight;
 float hash(float x){ return fract(sin(x*43758.5453)*1e4); }
 
 void main(){
+  // object-fit: cover 風のUV計算
+  vec2 canvasAspect = vec2(u_res.x / u_res.y, 1.0);
+  vec2 imageAspect = vec2(u_imgRes.x / u_imgRes.y, 1.0);
+
+  vec2 ratio = canvasAspect / imageAspect;
+  vec2 scale = ratio.x < ratio.y ? vec2(ratio.y, 1.0) : vec2(1.0, ratio.x);
+
+  vec2 coverUv = (vUv - 0.5) * scale + 0.5;
+
   float idx = floor(vUv.x * u_stripes);
   float s   = idx / (u_stripes - 1.0);  // 0..1 左→右
   if(!u_leftToRight) s = 1.0 - s;
@@ -49,7 +59,7 @@ void main(){
   // 安全弁：最終到達で完全ゼロ
   if (u_progress >= 0.999) offset = vec2(0.0);
 
-  vec3 col = texture2D(u_img, vUv + offset).rgb;
+  vec3 col = texture2D(u_img, coverUv + offset).rgb;
 
   // 画像のフェードイン（アルファ制御）
   float alpha = u_fadeIn;
@@ -122,6 +132,7 @@ export default function GlassRevealCanvas({
       const h = ref.current!.clientHeight || texImg.image.height;
       renderer.setSize(w, h, false);
       (mat.uniforms.u_res.value as THREE.Vector2).set(w, h);
+      (mat.uniforms.u_imgRes.value as THREE.Vector2).set(texImg.image.width, texImg.image.height);
       imgLoaded = true;
       if (glassLoaded && !t0) startAnimation();
     });
@@ -143,6 +154,7 @@ export default function GlassRevealCanvas({
         u_img: { value: texImg },
         u_glass: { value: texGlass },
         u_res: { value: new THREE.Vector2(1, 1) },
+        u_imgRes: { value: new THREE.Vector2(1, 1) },
         u_progress: { value: 0 }, // 0..1
         u_fadeIn: { value: 0 },   // 0..1 画像フェードイン
         u_strength: { value: strength },
