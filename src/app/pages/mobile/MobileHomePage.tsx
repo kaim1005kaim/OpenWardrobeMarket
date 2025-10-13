@@ -4,6 +4,7 @@ import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
 import { SearchModal } from '../../components/mobile/SearchModal';
 import { CardSwiper } from '../../components/mobile/CardSwiper';
 import { Asset } from '../../lib/types';
+import MetaballsSoft from '../../../components/MetaballsSoft';
 import './MobileHomePage.css';
 
 interface MobileHomePageProps {

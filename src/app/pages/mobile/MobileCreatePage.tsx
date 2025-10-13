@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { buildPrompt, type Answers } from '../../../lib/prompt/buildMobile';
 import { supabase } from '../../lib/supabase';
-import BlobGlassCanvas from '../../../components/BlobGlassCanvas';
+import MetaballsSoft from '../../../components/MetaballsSoft';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
-import QuestionBlobCanvas from '../../../components/QuestionBlobCanvas';
 import './MobileCreatePage.css';
 
 interface MobileCreatePageProps {
@@ -241,9 +240,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               <div style={{ position: 'relative', width: '100%', height: '320px', marginTop: '0', marginBottom: '32px' }}>
                 {/* アニメーション背景 */}
                 <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
-                  <QuestionBlobCanvas
-                    active={!isGenerating}
-                  />
+                  <MetaballsSoft animated={true} />
                 </div>
                 {/* CREATEタイトル（エフェクトの上に重ねる） */}
                 <div style={{ position: 'absolute', top: '8px', left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
@@ -314,11 +311,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                     zIndex: 1
                   }}
                 >
-                  <BlobGlassCanvas
-                    active={stage === "generating"}
-                    targetA={currentPalette.a}
-                    targetB={currentPalette.b}
-                  />
+                  <MetaballsSoft animated={true} />
                   <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: '#666', fontSize: 14 }}>
                     PLEASE WAIT<br />生成中です…
                   </div>
@@ -338,11 +331,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                     animation: 'fadeOut 0.4s ease-out forwards'
                   }}
                 >
-                  <BlobGlassCanvas
-                    active={false}
-                    targetA={currentPalette.a}
-                    targetB={currentPalette.b}
-                  />
+                  <MetaballsSoft animated={true} />
                 </div>
               )}
 
