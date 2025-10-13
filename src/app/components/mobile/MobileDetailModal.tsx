@@ -59,7 +59,7 @@ export function MobileDetailModal({
           <div className="detail-creator-price">
             <div className="detail-creator">
               <div className="detail-from">FROM</div>
-              <div className="detail-creator-name">{asset.creator || 'FROM'}</div>
+              <div className="detail-creator-name">{asset.creator || 'JOHN DEANNA'}</div>
             </div>
             <div className="detail-price">¥{asset.price?.toLocaleString()}</div>
           </div>
