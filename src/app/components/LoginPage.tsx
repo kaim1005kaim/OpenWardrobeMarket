@@ -26,6 +26,14 @@ export function LoginPage() {
     if (isWebView()) {
       setShowWebViewWarning(true)
     }
+
+    if (typeof window !== 'undefined') {
+      const storedMode = window.localStorage.getItem('owm-login-mode')
+      if (storedMode === 'signup') {
+        setPageMode('signup')
+        window.localStorage.removeItem('owm-login-mode')
+      }
+    }
   }, [])
 
   const handleEmailLogin = async (e: React.FormEvent) => {

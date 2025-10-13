@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MobileLayout } from '../../components/mobile/MobileLayout';
 import { BottomNavigation } from '../../components/mobile/BottomNavigation';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
@@ -22,10 +22,27 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isBioExpanded, setIsBioExpanded] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     fetchAssets(activeTab);
   }, [activeTab, user]);
+
+  useEffect(() => {
+    if (!showAccountMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!accountMenuRef.current) return;
+      if (!accountMenuRef.current.contains(event.target as Node)) {
+        setShowAccountMenu(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showAccountMenu]);
 
   const fetchAssets = async (tab: TabType) => {
     if (!user) return;
@@ -120,6 +137,25 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
     if (onNavigate) {
       onNavigate(page);
     }
+  };
+
+  const navigateToAuth = async (mode: 'signup' | 'login') => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Failed to sign out before switching account:', error);
+    }
+
+    if (typeof window !== 'undefined') {
+      if (mode === 'signup') {
+        window.localStorage.setItem('owm-login-mode', 'signup');
+      } else {
+        window.localStorage.removeItem('owm-login-mode');
+      }
+    }
+
+    setShowAccountMenu(false);
+    onNavigate?.('login');
   };
 
   const getSimilarAssets = (asset: Asset) => {
@@ -261,12 +297,43 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
 
           {/* Profile Info */}
           <div className="profile-info">
-            <button className="profile-name-btn">
+            <button
+              className="profile-name-btn"
+              onClick={() => setShowAccountMenu((prev) => !prev)}
+              aria-expanded={showAccountMenu}
+            >
               {user?.user_metadata?.username || user?.email?.split('@')[0] || 'JOHN DEANNA'}
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 9 12 12 9" />
               </svg>
             </button>
+            {showAccountMenu && (
+              <div className="account-menu" ref={accountMenuRef}>
+                <div className="account-menu-item active">
+                  <div className="account-menu-label">
+                    <span className="name">
+                      {user?.user_metadata?.username || user?.email?.split('@')[0] || 'Current User'}
+                    </span>
+                    <span className="email">{user?.email}</span>
+                  </div>
+                  <span className="badge">使用中</span>
+                </div>
+                <button
+                  className="account-menu-item add"
+                  onClick={() => navigateToAuth('signup')}
+                >
+                  <span className="icon">＋</span>
+                  <span>アカウントを追加</span>
+                </button>
+                <button
+                  className="account-menu-item add"
+                  onClick={() => navigateToAuth('login')}
+                >
+                  <span className="icon">⇆</span>
+                  <span>アカウントを切り替える</span>
+                </button>
+              </div>
+            )}
             <div className="profile-rating">
               <span className="star">★</span>
               <span className="star">★</span>
@@ -275,10 +342,12 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
               <span className="star empty">☆</span>
             </div>
             <div className="profile-badge">SUBSCRIBED</div>
-            <p className="profile-bio">
+            <p className={`profile-bio ${isBioExpanded ? 'expanded' : 'collapsed'}`}>
               プロフィール文章が表示されます。プロフィール文章が表示されます。プロフィール文章が表示されます。プロフィール文章が表示されます。
             </p>
-            <button className="more-btn">more</button>
+            <button className="more-btn" onClick={() => setIsBioExpanded((prev) => !prev)}>
+              {isBioExpanded ? 'close' : 'more'}
+            </button>
           </div>
 
           {/* Section Tabs */}
@@ -343,14 +412,6 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
                 ) : (
                   <div className="empty-state">
                     <p>まだ{getTabLabel(activeTab)}がありません</p>
-                    {activeTab === 'drafts' && (
-                      <button
-                        className="create-btn"
-                        onClick={() => onNavigate?.('create')}
-                      >
-                        デザインを作成する
-                      </button>
-                    )}
                   </div>
                 )}
               </div>

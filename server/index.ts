@@ -1,10 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
-import { v4 as uuidv4 } from 'uuid';
-import { generateRoutes } from './routes/generate';
-import { statusRoutes } from './routes/status';
-import { trendsRoutes } from './routes/trends';
 import { router as nanoBananaRoutes } from './routes/nanobanana';
 import composePosterRoutes from './routes/compose-poster';
 import publishRoutes from './routes/publish';
@@ -32,9 +28,6 @@ app.get('/health', (req, res) => {
 });
 
 // Routes
-app.use('/api', generateRoutes);
-app.use('/api', statusRoutes);
-app.use('/api', trendsRoutes);
 app.use('/api', nanoBananaRoutes);
 app.use('/api/compose-poster', composePosterRoutes);
 app.use('/api/publish', publishRoutes);
