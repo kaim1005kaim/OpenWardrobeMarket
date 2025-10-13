@@ -83,14 +83,17 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       }
 
       // 2. Supabaseに保存
+      const requestBody = {
+        ...publishData,
+        posterUrl,
+        originalUrl: imageUrl,
+      };
+      console.log('[MobilePublishFormPage] Publishing with data:', requestBody);
+
       const publishRes = await fetch(`${apiUrl}/api/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...publishData,
-          posterUrl,
-          originalUrl: imageUrl,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!publishRes.ok) {
