@@ -38,7 +38,7 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
           // published_itemsをAsset型に変換
           publishedItems = publishedData.items.map((item: any) => ({
             id: item.id,
-            url: item.poster_url, // ポスターURLを表示
+            url: item.poster_url || item.original_url, // poster_urlがない場合はoriginal_urlを使用
             title: item.title,
             description: item.description,
             price: item.price,
