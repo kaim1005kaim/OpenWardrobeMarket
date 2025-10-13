@@ -67,8 +67,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     category
   } = req.body;
 
+  console.log('[Publish] Request body:', { title, category, posterUrl, originalUrl, saleType, price });
+
   // バリデーション
   if (!title || !category || !posterUrl || !originalUrl) {
+    console.error('[Publish] Validation failed:', { title: !!title, category: !!category, posterUrl: !!posterUrl, originalUrl: !!originalUrl });
     return res.status(400).json({
       error: 'Missing required fields',
       required: ['title', 'category', 'posterUrl', 'originalUrl']
