@@ -36,15 +36,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Publish GET] Supabase error:', error);
+        throw error;
+      }
+
+      console.log('[Publish GET] Raw data count:', data?.length);
 
       // user_profilesデータをフラット化
-      const itemsWithUsername = data?.map((item: any) => ({
-        ...item,
-        username: item.user_profiles?.username || 'Anonymous',
-        avatar_url: item.user_profiles?.avatar_url || null,
-        user_profiles: undefined // ネストを削除
-      })) || [];
+      const itemsWithUsername = data?.map((item: any) => {
+        console.log('[Publish GET] Processing item:', item.id, 'user_profiles:', item.user_profiles);
+        return {
+          ...item,
+          username: item.user_profiles?.username || 'Anonymous',
+          avatar_url: item.user_profiles?.avatar_url || null,
+          user_profiles: undefined // ネストを削除
+        };
+      }) || [];
+
+      console.log('[Publish GET] Returning items:', itemsWithUsername.length);
 
       return res.status(200).json({
         success: true,
@@ -53,9 +63,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     } catch (error) {
       console.error('[Publish GET] Error:', error);
+      console.error('[Publish GET] Error details:', JSON.stringify(error, null, 2));
       return res.status(500).json({
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: error
       });
     }
   }
