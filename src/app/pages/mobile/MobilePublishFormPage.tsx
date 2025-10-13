@@ -16,6 +16,7 @@ export interface PublishData {
   tags: string[];
   saleType: 'buyout' | 'subscription';
   price: number;
+  posterUrl?: string;
 }
 
 export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generationData }: MobilePublishFormPageProps) {
