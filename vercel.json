@@ -26,7 +26,7 @@
   ],
   "functions": {
     "api/**/*.ts": {
-      "runtime": "@vercel/node@5.3.26",
+      "runtime": "20.x",
       "includeFiles": "src/lib/**"
     }
   },
