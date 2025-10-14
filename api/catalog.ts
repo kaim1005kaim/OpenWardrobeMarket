@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from("assets")
       .select("id,title,tags,final_key,raw_key,created_at,status")
       .eq("status", "public")
-      .or("final_key.ilike.catalog/%,raw_key.ilike.catalog/%")
+      // .or("final_key.ilike.catalog/%,raw_key.ilike.catalog/%")
       .order("created_at", { ascending: false })
       .limit(1000);
 
