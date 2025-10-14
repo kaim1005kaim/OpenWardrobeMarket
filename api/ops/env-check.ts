@@ -30,12 +30,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const secretKey = maskValue(secretKeyRaw);
   const bucket = maskValue(bucketRaw);
 
+  const supabaseUrlRaw = process.env.NEXT_PUBLIC_SUPABASE_URL ?? null;
+  const supabaseServiceKeyRaw = process.env.SUPABASE_SERVICE_ROLE_KEY ?? null;
+  const supabaseAnonKeyRaw = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? null;
+
+  const isSupabaseConfigured = Boolean(
+    supabaseUrlRaw && supabaseServiceKeyRaw && supabaseAnonKeyRaw
+  );
+
   return res.status(200).json({
     R2_PUBLIC_BASE_URL: publicUrl,
     R2_S3_ENDPOINT: endpoint,
     R2_ACCESS_KEY_ID: accessKey,
     R2_SECRET_ACCESS_KEY: secretKey,
     R2_BUCKET: bucket,
-    isR2Configured
+    isR2Configured,
+    NEXT_PUBLIC_SUPABASE_URL: maskValue(supabaseUrlRaw),
+    SUPABASE_SERVICE_ROLE_KEY: maskValue(supabaseServiceKeyRaw),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: maskValue(supabaseAnonKeyRaw),
+    isSupabaseConfigured
   });
 }

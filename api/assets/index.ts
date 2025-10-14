@@ -6,7 +6,22 @@ import {
   assetIsAllowed,
   type SerializedAsset,
   type SerializedAssetOptions
-} from '../_shared/assets';
+} from './shared.js';
+
+console.log('[api/assets/index.ts] File loaded.');
+console.log(
+  `[api/assets/index.ts] R2_BUCKET check: ${process.env.R2_BUCKET ? 'Loaded' : 'MISSING!'}`
+);
+console.log(
+  `[api/assets/index.ts] R2_ACCESS_KEY_ID check: ${
+    process.env.R2_ACCESS_KEY_ID ? 'Loaded' : 'MISSING!'
+  }`
+);
+console.log(
+  `[api/assets/index.ts] R2_S3_ENDPOINT check: ${
+    process.env.R2_S3_ENDPOINT ? 'Loaded' : 'MISSING!'
+  }`
+);
 
 const FALLBACK_PREFIXES = ['catalog/'];
 
@@ -61,6 +76,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    console.log(`[api/assets] Handler started. Method: ${req.method}, URL: ${req.url}`);
+
     const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL || 'unset';
     console.log('[api/assets] R2_PUBLIC_BASE_URL', publicBaseUrl.slice(0, 24), '…');
 
@@ -205,10 +222,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       cursor: nextCursor
     });
   } catch (error: any) {
-    console.error('[api/assets] Unexpected error:', error);
+    console.error('!!!!!!!!!!!!!! [FATAL ERROR in /api/assets] !!!!!!!!!!!!!!');
+    console.error('Error Name:', error?.name);
+    console.error('Error Message:', error?.message);
+    console.error('Error Stack:', error?.stack);
+    try {
+      console.error('Full Error Object:', JSON.stringify(error, null, 2));
+    } catch {
+      console.error('Full Error Object: [unserializable]');
+    }
+
     return res.status(500).json({
-      error: 'Unexpected error',
-      details: error?.message || 'Unknown error'
+      error: 'Internal Server Error',
+      details: {
+        name: error?.name || 'UnknownError',
+        message: error?.message || 'Unknown error'
+      }
     });
   }
 }

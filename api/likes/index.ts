@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getAuthUser, getServiceSupabase, serializeAsset } from '../_shared/assets';
+import { getAuthUser, getServiceSupabase, serializeAsset } from '../assets/shared.js';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {

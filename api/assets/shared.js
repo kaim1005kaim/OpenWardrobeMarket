@@ -1,52 +1,23 @@
-import type { NextApiRequest } from 'next';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { presignGet, R2_PUBLIC_BASE_URL, isR2Configured } from '../../src/lib/r2';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_ANON_KEY) {
   throw new Error('Supabase environment variables are not configured');
 }
 
-export type AssetStatus = 'public' | 'private' | 'delisted';
-
-export interface SerializedAsset {
-  id: string;
-  userId: string | null;
-  title: string;
-  status: AssetStatus;
-  tags: string[];
-  price: number | null;
-  likes: number;
-  createdAt: string | null;
-  updatedAt: string | null;
-  src: string;
-  finalUrl: string | null;
-  rawUrl: string | null;
-  finalKey: string | null;
-  rawKey: string | null;
-  coverColor?: string | null;
-  isLiked?: boolean;
-  metadata?: Record<string, any>;
-}
-
-export type SerializedAssetOptions = {
-  kind: 'raw' | 'final';
-  includeRaw?: boolean;
-  likedIds?: Set<string>;
-};
-
 const ALLOWED_PREFIXES = ['catalog/', 'usergen/', 'generated/'];
 
-function matchesAllowedPrefix(value: string | null | undefined) {
+function matchesAllowedPrefix(value) {
   if (!value) return false;
   const lower = value.toLowerCase();
   return ALLOWED_PREFIXES.some((prefix) => lower.includes(prefix));
 }
 
-export function assetIsAllowed(row: Record<string, any>): boolean {
+export function assetIsAllowed(row) {
   const keys = [
     row.final_key,
     row.raw_key,
@@ -60,22 +31,16 @@ export function assetIsAllowed(row: Record<string, any>): boolean {
     .filter(Boolean)
     .map(String);
 
-  const urls = [
-    row.final_url,
-    row.raw_url,
-    row.r2_url,
-    row.image_url,
-    row.poster_url
-  ]
+  const urls = [row.final_url, row.raw_url, row.r2_url, row.image_url, row.poster_url]
     .filter(Boolean)
     .map(String);
 
   return keys.some(matchesAllowedPrefix) || urls.some(matchesAllowedPrefix);
 }
 
-let cachedAdminClient: SupabaseClient | null = null;
+let cachedAdminClient = null;
 
-export function getServiceSupabase(): SupabaseClient {
+export function getServiceSupabase() {
   if (!cachedAdminClient) {
     cachedAdminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: {
@@ -86,7 +51,7 @@ export function getServiceSupabase(): SupabaseClient {
   return cachedAdminClient;
 }
 
-export function getSupabaseForToken(token: string | null | undefined): SupabaseClient | null {
+export function getSupabaseForToken(token) {
   if (!token) return null;
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: {
@@ -100,7 +65,7 @@ export function getSupabaseForToken(token: string | null | undefined): SupabaseC
   });
 }
 
-export async function getAuthUser(req: NextApiRequest) {
+export async function getAuthUser(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return { user: null, token: null };
@@ -124,7 +89,7 @@ export async function getAuthUser(req: NextApiRequest) {
   return { user: data.user, token };
 }
 
-function extractWithFallback<T extends Record<string, any>>(row: T, keys: string[], fallback: any = null) {
+function extractWithFallback(row, keys, fallback = null) {
   for (const key of keys) {
     if (row[key] !== undefined && row[key] !== null) {
       return row[key];
@@ -133,7 +98,7 @@ function extractWithFallback<T extends Record<string, any>>(row: T, keys: string
   return fallback;
 }
 
-function normaliseStatus(rawStatus: string | null | undefined, row: any): AssetStatus {
+function normaliseStatus(rawStatus, row) {
   if (rawStatus === 'delisted') return 'delisted';
   if (rawStatus === 'public') return 'public';
   if (rawStatus === 'private') return 'private';
@@ -143,7 +108,7 @@ function normaliseStatus(rawStatus: string | null | undefined, row: any): AssetS
   return 'private';
 }
 
-function ensureHttps(url: string | null | undefined): string | null {
+function ensureHttps(url) {
   if (!url) return null;
   if (url.startsWith('http://')) {
     return url.replace('http://', 'https://');
@@ -151,16 +116,16 @@ function ensureHttps(url: string | null | undefined): string | null {
   return url;
 }
 
-function isAbsoluteUrl(url: string | null | undefined): boolean {
+function isAbsoluteUrl(url) {
   return typeof url === 'string' && /^https?:\/\//i.test(url);
 }
 
-function normaliseBaseUrl(url: string | null): string | null {
+function normaliseBaseUrl(url) {
   if (!url) return null;
   return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
-function buildR2Url(baseUrl: string | null, key: string | null | undefined): string | null {
+function buildR2Url(baseUrl, key) {
   if (!baseUrl || !key) return null;
   const sanitizedKey = key.replace(/^\/+/, '');
   return `${baseUrl}/${sanitizedKey}`;
@@ -168,7 +133,7 @@ function buildR2Url(baseUrl: string | null, key: string | null | undefined): str
 
 let hasLoggedPresignWarning = false;
 
-async function tryPresign(key: string | null | undefined, expiresIn = 60 * 15): Promise<string | null> {
+async function tryPresign(key, expiresIn = 60 * 15) {
   if (!key) return null;
   if (!isR2Configured) {
     if (!hasLoggedPresignWarning) {
@@ -180,7 +145,7 @@ async function tryPresign(key: string | null | undefined, expiresIn = 60 * 15): 
 
   try {
     return await presignGet(key, expiresIn);
-  } catch (error: any) {
+  } catch (error) {
     if (!hasLoggedPresignWarning) {
       console.warn(
         '[api/assets] Failed to presign R2 object. Falling back to non-signed URL if possible.',
@@ -192,10 +157,7 @@ async function tryPresign(key: string | null | undefined, expiresIn = 60 * 15): 
   }
 }
 
-export async function serializeAsset(
-  row: Record<string, any>,
-  options: SerializedAssetOptions
-): Promise<SerializedAsset> {
+export async function serializeAsset(row, options) {
   const status = normaliseStatus(row.status, row);
 
   const rawKey = extractWithFallback(row, ['raw_key', 'raw_r2_key', 'raw_path', 'raw_object_key']);
@@ -210,14 +172,14 @@ export async function serializeAsset(
 
   const r2BaseUrl = normaliseBaseUrl(R2_PUBLIC_BASE_URL);
 
-  let rawUrl: string | null = storedRawUrl;
-  let finalUrl: string | null = storedFinalUrl;
+  let rawUrl = storedRawUrl;
+  let finalUrl = storedFinalUrl;
 
   if (options.kind === 'raw' || options.includeRaw) {
     const rawCandidates = [
       typeof rawKey === 'string' ? rawKey : null,
       storedRawUrl && !isAbsoluteUrl(storedRawUrl) ? storedRawUrl : null
-    ].filter(Boolean) as string[];
+    ].filter(Boolean);
 
     for (const candidate of rawCandidates) {
       const presigned = await tryPresign(candidate);
@@ -292,6 +254,6 @@ export async function serializeAsset(
     rawKey: rawKey ?? null,
     coverColor: extractWithFallback(row, ['dominant_color', 'cover_color'], null),
     isLiked: likedIds ? likedIds.has(row.id) : undefined,
-    metadata: row.metadata || row.generation_data || null,
+    metadata: row.metadata || row.generation_data || null
   };
 }
