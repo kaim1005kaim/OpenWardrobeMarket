@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { prompt, negative, aspectRatio = '3:4', answers } = req.body;
+    const { prompt, negative, aspectRatio = '3:4', answers, publish = false } = req.body;
 
     // 認証
     const authHeader = req.headers.authorization;
@@ -172,10 +172,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         title: row.prompt || 'Generated Design',
         description: '',
         tags: tags.length ? tags : ['generated'],
-        status: 'private',
+        status: publish ? 'public' : 'private',
         raw_key: key,
         raw_url: null,
-        final_key: null,
+        final_key: key, // final_keyにも同じキーを設定
         final_url: null,
         file_size: buffer.byteLength
       })
