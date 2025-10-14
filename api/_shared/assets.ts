@@ -1,6 +1,6 @@
 import type { NextApiRequest } from 'next';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { presignGet, R2_PUBLIC_BASE_URL } from '../../src/lib/r2';
+import { presignGet, R2_PUBLIC_BASE_URL, isR2Configured } from '../../src/lib/r2';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -151,6 +151,47 @@ function ensureHttps(url: string | null | undefined): string | null {
   return url;
 }
 
+function isAbsoluteUrl(url: string | null | undefined): boolean {
+  return typeof url === 'string' && /^https?:\/\//i.test(url);
+}
+
+function normaliseBaseUrl(url: string | null): string | null {
+  if (!url) return null;
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
+function buildR2Url(baseUrl: string | null, key: string | null | undefined): string | null {
+  if (!baseUrl || !key) return null;
+  const sanitizedKey = key.replace(/^\/+/, '');
+  return `${baseUrl}/${sanitizedKey}`;
+}
+
+let hasLoggedPresignWarning = false;
+
+async function tryPresign(key: string | null | undefined, expiresIn = 60 * 15): Promise<string | null> {
+  if (!key) return null;
+  if (!isR2Configured) {
+    if (!hasLoggedPresignWarning) {
+      console.warn('[api/assets] R2 configuration missing; falling back to public URLs when available');
+      hasLoggedPresignWarning = true;
+    }
+    return null;
+  }
+
+  try {
+    return await presignGet(key, expiresIn);
+  } catch (error: any) {
+    if (!hasLoggedPresignWarning) {
+      console.warn(
+        '[api/assets] Failed to presign R2 object. Falling back to non-signed URL if possible.',
+        { key, message: error?.message || error }
+      );
+      hasLoggedPresignWarning = true;
+    }
+    return null;
+  }
+}
+
 export async function serializeAsset(
   row: Record<string, any>,
   options: SerializedAssetOptions
@@ -167,23 +208,62 @@ export async function serializeAsset(
     extractWithFallback(row, ['final_url', 'final_r2_url', 'poster_url', 'r2_url', 'image_url'])
   );
 
+  const r2BaseUrl = normaliseBaseUrl(R2_PUBLIC_BASE_URL);
+
   let rawUrl: string | null = storedRawUrl;
   let finalUrl: string | null = storedFinalUrl;
 
-  if (!finalUrl && finalKey) {
-    finalUrl = `${R2_PUBLIC_BASE_URL}/${finalKey}`;
-  }
-
   if (options.kind === 'raw' || options.includeRaw) {
-    if (rawKey) {
-      rawUrl = await presignGet(rawKey, 60 * 15);
-    } else if (storedRawUrl && !storedRawUrl.startsWith('http')) {
-      rawUrl = await presignGet(storedRawUrl, 60 * 15);
+    const rawCandidates = [
+      typeof rawKey === 'string' ? rawKey : null,
+      storedRawUrl && !isAbsoluteUrl(storedRawUrl) ? storedRawUrl : null
+    ].filter(Boolean) as string[];
+
+    for (const candidate of rawCandidates) {
+      const presigned = await tryPresign(candidate);
+      if (presigned) {
+        rawUrl = presigned;
+        break;
+      }
     }
   }
 
-  if (!finalUrl && finalKey) {
-    finalUrl = await presignGet(finalKey, 60 * 15);
+  if ((!finalUrl || !isAbsoluteUrl(finalUrl)) && finalKey) {
+    const presignedFinal = await tryPresign(finalKey);
+    if (presignedFinal) {
+      finalUrl = presignedFinal;
+    }
+  }
+
+  if ((!finalUrl || !isAbsoluteUrl(finalUrl)) && storedFinalUrl && !isAbsoluteUrl(storedFinalUrl)) {
+    const presignedFromStored = await tryPresign(storedFinalUrl);
+    if (presignedFromStored) {
+      finalUrl = presignedFromStored;
+    }
+  }
+
+  if (!rawUrl || !isAbsoluteUrl(rawUrl)) {
+    const fallbackRawKey =
+      (typeof rawKey === 'string' && rawKey) ||
+      (rawUrl && !isAbsoluteUrl(rawUrl) ? rawUrl : null);
+    const fallbackRawUrl = buildR2Url(r2BaseUrl, fallbackRawKey);
+    if (fallbackRawUrl) {
+      rawUrl = fallbackRawUrl;
+    } else if (rawUrl) {
+      rawUrl = ensureHttps(rawUrl);
+    }
+  }
+
+  if (!finalUrl || !isAbsoluteUrl(finalUrl)) {
+    const fallbackFinalKey =
+      (typeof finalKey === 'string' && finalKey) ||
+      (finalUrl && !isAbsoluteUrl(finalUrl) ? finalUrl : null);
+    const fallbackFinalUrl = buildR2Url(r2BaseUrl, fallbackFinalKey);
+    if (fallbackFinalUrl) {
+      finalUrl = fallbackFinalUrl;
+    } else if (finalUrl) {
+      finalUrl = ensureHttps(finalUrl);
+    }
   }
 
   const src =
