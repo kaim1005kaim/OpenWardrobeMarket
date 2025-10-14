@@ -6,7 +6,7 @@ import {
   assetIsAllowed,
   type SerializedAsset,
   type SerializedAssetOptions
-} from '@/server/apiAssets';
+} from '../_shared/assets';
 
 const FALLBACK_PREFIXES = ['catalog/'];
 
