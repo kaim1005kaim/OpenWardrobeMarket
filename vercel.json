@@ -25,9 +25,8 @@
     }
   ],
   "functions": {
-    "api/**/*.ts": {
-      "includeFiles": "src/lib/**"
-    }
+      "runtime": "@vercel/node",
+
   },
   "env": {
     "VITE_API_URL": "http://localhost:3001"
