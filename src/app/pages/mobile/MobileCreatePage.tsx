@@ -49,7 +49,7 @@ function useDNASync(sessionKey: string, getPayload: () => {
       const token = (await supabase.auth.getSession()).data.session?.access_token;
       if (!token) return;
 
-      await fetch('/api/dna/sync', { 
+      await fetch('/api/dna-sync', { 
         method:'POST', 
         headers:{
           'Content-Type':'application/json',
