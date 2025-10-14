@@ -31,7 +31,7 @@ function getR2Client(): S3Client {
   if (!cachedClient) {
     cachedClient = new S3Client({
       region: "auto",
-      endpoint: R2_S3_ENDPOINT!,
+      endpoint: R2_ENDPOINT!,
       credentials: {
         accessKeyId: R2_ACCESS_KEY_ID!,
         secretAccessKey: R2_SECRET_ACCESS_KEY!
