@@ -3,7 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID, constants } from 'node:crypto';
-import { https } from 'https';
+import https from 'https';
 import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
 
 // Vercel Functionのタイムアウトを60秒に設定
