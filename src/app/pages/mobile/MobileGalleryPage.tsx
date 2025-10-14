@@ -203,6 +203,7 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
             tone="dark"
             placeholder="Search"
             className="gallery-search-trigger"
+            showLabel={false}
             onClick={() => setIsSearchOpen(true)}
           />
           <h1 className="gallery-title" onClick={handleTitleClick}>GALLERY</h1>

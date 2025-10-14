@@ -64,15 +64,15 @@
 .create-hero {
   position: relative;
   width: calc(100% + 40px);
-  height: 320px;
-  margin: -20px -20px 28px;
+  height: 340px;
+  margin: -40px -20px 28px;
   pointer-events: none;
-  z-index: 70;
+  z-index: 80;
 }
 
 .create-hero__canvas {
   position: absolute;
-  inset: -90px 0 -10px;
+  inset: -160px -20px -20px;
   overflow: visible;
 }
 

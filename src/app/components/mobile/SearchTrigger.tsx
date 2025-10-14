@@ -5,17 +5,21 @@ interface SearchTriggerProps {
   tone?: 'light' | 'dark';
   onClick: () => void;
   className?: string;
+  showLabel?: boolean;
 }
 
 export function SearchTrigger({
   placeholder = 'Search...',
   tone = 'light',
   onClick,
-  className
+  className,
+  showLabel = true
 }: SearchTriggerProps) {
   return (
     <div className={`search-trigger-wrapper ${className ?? ''}`.trim()}>
-      <div className={`search-trigger-label search-trigger-label--${tone}`}>SERCH</div>
+      {showLabel && (
+        <div className={`search-trigger-label search-trigger-label--${tone}`}>SERCH</div>
+      )}
       <div
         className={`search-trigger search-trigger--${tone}`}
         onClick={onClick}

@@ -15,13 +15,8 @@
   text-transform: uppercase;
 }
 
-.search-trigger-label--light {
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.search-trigger-label--dark {
-  color: #000000;
-}
+.search-trigger-label--light { color: rgba(255, 255, 255, 0.75); }
+.search-trigger-label--dark { color: #000000; }
 
 .search-trigger {
   width: 100%;

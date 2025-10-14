@@ -8,6 +8,55 @@ import {
   type SerializedAssetOptions
 } from '../_lib/assets';
 
+const FALLBACK_PREFIXES = ['catalog/'];
+
+async function fetchCatalogFallback(): Promise<SerializedAsset[]> {
+  const origin =
+    process.env.INTERNAL_CATALOG_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+
+  if (!origin) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(`${origin.replace(/\/$/, '')}/api/catalog`);
+    if (!response.ok) {
+      console.error('[api/assets] catalog fallback failed:', response.statusText);
+      return [];
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data?.images)) {
+      return [];
+    }
+
+    return data.images.map((item: any) => ({
+      id: item.id || item.src,
+      userId: null,
+      title: item.title || 'Catalog Design',
+      status: 'public' as const,
+      tags: item.tags || [],
+      price: item.price ?? null,
+      likes: item.likes ?? 0,
+      createdAt: item.createdAt || null,
+      updatedAt: item.updatedAt || null,
+      src: item.src,
+      finalUrl: item.src,
+      rawUrl: null,
+      finalKey: item.key || item.src,
+      rawKey: null,
+      metadata: null,
+      coverColor: item.dominant_color || null,
+      isLiked: false
+    }));
+  } catch (error) {
+    console.error('[api/assets] catalog fallback error:', error);
+    return [];
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -49,20 +98,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error) {
       console.error('[api/assets] Supabase error:', error);
-      if ((error as any).code === '42P01') {
-        return res.status(200).json({ assets: [], cursor: null });
+      if ((error as any).code === '42P01' && scope === 'public') {
+        const fallback = await fetchCatalogFallback();
+        return res.status(200).json({ assets: fallback, cursor: null });
+      }
+      if (scope === 'public') {
+        const fallback = await fetchCatalogFallback();
+        if (fallback.length > 0) {
+          return res.status(200).json({ assets: fallback, cursor: null });
+        }
       }
       return res.status(500).json({ error: 'Failed to fetch assets', details: error.message });
     }
 
     if (!data || data.length === 0) {
+      if (scope === 'public') {
+        const fallback = await fetchCatalogFallback();
+        return res.status(200).json({ assets: fallback, cursor: null });
+      }
       return res.status(200).json({ assets: [], cursor: null });
     }
 
-    const filtered = data.filter(assetIsAllowed);
+    let filtered = data.filter(assetIsAllowed);
 
-    if (filtered.length === 0) {
-      return res.status(200).json({ assets: [], cursor: null });
+    if (filtered.length === 0 && scope === 'public') {
+      const fallback = await fetchCatalogFallback();
+      return res.status(200).json({ assets: fallback, cursor: null });
     }
 
     // Determine liked asset ids for current user
