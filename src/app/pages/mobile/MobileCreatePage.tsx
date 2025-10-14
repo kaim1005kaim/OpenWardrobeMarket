@@ -6,6 +6,18 @@ import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/Metaball
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import './MobileCreatePage.css';
 
+// --- Helper Functions ---
+
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
+}
+
 // --- DNA and Sync Logic from Design Document ---
 
 export type DNA = {
@@ -69,7 +81,7 @@ function useDNASync(sessionKey: string, getPayload: () => {
     const token = (await supabase.auth.getSession()).data.session?.access_token;
     if (!token) return;
 
-    await fetch('/api/dna/sync', { 
+    await fetch('/api/dna-sync', { 
       method:'POST', 
       headers:{
         'Content-Type':'application/json',
@@ -136,7 +148,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   const [stage, setStage] = useState<Stage>("idle");
   const [showButtons, setShowButtons] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [generatedAsset, setGeneratedAsset] = useState<{ key: string; blobUrl: string; answers: Answers, dna: DNA, prompt: string } | null>(null);
   const metaballRef = useRef<MetaballsSoftHandle>(null);
 
   // DNA State Management
@@ -147,7 +159,6 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   const getPayload = useCallback(() => ({
     answers,
     dna,
-    // freeText, geminiTags, promptPreview can be added later
   }), [answers, dna]);
   const { checkpoint, flushNow } = useDNASync(sessionKey, getPayload);
 
@@ -207,7 +218,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   };
 
   const handleGenerate = async () => {
-    await flushNow(); // Force sync before generating
+    await flushNow();
 
     setStage("generating");
     setIsGenerating(true);
@@ -222,47 +233,60 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
       };
 
       const prompt = buildPrompt(answersData);
-      const negative = "no text, no words, no logos, no brands, no celebrities, no multiple people, no watermark, no signature";
+      const negative = "no text, no words, no logos, no brands, no celebrities, no multiple people";
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('ログインが必要です');
 
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
-      const res = await fetch(`${apiUrl}/api/nano-generate`, {
+
+      // Step 1: Generate image data from our API
+      const genRes = await fetch(`${apiUrl}/api/nano-generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ prompt, negative, aspectRatio: '3:4', dna }),
+      });
+      if (!genRes.ok) throw new Error((await genRes.json()).error || 'Image generation failed');
+      const { imageData, mimeType, key } = await genRes.json();
+
+      // Prepare for reveal effect and background upload
+      const imageBlob = base64ToBlob(imageData, mimeType);
+      const blobUrl = URL.createObjectURL(imageBlob);
+      setGeneratedAsset({ key, blobUrl, answers: answersData, dna, prompt });
+      setStage("revealing");
+
+      // Step 2 & 3 (in background): Get presigned URL and upload to R2
+      const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${key}&contentType=${mimeType}`);
+      if (!presignRes.ok) throw new Error('Failed to get presigned URL');
+      const { url: uploadUrl } = await presignRes.json();
+
+      const uploadRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: imageBlob });
+      if (!uploadRes.ok) throw new Error('Upload to R2 failed');
+
+      // Step 4 (in background): Create asset record in DB
+      const createAssetRes = await fetch(`${apiUrl}/api/assets/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          prompt,
-          negative,
-          aspectRatio: '3:4',
+          key: key,
+          title: prompt,
+          tags: [answersData.vibe, answersData.silhouette, ...answersData.color].flat().filter(Boolean),
+          status: 'private',
+          dna: dna,
+          fileSize: imageBlob.size,
           answers: answersData,
-          dna: dna, // Pass DNA to API
+          prompt: prompt,
         }),
       });
+      if (!createAssetRes.ok) throw new Error('Failed to create asset record');
 
-      if (!res.ok) {
-        let errorMessage = '生成に失敗しました';
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          errorMessage = `${errorMessage} (${res.status}: ${res.statusText})`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const responseData = await res.json();
-      const { url } = responseData;
-
-      if (url) {
-        setImageUrl(url);
-        setStage("revealing");
-      } else {
-        throw new Error('画像URLが取得できませんでした');
-      }
+      console.log('Asset created successfully in the background.');
 
     } catch (error) {
       console.error('Generation error:', error);
@@ -277,14 +301,15 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   };
 
   const handlePublish = () => {
-    if (imageUrl && onPublishRequest) {
-      onPublishRequest(imageUrl, { answers, dna });
-    } else {
-      onNavigate?.('gallery');
-    }
+    // TODO: Implement publish logic (e.g., call an API to update asset status to 'public')
+    console.log('Publishing asset:', generatedAsset?.key);
+    alert('公開機能は現在実装中です。');
+    onNavigate?.('gallery');
   };
 
   const handleSaveDraft = () => {
+    // Asset is already saved as private, so just navigate
+    console.log('Draft saved for asset:', generatedAsset?.key);
     onNavigate?.('mypage');
   };
 
@@ -381,7 +406,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
           ) : (
             <>
               {/* 画像コンテナ - 横幅いっぱいに表示 */}
-              <div className="viewer-container" style={{ position: 'relative', width: 'calc(100% + 40px)', aspectRatio: '3/4', marginTop: '32px', marginBottom: '24px', marginLeft: '-20px', marginRight: '-20px' }}>
+              <div className="viewer-container" style={{ position: 'relative', width: 'calc(100% + 40px)', aspectRatio: '3:4', marginTop: '32px', marginBottom: '24px', marginLeft: '-20px', marginRight: '-20px' }}>
                 {/* 生成中のProcedural（フェードアウト可能） */}
                 {stage === "generating" && (
                   <div
@@ -415,10 +440,10 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                 )}
 
                 {/* 受信後の"Glass Stripe Reveal" → 完成品表示（同じCanvas） */}
-                {stage === "revealing" && imageUrl && (
+                {stage === "revealing" && generatedAsset && (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
                     <GlassRevealCanvas
-                      imageUrl={imageUrl}
+                      imageUrl={generatedAsset.blobUrl}
                       showButtons={showButtons}
                       onRevealDone={handleRevealDone}
                       onPublish={handlePublish}
