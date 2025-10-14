@@ -24,7 +24,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { prompt, negative, aspectRatio = '3:4', answers, dna } = req.body;
+    let { prompt, negative, aspectRatio = '3:4', answers, dna } = req.body;
+    if (typeof negative === 'string') {
+      negative = negative.replace(/,?\s*no watermark/g, '').replace(/,?\s*no signature/g, '').trim();
+      if (negative.startsWith(',')) negative = negative.substring(1).trim();
+      if (negative.endsWith(',')) negative = negative.substring(0, negative.length - 1).trim();
+    }
 
     // 認証
     const authHeader = req.headers.authorization;
