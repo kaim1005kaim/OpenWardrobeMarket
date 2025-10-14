@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { presignGet, R2_PUBLIC_BASE_URL, isR2Configured } from '../../src/lib/r2';
+import { presignGet, R2_PUBLIC_BASE_URL, isR2Configured } from '../../src/lib/r2.js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
