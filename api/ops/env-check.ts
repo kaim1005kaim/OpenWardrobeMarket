@@ -38,6 +38,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     supabaseUrlRaw && supabaseServiceKeyRaw && supabaseAnonKeyRaw
   );
 
+  const endpointDetails = (() => {
+    if (!endpointRaw) return null;
+    try {
+      const url = new URL(endpointRaw);
+      return { host: url.host, path: url.pathname || '/' };
+    } catch {
+      return { raw: endpointRaw };
+    }
+  })();
+
   return res.status(200).json({
     R2_PUBLIC_BASE_URL: publicUrl,
     R2_S3_ENDPOINT: endpoint,
@@ -45,9 +55,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     R2_SECRET_ACCESS_KEY: secretKey,
     R2_BUCKET: bucket,
     isR2Configured,
+    R2_S3_ENDPOINT_details: endpointDetails,
     NEXT_PUBLIC_SUPABASE_URL: maskValue(supabaseUrlRaw),
     SUPABASE_SERVICE_ROLE_KEY: maskValue(supabaseServiceKeyRaw),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: maskValue(supabaseAnonKeyRaw),
-    isSupabaseConfigured
+    isSupabaseConfigured,
+    nodeVersion: process.version,
+    opensslVersion: process.versions?.openssl ?? null
   });
 }

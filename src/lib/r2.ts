@@ -35,17 +35,30 @@ function createR2Client(endpoint: string): S3Client {
 // Client for API operations
 export const r2 = isR2Configured ? createR2Client(R2_S3_API_ENDPOINT!) : null;
 
-// Client specifically for presigning URLs with the custom domain
-const r2Presigner = isR2Configured ? createR2Client(R2_CUSTOM_DOMAIN_URL || R2_S3_API_ENDPOINT!) : null;
+// Client specifically for presigning URLs. Always use the S3 API endpoint for signing.
+const r2Presigner = isR2Configured ? createR2Client(R2_S3_API_ENDPOINT!) : null;
 
 export async function presignGet(key: string, secs = 60 * 60) {
   if (!r2Presigner || !R2_BUCKET) {
     throw new Error("R2 presigner is not configured");
   }
 
-  return await getSignedUrl(
+  const signedUrl = await getSignedUrl(
     r2Presigner,
     new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }),
     { expiresIn: secs }
   );
+
+  if (R2_CUSTOM_DOMAIN_URL) {
+    const s3EndpointUrl = new URL(R2_S3_API_ENDPOINT!);
+    const customDomainUrl = new URL(R2_CUSTOM_DOMAIN_URL);
+
+    const url = new URL(signedUrl);
+    url.host = customDomainUrl.host;
+    url.protocol = customDomainUrl.protocol;
+    url.port = customDomainUrl.port;
+    return url.toString();
+  }
+
+  return signedUrl;
 }

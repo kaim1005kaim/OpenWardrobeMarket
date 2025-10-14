@@ -1,77 +1,76 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { r2, R2_BUCKET, R2_PUBLIC_BASE_URL } from "../src/lib/r2.js";
+import { R2_PUBLIC_BASE_URL } from "../src/lib/r2.js";
 
-const BUCKET = R2_BUCKET || "owm-assets";
-const PUBLIC_URL = R2_PUBLIC_BASE_URL || "https://pub-4215f21494de4f369c2bde9f2769dfd4.r2.dev";
+const PUBLIC_URL =
+  R2_PUBLIC_BASE_URL || "https://pub-4215f21494de4f369c2bde9f2769dfd4.r2.dev";
 
-/**
- * GET /api/catalog
- * return: { images: Array<{id, src, title, tags}> }
- */
+async function loadAssetHelpers() {
+  return import("./assets/shared.js");
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "GET") return res.status(405).end();
-  
+
   try {
-    console.log('Fetching catalog images from R2...');
-    
-    const listCommand = new ListObjectsV2Command({
-      Bucket: BUCKET,
-      Prefix: 'catalog/',
-      MaxKeys: 1000, // 最初の1000個を取得
+    const { getServiceSupabase } = await loadAssetHelpers();
+    const supabase = getServiceSupabase();
+
+    const { data, error } = await supabase
+      .from("assets")
+      .select("id,title,tags,final_key,raw_key,created_at,status")
+      .eq("status", "public")
+      .or("final_key.ilike.catalog/%,raw_key.ilike.catalog/%")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+
+    if (error) {
+      console.error("[api/catalog] Supabase error:", error.message);
+      throw error;
+    }
+
+    const records = (data || []).filter((row) => {
+      const key = row.final_key || row.raw_key;
+      return typeof key === "string" && key.startsWith("catalog/");
     });
 
-    const response = await r2.send(listCommand);
-    const objects = response.Contents || [];
-    
-    // 画像ファイルのみをフィルタリングし、Asset形式に変換（macOSの._ファイルを除く）
-    const images = objects
-      .filter(obj => {
-        const key = obj.Key || '';
-        return key.match(/\.(png|jpg|jpeg|webp)$/i) && 
-               key !== 'catalog/' && 
-               !key.includes('/._');
-      })
-      .map(obj => {
-        const key = obj.Key!;
-        const filename = key.replace('catalog/', '');
-        
-        // ファイル名から情報を抽出
+    const images = records
+      .map((row) => {
+        const key = (row.final_key || row.raw_key) as string;
+        const filename = key.replace(/^catalog\//, "");
+
         const cleanTitle = filename
-          .replace(/\.(png|jpg|jpeg|webp)$/i, '')
-          .replace(/_/g, ' ')
-          .replace(/\([0-9]+\)/g, '') // (1), (2) などの番号を削除
+          .replace(/\.(png|jpg|jpeg|webp)$/i, "")
+          .replace(/_/g, " ")
+          .replace(/\([0-9]+\)/g, "")
           .trim();
-        
-        // スタイル情報をタグとして抽出
-        const tags = extractTagsFromFilename(cleanTitle);
-        
+
+        const tags = Array.isArray(row.tags) ? row.tags : extractTagsFromFilename(cleanTitle);
+
         return {
-          id: key.replace(/[^a-zA-Z0-9]/g, '_'), // ユニークID生成
+          id: row.id || key.replace(/[^a-zA-Z0-9]/g, "_"),
           src: `${PUBLIC_URL}/${key}`,
-          title: cleanTitle.length > 60 ? cleanTitle.substring(0, 60) + '...' : cleanTitle,
+          title: cleanTitle.length > 60 ? `${cleanTitle.substring(0, 60)}...` : cleanTitle || "Catalog Design",
           tags,
-          type: 'catalog' as const,
+          type: "catalog" as const,
           liked: false,
-          createdAt: obj.LastModified?.toISOString() || new Date().toISOString(),
+          createdAt: row.created_at || new Date().toISOString()
         };
       })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // 新しい順
+      .sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
 
-    console.log(`Found ${images.length} catalog images`);
-    
-    return res.status(200).json({ 
+    return res.status(200).json({
       images,
       total: images.length,
-      source: 'r2-catalog'
+      source: "supabase-assets"
     });
-    
   } catch (e: any) {
-    console.error('Catalog API error:', e);
-    return res.status(500).json({ 
+    console.error("Catalog API error:", e);
+    return res.status(500).json({
       error: e?.message || "Failed to fetch catalog",
       images: [],
-      total: 0 
+      total: 0
     });
   }
 }
