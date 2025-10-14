@@ -1,18 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { r2, R2_BUCKET, R2_PUBLIC_BASE_URL } from "../src/lib/r2.js";
 
-const BUCKET = process.env.R2_BUCKET || "owm-assets";
-const PUBLIC_URL = "https://pub-4215f2149d4e4f369c2bde9f2769dfd4.r2.dev";
-
-// R2 S3 Client initialization
-const r2 = new S3Client({
-  region: process.env.R2_REGION || "auto",
-  endpoint: process.env.R2_S3_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID as string,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY as string,
-  },
-});
+const BUCKET = R2_BUCKET || "owm-assets";
+const PUBLIC_URL = R2_PUBLIC_BASE_URL || "https://pub-4215f21494de4f369c2bde9f2769dfd4.r2.dev";
 
 /**
  * GET /api/catalog
