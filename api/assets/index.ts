@@ -61,6 +61,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL || 'unset';
+    console.log('[api/assets] R2_PUBLIC_BASE_URL', publicBaseUrl.slice(0, 24), '…');
+
     const { scope = 'public', kind = 'final', limit = '30', cursor } = req.query;
 
     const kindParam = kind === 'raw' ? 'raw' : 'final';

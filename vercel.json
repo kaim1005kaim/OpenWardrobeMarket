@@ -14,7 +14,8 @@
   ],
   "functions": {
     "api/**/*.ts": {
-      "includeFiles": "api/_shared/**"
+      "runtime": "@vercel/node@5.3.26",
+      "includeFiles": "{api/_shared/**,src/lib/**}"
     }
   },
   "env": {
