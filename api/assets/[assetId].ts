@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getAuthUser, getServiceSupabase, serializeAsset } from '../lib/assets';
+import { getAuthUser, getServiceSupabase, serializeAsset } from '@/server/apiAssets';
 
 const ALLOWED_STATUSES = new Set(['public', 'private', 'delisted']);
 

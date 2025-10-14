@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getAuthUser, getServiceSupabase } from '../lib/assets';
+import { getAuthUser, getServiceSupabase } from '@/server/apiAssets';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const {

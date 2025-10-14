@@ -6,7 +6,7 @@ import {
   assetIsAllowed,
   type SerializedAsset,
   type SerializedAssetOptions
-} from '../lib/assets';
+} from '@/server/apiAssets';
 
 const FALLBACK_PREFIXES = ['catalog/'];
 
@@ -14,11 +14,9 @@ async function fetchCatalogFallback(): Promise<SerializedAsset[]> {
   const origin =
     process.env.INTERNAL_CATALOG_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
-
-  if (!origin) {
-    return [];
-  }
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+    process.env.SITE_URL ||
+    'https://open-wardrobe-market.com';
 
   try {
     const response = await fetch(`${origin.replace(/\/$/, '')}/api/catalog`);
@@ -99,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (error) {
       console.error('[api/assets] Supabase error:', error);
       if ((error as any).code === '42P01' && scope === 'public') {
-        const fallback = await fetchCatalogFallback();
+    const fallback = scope === 'public' ? await fetchCatalogFallback() : [];
         return res.status(200).json({ assets: fallback, cursor: null });
       }
       if (scope === 'public') {
