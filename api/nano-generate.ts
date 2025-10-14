@@ -2,7 +2,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, constants } from 'node:crypto';
+import { https } from 'https';
+import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
 
 // Vercel Functionのタイムアウトを60秒に設定
 export const config = {
@@ -24,12 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    let { prompt, negative, aspectRatio = '3:4', answers, dna } = req.body;
-    if (typeof negative === 'string') {
-      negative = negative.replace(/,?\s*no watermark/g, '').replace(/,?\s*no signature/g, '').trim();
-      if (negative.startsWith(',')) negative = negative.substring(1).trim();
-      if (negative.endsWith(',')) negative = negative.substring(0, negative.length - 1).trim();
-    }
+    const { prompt, negative, aspectRatio = '3:4', answers, dna } = req.body;
 
     // 認証
     const authHeader = req.headers.authorization;
@@ -55,7 +52,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Gemini API (AI Studio) で画像生成
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
-    const fullPrompt = `${prompt} | single model | one person only | clean minimal background | fashion lookbook style | full body composition | professional fashion photography${negative ? `. Negative: ${negative}` : ''}`;
+    const cleanNegative = (negative || '').replace(/no watermark|no signature/gi, '').replace(/,,/g, ',').trim();
+    const fullPrompt = `${prompt} | single model | one person only | clean minimal background | fashion lookbook style | full body composition | professional fashion photography${cleanNegative ? `. Negative: ${cleanNegative}` : ''}`;
 
     console.log('[Gemini API] Prompt:', fullPrompt);
 
@@ -66,25 +64,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } as any);
 
     console.log('[Gemini API] Generation response received');
-    console.log('[Gemini API] Response structure:', JSON.stringify({
-      hasCandidates: !!resp.candidates,
-      candidatesLength: resp.candidates?.length,
-      firstCandidate: resp.candidates?.[0] ? {
-        hasContent: !!resp.candidates[0].content,
-        hasParts: !!resp.candidates[0].content?.parts,
-        partsLength: resp.candidates[0].content?.parts?.length,
-        finishReason: resp.candidates[0].finishReason,
-        safetyRatings: resp.candidates[0].safetyRatings,
-      } : null,
-    }, null, 2));
 
     const parts: any[] = resp.candidates?.[0]?.content?.parts ?? [];
-    console.log('[Gemini API] Parts:', parts.map((p: any) => ({
-      hasInlineData: !!p.inlineData,
-      hasText: !!p.text,
-      keys: Object.keys(p),
-    })));
-
     const inline = parts.find((p: any) => p.inlineData)?.inlineData;
 
     if (!inline?.data) {
@@ -97,7 +78,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const ext = mime.includes('webp') ? 'webp' : 'png';
     const buffer = Buffer.from(inline.data, 'base64');
 
-    // R2にアップロード
+    // R2にアップロード (TLS修正を含む)
+    const legacyAgent = new https.Agent({
+      secureOptions: constants.SSL_OP_LEGACY_SERVER_CONNECT,
+    });
+
     const r2 = new S3Client({
       region: 'auto',
       endpoint: process.env.R2_S3_ENDPOINT!,
@@ -106,6 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
       },
       forcePathStyle: true,
+      requestHandler: new NodeHttpHandler({ httpsAgent: legacyAgent }),
     });
 
     const R2_BUCKET = process.env.R2_BUCKET!;
@@ -141,7 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         provider: 'gemini-api',
         model: 'gemini-2.5-flash-image',
         prompt,
-        negative_prompt: negative,
+        negative_prompt: cleanNegative,
         aspect_ratio: aspectRatio,
         image_bucket: R2_BUCKET,
         image_path: key,
