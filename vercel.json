@@ -12,6 +12,11 @@
       ]
     }
   ],
+  "functions": {
+    "api/**/*.ts": {
+      "includeFiles": "api/_shared/**"
+    }
+  },
   "env": {
     "VITE_API_URL": "http://localhost:3001"
   }
