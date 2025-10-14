@@ -31,7 +31,7 @@ function getR2Client(): S3Client {
   if (!cachedClient) {
     cachedClient = new S3Client({
       region: "auto",
-      endpoint: R2_ENDPOINT!,
+      endpoint: R2_PUBLIC_BASE_URL!,
       credentials: {
         accessKeyId: R2_ACCESS_KEY_ID!,
         secretAccessKey: R2_SECRET_ACCESS_KEY!
@@ -45,24 +45,16 @@ function getR2Client(): S3Client {
 
 export const r2 = isR2Configured ? getR2Client() : null;
 
-export async function presignGet(key: string, secs = 60 * 60): Promise<string> {
-  if (!isR2Configured || !R2_BUCKET || !R2_PUBLIC_BASE_URL) {
-    throw new Error("R2 client or public URL is not configured");
+export async function presignGet(key: string, secs = 60 * 60) {
+  if (!isR2Configured || !R2_BUCKET) {
+    throw new Error("R2 client is not configured");
   }
 
-  const s3SignedUrl = await getSignedUrl(
+  return await getSignedUrl(
     getR2Client(),
     new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }),
     { expiresIn: secs }
   );
-
-  const url = new URL(s3SignedUrl);
-  const signatureParams = url.search;
-
-  const publicUrl = new URL(`${R2_PUBLIC_BASE_URL.replace(/\/$/, '')}/${key.replace(/^\/+/, '')}`);
-  publicUrl.search = signatureParams;
-
-  return publicUrl.toString();
 }
 
 export { GetObjectCommand, PutObjectCommand, CopyObjectCommand, ListObjectsV2Command };
