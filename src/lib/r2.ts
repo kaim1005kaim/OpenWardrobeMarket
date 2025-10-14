@@ -57,6 +57,11 @@ export async function presignGet(key: string, secs = 60 * 60) {
     url.host = customDomainUrl.host;
     url.protocol = customDomainUrl.protocol;
     url.port = customDomainUrl.port;
+
+    if (url.pathname.startsWith(`/${R2_BUCKET}`)) {
+      url.pathname = url.pathname.substring(`/${R2_BUCKET}`.length);
+    }
+
     return url.toString();
   }
 
