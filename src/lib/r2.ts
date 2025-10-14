@@ -45,16 +45,24 @@ function getR2Client(): S3Client {
 
 export const r2 = isR2Configured ? getR2Client() : null;
 
-export function presignGet(key: string, secs = 60 * 60) {
-  if (!isR2Configured || !R2_BUCKET) {
-    throw new Error("R2 client is not configured");
+export async function presignGet(key: string, secs = 60 * 60): Promise<string> {
+  if (!isR2Configured || !R2_BUCKET || !R2_PUBLIC_BASE_URL) {
+    throw new Error("R2 client or public URL is not configured");
   }
 
-  return getSignedUrl(
+  const s3SignedUrl = await getSignedUrl(
     getR2Client(),
     new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }),
     { expiresIn: secs }
   );
+
+  const url = new URL(s3SignedUrl);
+  const signatureParams = url.search;
+
+  const publicUrl = new URL(`${R2_PUBLIC_BASE_URL.replace(/\/$/, '')}/${key.replace(/^\/+/, '')}`);
+  publicUrl.search = signatureParams;
+
+  return publicUrl.toString();
 }
 
 export { GetObjectCommand, PutObjectCommand, CopyObjectCommand, ListObjectsV2Command };
