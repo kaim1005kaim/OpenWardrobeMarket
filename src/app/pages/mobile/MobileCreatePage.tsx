@@ -1,10 +1,88 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useReducer, useCallback } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { buildPrompt, type Answers } from '../../../lib/prompt/buildMobile';
 import { supabase } from '../../lib/supabase';
 import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/MetaballsSoft';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import './MobileCreatePage.css';
+
+// --- DNA and Sync Logic from Design Document ---
+
+export type DNA = {
+  hue: number;      // 0..1
+  sat: number;      // 0..1
+  light: number;    // 0..1
+  minimal_maximal: number;   // -1..1
+  street_luxury: number;     // -1..1
+  oversized_fitted: number;  // -1..1
+  relaxed_tailored: number;  // -1..1
+  texture: number;  // 0..1
+};
+
+const initialDNA: DNA = {
+  hue: 0.56, sat: 0.25, light: 0.62, minimal_maximal: -0.2,
+  street_luxury: 0, oversized_fitted: 0, relaxed_tailored: 0, texture: 0.3
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function dnaReducer(state: DNA, action: {type:'set'|'delta'; key?: keyof DNA; value?: number; delta?: number}) {
+  if (action.type === 'set' && action.key) return {...state, [action.key]: action.value!};
+  if (action.type === 'delta' && action.key) return {...state, [action.key]: clamp(state[action.key] + (action.delta||0), -1, 1)};
+  return state;
+}
+
+function useDNASync(sessionKey: string, getPayload: () => {
+  answers:any; freeText?:string; dna:DNA; geminiTags?:any; promptPreview?:string;
+}) {
+  const queue = useRef<any>(null);
+  const timer = useRef<number|undefined>();
+
+  const checkpoint = useCallback(() => {
+    if (!sessionKey) return;
+    queue.current = getPayload();
+    if (timer.current) return;
+    timer.current = window.setTimeout(async () => {
+      const payload = queue.current; queue.current = null; timer.current = undefined;
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) return;
+
+      await fetch('/api/dna/sync', { 
+        method:'POST', 
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization': `Bearer ${token}`
+        }, 
+        body: JSON.stringify({sessionKey, ...payload}) 
+      });
+    }, 1200); // 1.2s
+  }, [sessionKey, getPayload]);
+
+  const flushNow = useCallback(async () => {
+    const payload = queue.current ?? getPayload();
+    queue.current = null;
+    if (timer.current) { clearTimeout(timer.current); timer.current = undefined; }
+    if (!sessionKey || !payload) return;
+
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    if (!token) return;
+
+    await fetch('/api/dna/sync', { 
+      method:'POST', 
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization': `Bearer ${token}`
+      }, 
+      body: JSON.stringify({sessionKey, ...payload}) 
+    });
+  }, [sessionKey, getPayload]);
+
+  return { checkpoint, flushNow };
+}
+
+// --- Component Interfaces and Constants ---
 
 interface MobileCreatePageProps {
   onNavigate?: (page: string) => void;
@@ -49,6 +127,8 @@ const createQuestions: Question[] = [
 
 type Stage = "idle" | "generating" | "revealing";
 
+// --- Main Component ---
+
 export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreatePageProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
@@ -56,75 +136,54 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   const [stage, setStage] = useState<Stage>("idle");
   const [showButtons, setShowButtons] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState(0);
-  const [generationStatus, setGenerationStatus] = useState('');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const metaballRef = useRef<MetaballsSoftHandle>(null);
 
+  // DNA State Management
+  const [dna, dispatchDNA] = useReducer(dnaReducer, initialDNA);
+  const [sessionKey, setSessionKey] = useState(() => `mobile-create-${Date.now()}`);
+
+  // DNA Sync Logic
+  const getPayload = useCallback(() => ({
+    answers,
+    dna,
+    // freeText, geminiTags, promptPreview can be added later
+  }), [answers, dna]);
+  const { checkpoint, flushNow } = useDNASync(sessionKey, getPayload);
+
   const currentQuestion = createQuestions[currentStep];
   const progress = ((currentStep + 1) / createQuestions.length) * 100;
-
-  // 各ステップごとの色パレット（生成中用）
-  const PALETTES = [
-    { a: "#F5D4C7", b: "#D86C56" }, // step1 (vibe)
-    { a: "#D7E8FF", b: "#6BA4FF" }, // step2 (silhouette)
-    { a: "#E9DDFF", b: "#8A63F8" }, // step3 (color) 紫寄り
-    { a: "#D9F0E5", b: "#33A68B" }, // step4 (occasion)
-    { a: "#FFF1C7", b: "#E0A33A" }, // step5 (season)
-  ];
-
-  const currentPalette = PALETTES[Math.min(currentStep, PALETTES.length - 1)];
 
   const handleSelect = (option: string) => {
     const questionId = currentQuestion.id;
     const currentAnswers = answers[questionId] || [];
 
-    console.log('Selected:', { questionId, option, currentAnswers });
-
-    // メタボールにインパクトをトリガー
     metaballRef.current?.triggerImpact();
 
+    let newAnswers: Record<string, string[]>;
     if (currentQuestion.multiSelect) {
-      // Multi-select: toggle
       if (currentAnswers.includes(option)) {
-        setAnswers({
-          ...answers,
-          [questionId]: currentAnswers.filter(a => a !== option),
-        });
+        newAnswers = { ...answers, [questionId]: currentAnswers.filter(a => a !== option) };
       } else {
-        setAnswers({
-          ...answers,
-          [questionId]: [...currentAnswers, option],
-        });
+        newAnswers = { ...answers, [questionId]: [...currentAnswers, option] };
       }
     } else {
-      // Single select: replace
-      const newAnswers = {
-        ...answers,
-        [questionId]: [option],
-      };
-      console.log('New answers:', newAnswers);
-      setAnswers(newAnswers);
+      newAnswers = { ...answers, [questionId]: [option] };
     }
+    setAnswers(newAnswers);
+    checkpoint(); // Save on interaction
   };
 
   const isSelected = (option: string) => {
-    const currentAnswers = answers[currentQuestion.id] || [];
-    return currentAnswers.includes(option);
+    return (answers[currentQuestion.id] || []).includes(option);
   };
 
   const canProceed = () => {
-    const currentAnswers = answers[currentQuestion.id] || [];
-    const result = currentAnswers.length > 0;
-    console.log('canProceed:', { questionId: currentQuestion.id, currentAnswers, result });
-    return result;
+    return (answers[currentQuestion.id] || []).length > 0;
   };
 
   const handleNext = () => {
-    console.log('handleNext called, currentStep:', currentStep, 'answers:', answers);
-
-    // 色変更 + インパクト
+    checkpoint(); // Save on step change
     metaballRef.current?.changePalette();
 
     if (currentStep < createQuestions.length - 1) {
@@ -143,15 +202,17 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   const handleReset = () => {
     setCurrentStep(0);
     setAnswers({});
+    dispatchDNA({ type: 'set', key: 'hue', value: initialDNA.hue }); // Reset DNA
+    setSessionKey(`mobile-create-${Date.now()}`); // Start new session
   };
 
   const handleGenerate = async () => {
+    await flushNow(); // Force sync before generating
+
     setStage("generating");
     setIsGenerating(true);
-    console.log('Generating with answers:', answers);
 
     try {
-      // プロンプト生成
       const answersData: Answers = {
         vibe: answers.vibe || [],
         silhouette: answers.silhouette || [],
@@ -163,13 +224,9 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
       const prompt = buildPrompt(answersData);
       const negative = "no text, no words, no logos, no brands, no celebrities, no multiple people, no watermark, no signature";
 
-      // 認証トークン取得
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('ログインが必要です');
-      }
+      if (!session) throw new Error('ログインが必要です');
 
-      // Nano Banana API呼び出し
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
       const res = await fetch(`${apiUrl}/api/nano-generate`, {
         method: 'POST',
@@ -182,6 +239,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
           negative,
           aspectRatio: '3:4',
           answers: answersData,
+          dna: dna, // Pass DNA to API
         }),
       });
 
@@ -191,26 +249,16 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
           const errorData = await res.json();
           errorMessage = errorData.error || errorMessage;
         } catch (e) {
-          // JSONパースに失敗した場合はステータステキストを使用
           errorMessage = `${errorMessage} (${res.status}: ${res.statusText})`;
         }
         throw new Error(errorMessage);
       }
 
-      let responseData;
-      try {
-        responseData = await res.json();
-      } catch (e) {
-        throw new Error('サーバーからの応答が不正です。APIサーバーが起動しているか確認してください。');
-      }
+      const responseData = await res.json();
+      const { url } = responseData;
 
-      const { id, url, status } = responseData;
-      console.log('Generation completed:', { id, url, status });
-
-      // Nano Bananaは同期処理なので即座にURLが返る
       if (url) {
         setImageUrl(url);
-        setGenerationProgress(100);
         setStage("revealing");
       } else {
         throw new Error('画像URLが取得できませんでした');
@@ -225,34 +273,26 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   };
 
   const handleRevealDone = () => {
-    console.log('[MobileCreatePage] handleRevealDone called - showing buttons');
     setShowButtons(true);
   };
 
   const handlePublish = () => {
-    console.log('[MobileCreatePage] handlePublish called - navigating to publishForm');
     if (imageUrl && onPublishRequest) {
-      // 公開フォームページに画像URLと生成データを渡す
-      onPublishRequest(imageUrl, { answers });
+      onPublishRequest(imageUrl, { answers, dna });
     } else {
-      // フォールバック
       onNavigate?.('gallery');
     }
   };
 
   const handleSaveDraft = () => {
-    console.log('[MobileCreatePage] handleSaveDraft called - navigating to mypage');
-    // TODO: ドラフト保存処理
-    // マイページのDraftsタブに保存
     onNavigate?.('mypage');
   };
 
   const handleMenuNavigate = (page: string) => {
-    if (onNavigate) {
-      onNavigate(page);
-    }
+    onNavigate?.(page);
   };
 
+  // ... JSX remains largely the same ...
   return (
     <div className="mobile-create-page">
       {/* Header */}
