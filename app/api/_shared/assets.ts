@@ -217,10 +217,36 @@ function buildR2Url(baseUrl: string | null, key: string | null | undefined): str
   return `${baseUrl}/${sanitizedKey}`;
 }
 
+function extractPathFromUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    return url.pathname;
+  } catch {
+    return value;
+  }
+}
+
+function normaliseR2Key(value: string | null | undefined): string | null {
+  if (!value) return null;
+  let key = extractPathFromUrl(String(value)).trim();
+  if (!key) return null;
+  key = key.replace(/^\/+/, '');
+
+  if (R2_BUCKET) {
+    const bucketPrefix = `${R2_BUCKET}/`.toLowerCase();
+    if (key.toLowerCase().startsWith(bucketPrefix)) {
+      key = key.slice(bucketPrefix.length);
+    }
+  }
+
+  return key || null;
+}
+
 let hasLoggedPresignWarning = false;
 
 async function tryPresign(key: string | null | undefined, expiresIn = 60 * 15): Promise<string | null> {
-  if (!key) return null;
+  const normalisedKey = normaliseR2Key(key);
+  if (!normalisedKey) return null;
   if (!isR2Configured) {
     if (!hasLoggedPresignWarning) {
       console.warn('[api/assets] R2 configuration missing; falling back to public URLs when available');
@@ -235,7 +261,7 @@ async function tryPresign(key: string | null | undefined, expiresIn = 60 * 15): 
     }
     return await getSignedUrl(
       r2PresignClient,
-      new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }),
+      new GetObjectCommand({ Bucket: R2_BUCKET, Key: normalisedKey }),
       { expiresIn: expiresIn }
     );
   } catch (error: any) {
@@ -302,8 +328,8 @@ export async function serializeAsset(
 
   if (!rawUrl || !isAbsoluteUrl(rawUrl)) {
     const fallbackRawKey =
-      (typeof rawKey === 'string' && rawKey) ||
-      (rawUrl && !isAbsoluteUrl(rawUrl) ? rawUrl : null);
+      normaliseR2Key(typeof rawKey === 'string' ? rawKey : null) ||
+      normaliseR2Key(rawUrl && !isAbsoluteUrl(rawUrl) ? rawUrl : null);
     const fallbackRawUrl = buildR2Url(r2BaseUrl, fallbackRawKey);
     if (fallbackRawUrl) {
       rawUrl = fallbackRawUrl;
@@ -314,8 +340,8 @@ export async function serializeAsset(
 
   if (!finalUrl || !isAbsoluteUrl(finalUrl)) {
     const fallbackFinalKey =
-      (typeof finalKey === 'string' && finalKey) ||
-      (finalUrl && !isAbsoluteUrl(finalUrl) ? finalUrl : null);
+      normaliseR2Key(typeof finalKey === 'string' ? finalKey : null) ||
+      normaliseR2Key(finalUrl && !isAbsoluteUrl(finalUrl) ? finalUrl : null);
     const fallbackFinalUrl = buildR2Url(r2BaseUrl, fallbackFinalKey);
     if (fallbackFinalUrl) {
       finalUrl = fallbackFinalUrl;
@@ -346,8 +372,8 @@ export async function serializeAsset(
     src,
     finalUrl,
     rawUrl: rawUrl ?? null,
-    finalKey: finalKey ?? null,
-    rawKey: rawKey ?? null,
+    finalKey: normaliseR2Key(finalKey) ?? finalKey ?? null,
+    rawKey: normaliseR2Key(rawKey) ?? rawKey ?? null,
     coverColor: extractWithFallback(row, ['dominant_color', 'cover_color'], null),
     isLiked: likedIds ? likedIds.has(row.id) : undefined,
     metadata: row.metadata || row.generation_data || null
