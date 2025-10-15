@@ -473,7 +473,17 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
           ) : (
             <>
               {/* 画像コンテナ - 横幅いっぱいに表示 */}
-              <div className="viewer-container" style={{ position: 'relative', width: 'calc(100% + 40px)', aspectRatio: '3:4', marginTop: '32px', marginBottom: '24px', marginLeft: '-20px', marginRight: '-20px' }}>
+              <div className="viewer-container" style={{
+                position: 'relative',
+                width: 'calc(100% + 40px)',
+                aspectRatio: '3:4',
+                marginTop: '32px',
+                marginBottom: '24px',
+                marginLeft: '-20px',
+                marginRight: '-20px',
+                backgroundColor: '#f0f0f0', // Debug: visible container
+                border: '2px solid red' // Debug: visible border
+              }}>
                 {/* 生成中のプレースホルダー（WebGLなしの軽量版） */}
                 {stage === "generating" && (
                   <div
