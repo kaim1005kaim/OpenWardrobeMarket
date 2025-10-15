@@ -148,9 +148,13 @@ export default function GlassRevealCanvas({
     const texImg = loader.load(
       imageUrl,
       () => {
-        console.log('[GlassRevealCanvas] Image texture loaded', { imageUrl });
         const w = ref.current!.clientWidth || texImg.image.width;
         const h = ref.current!.clientHeight || texImg.image.height;
+        console.log('[GlassRevealCanvas] Image texture loaded', {
+          imageUrl,
+          canvasSize: { w, h },
+          imageSize: { width: texImg.image.width, height: texImg.image.height }
+        });
         renderer.setSize(w, h, false);
         (mat.uniforms.u_res.value as THREE.Vector2).set(w, h);
         (mat.uniforms.u_imgRes.value as THREE.Vector2).set(texImg.image.width, texImg.image.height);
@@ -281,7 +285,8 @@ export default function GlassRevealCanvas({
       geo.dispose(); mat.dispose(); texImg.dispose(); texGlass.dispose();
       renderer.dispose();
     };
-  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, leftToRight]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stripes, jitter, strength, holdMs, revealMs, leftToRight]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>

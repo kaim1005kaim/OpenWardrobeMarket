@@ -516,7 +516,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                     {/* Glass reveal effect overlay */}
                     <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
                       <GlassRevealCanvas
-                        key={displayUrl}
+                        key={sessionKey}
                         imageUrl={displayUrl}
                         showButtons={showButtons}
                         onRevealDone={handleRevealDone}
