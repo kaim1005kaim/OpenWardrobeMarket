@@ -357,6 +357,18 @@ export async function serializeAsset(
     finalUrl ||
     'https://via.placeholder.com/640x960/EEECE6/999?text=Design';
 
+  if (R2_CUSTOM_DOMAIN_URL) {
+    const customBase = normaliseBaseUrl(R2_CUSTOM_DOMAIN_URL);
+    if (customBase) {
+      if (finalKeyNormalised) {
+        finalUrl = buildR2Url(customBase, finalKeyNormalised) ?? finalUrl;
+      }
+      if (rawKeyNormalised) {
+        rawUrl = buildR2Url(customBase, rawKeyNormalised) ?? rawUrl;
+      }
+    }
+  }
+
   const likedIds = options.likedIds;
   const price = extractWithFallback(row, ['price', 'listing_price', 'buyout_price'], null);
 
