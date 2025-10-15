@@ -40,6 +40,8 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
     (asset: Asset): Asset => ({
       ...asset,
       src: asset.finalUrl ?? asset.src,
+      finalUrl: asset.finalUrl ?? asset.src,
+      rawUrl: asset.rawUrl,
       isPublic: asset.status === 'public',
       liked: asset.isLiked ?? asset.liked,
       creator: asset.creator || (asset.userId === user?.id ? 'You' : asset.creator || 'OWM Creator')
