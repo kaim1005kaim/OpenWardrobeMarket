@@ -4,6 +4,7 @@ import { buildPrompt, type Answers } from '../../../lib/prompt/buildMobile';
 import { supabase } from '../../lib/supabase';
 import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/MetaballsSoft';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
+import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import './MobileCreatePage.css';
 
 // --- Helper Functions ---
@@ -148,16 +149,21 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   const [stage, setStage] = useState<Stage>("idle");
   const [showButtons, setShowButtons] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-const [generatedAsset, setGeneratedAsset] = useState<{
+  const [generatedAsset, setGeneratedAsset] = useState<{
     key: string;
     blobUrl: string;
-    displayUrl: string;
     finalUrl?: string | null;
     answers: Answers;
     dna: DNA;
     prompt: string;
   } | null>(null);
   const metaballRef = useRef<MetaballsSoftHandle>(null);
+
+  // Use robust image display hook
+  const { src: displayUrl } = useDisplayImage({
+    blobUrl: generatedAsset?.blobUrl,
+    finalUrl: generatedAsset?.finalUrl
+  });
 
   // DNA State Management
   const [dna, dispatchDNA] = useReducer(dnaReducer, initialDNA);
@@ -263,19 +269,21 @@ const [generatedAsset, setGeneratedAsset] = useState<{
       // Prepare for reveal effect and background upload
       const imageBlob = base64ToBlob(imageData, mimeType);
       const blobUrl = URL.createObjectURL(imageBlob);
-      setGeneratedAsset((prev) => {
-        if (prev?.blobUrl && prev.blobUrl !== blobUrl) {
-          URL.revokeObjectURL(prev.blobUrl);
-        }
-        return {
-          key,
-          blobUrl,
-          displayUrl: blobUrl,
-          finalUrl: blobUrl,
-          answers: answersData,
-          dna,
-          prompt
-        };
+
+      console.info('[MobileCreatePage] Image generated', {
+        key,
+        blobUrl,
+        blobSize: imageBlob.size,
+        mimeType
+      });
+
+      setGeneratedAsset({
+        key,
+        blobUrl,
+        finalUrl: null, // Will be set after R2 upload
+        answers: answersData,
+        dna,
+        prompt
       });
       setStage("revealing");
 
@@ -307,7 +315,12 @@ const [generatedAsset, setGeneratedAsset] = useState<{
       });
       if (!createAssetRes.ok) throw new Error('Failed to create asset record');
       const createdAssetPayload = await createAssetRes.json().catch(() => null);
+
       if (createdAssetPayload?.asset?.finalUrl) {
+        console.info('[MobileCreatePage] R2 upload complete', {
+          finalUrl: createdAssetPayload.asset.finalUrl
+        });
+
         setGeneratedAsset((prev) =>
           prev
             ? {
@@ -318,7 +331,7 @@ const [generatedAsset, setGeneratedAsset] = useState<{
         );
       }
 
-      console.log('Asset created successfully in the background.');
+      console.log('[MobileCreatePage] Asset created successfully in the background.');
 
     } catch (error) {
       console.error('Generation error:', error);
@@ -349,44 +362,8 @@ const [generatedAsset, setGeneratedAsset] = useState<{
     onNavigate?.(page);
   };
 
-  useEffect(() => {
-    return () => {
-      if (generatedAsset?.blobUrl) {
-        URL.revokeObjectURL(generatedAsset.blobUrl);
-      }
-    };
-  }, [generatedAsset?.blobUrl]);
-
-  useEffect(() => {
-    if (!generatedAsset?.finalUrl) return;
-    const targetUrl = generatedAsset.finalUrl;
-    let cancelled = false;
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      if (!cancelled) {
-        setGeneratedAsset((prev) =>
-          prev && prev.finalUrl === targetUrl && prev.displayUrl !== targetUrl
-            ? { ...prev, displayUrl: targetUrl }
-            : prev
-        );
-      }
-    };
-    img.onerror = () => {
-      if (!cancelled) {
-        setGeneratedAsset((prev) =>
-          prev && prev.finalUrl === targetUrl && prev.displayUrl !== prev.blobUrl
-            ? { ...prev, displayUrl: prev.blobUrl }
-            : prev
-        );
-      }
-    };
-    img.src = targetUrl;
-    return () => {
-      cancelled = true;
-      img.src = '';
-    };
-  }, [generatedAsset?.finalUrl]);
+  // Blob cleanup is now handled by useDisplayImage hook
+  // No manual revocation needed here
 
   // ... JSX remains largely the same ...
   return (
@@ -513,15 +490,17 @@ const [generatedAsset, setGeneratedAsset] = useState<{
                 )}
 
                 {/* 受信後の"Glass Stripe Reveal" → 完成品表示（同じCanvas） */}
-                {stage === "revealing" && generatedAsset && (
+                {stage === "revealing" && generatedAsset && displayUrl && (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
                     <img
-                      src={generatedAsset.displayUrl}
+                      src={displayUrl}
                       alt="Generated design"
+                      onLoad={(e) => console.info('[img onload]', (e.target as HTMLImageElement).src)}
+                      onError={(e) => console.error('[img onerror]', (e.target as HTMLImageElement).src)}
                       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                     <GlassRevealCanvas
-                      imageUrl={generatedAsset.displayUrl}
+                      imageUrl={displayUrl}
                       showButtons={showButtons}
                       onRevealDone={handleRevealDone}
                       onPublish={handlePublish}

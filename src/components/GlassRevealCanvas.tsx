@@ -125,10 +125,11 @@ export default function GlassRevealCanvas({
     try {
       renderer = new THREE.WebGLRenderer({
         canvas: ref.current,
-        antialias: true,
+        antialias: false,              // Reduce VRAM usage
         alpha: true,
         premultipliedAlpha: true,
-        powerPreference: "high-performance",
+        powerPreference: "low-power",  // More stable on mobile
+        preserveDrawingBuffer: false,  // Critical: saves VRAM
       });
     } catch (err) {
       console.error('[GlassRevealCanvas] renderer init failed:', err);
@@ -136,7 +137,7 @@ export default function GlassRevealCanvas({
       return;
     }
     renderer.setClearColor(0x000000, 0);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Lower limit for stability
 
     const scene = new THREE.Scene();
     const cam = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
@@ -152,9 +153,22 @@ export default function GlassRevealCanvas({
 
     const handleContextLost = (event: Event) => {
       event.preventDefault();
+      console.error('[GlassRevealCanvas] WebGL context lost', {
+        timestamp: performance.now(),
+        memoryInfo: (renderer as any)?.info?.memory
+      });
       setContextLost(true);
     };
-    renderer.domElement.addEventListener('webglcontextlost', handleContextLost as EventListener, { once: true });
+
+    const handleContextRestored = () => {
+      console.warn('[GlassRevealCanvas] WebGL context restored', {
+        timestamp: performance.now()
+      });
+      // Context restored - component will re-init on next render
+    };
+
+    renderer.domElement.addEventListener('webglcontextlost', handleContextLost as EventListener, false);
+    renderer.domElement.addEventListener('webglcontextrestored', handleContextRestored as EventListener, false);
 
     const texImg = loader.load(imageUrl, () => {
       const w = ref.current!.clientWidth || texImg.image.width;
@@ -268,9 +282,23 @@ export default function GlassRevealCanvas({
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
+
+      // Remove event listeners
       renderer?.domElement.removeEventListener('webglcontextlost', handleContextLost as EventListener);
-      geo.dispose(); mat.dispose(); texImg.dispose(); texGlass.dispose();
-      renderer?.dispose();
+      renderer?.domElement.removeEventListener('webglcontextrestored', handleContextRestored as EventListener);
+
+      // Dispose all resources properly
+      try {
+        geo.dispose();
+        mat.dispose();
+        texImg.dispose();
+        texGlass.dispose();
+        renderer?.clear(true, true, true);
+        renderer?.dispose();
+        console.info('[GlassRevealCanvas] Resources disposed');
+      } catch (e) {
+        console.warn('[GlassRevealCanvas] Error during disposal', e);
+      }
     };
   }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, leftToRight, contextLost]);
 
