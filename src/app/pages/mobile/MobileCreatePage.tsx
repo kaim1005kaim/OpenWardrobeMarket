@@ -3,7 +3,6 @@ import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { buildPrompt, type Answers } from '../../../lib/prompt/buildMobile';
 import { supabase } from '../../lib/supabase';
 import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/MetaballsSoft';
-import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import './MobileCreatePage.css';
 
@@ -483,30 +482,79 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                   </div>
                 )}
 
-                {/* 受信後の"Glass Stripe Reveal" → 完成品表示（同じCanvas） */}
+                {/* 受信後の画像表示（シンプルフェードイン） */}
                 {stage === "revealing" && generatedAsset && displayUrl && (
-                  <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    zIndex: 2,
+                    animation: 'fadeIn 0.8s ease-out forwards'
+                  }}>
                     <img
                       src={displayUrl}
                       alt="Generated design"
-                      onLoad={(e) => console.info('[img onload]', (e.target as HTMLImageElement).src)}
+                      onLoad={(e) => {
+                        console.info('[img onload]', (e.target as HTMLImageElement).src);
+                        // Auto-trigger reveal done after image loads + delay
+                        setTimeout(() => handleRevealDone(), 2000);
+                      }}
                       onError={(e) => console.error('[img onerror]', (e.target as HTMLImageElement).src)}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
                     />
-                    <GlassRevealCanvas
-                      imageUrl={displayUrl}
-                      showButtons={showButtons}
-                      onRevealDone={handleRevealDone}
-                      onPublish={handlePublish}
-                      onSaveDraft={handleSaveDraft}
-                      stripes={48}
-                      jitter={0.08}
-                      strength={0.9}
-                      holdMs={3000}
-                      revealMs={1200}
-                      leftToRight={true}
-                      active={true}
-                    />
+                    {/* ボタン表示 */}
+                    {showButtons && (
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: '20px',
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.6), transparent)',
+                        display: 'flex',
+                        gap: '12px',
+                        justifyContent: 'center',
+                        animation: 'fadeIn 0.4s ease-out forwards'
+                      }}>
+                        <button
+                          onClick={handleSaveDraft}
+                          style={{
+                            padding: '12px 24px',
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            color: '#fff',
+                            background: 'rgba(255,255,255,0.2)',
+                            border: '1px solid rgba(255,255,255,0.3)',
+                            borderRadius: '8px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ドラフトに保存
+                        </button>
+                        <button
+                          onClick={handlePublish}
+                          style={{
+                            padding: '12px 24px',
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            color: '#000',
+                            background: '#fff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          公開する
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

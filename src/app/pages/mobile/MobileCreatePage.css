@@ -378,6 +378,16 @@
   }
 }
 
+/* Fade in animation for image reveal */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Spinner animation for loading state */
 @keyframes spin {
   to {
