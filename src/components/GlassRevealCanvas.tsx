@@ -109,13 +109,24 @@ export default function GlassRevealCanvas({
 
   useEffect(() => {
     if(!ref.current) return;
+    console.log('[GlassRevealCanvas] useEffect started', { imageUrl, canvasElement: !!ref.current });
 
-    const renderer = new THREE.WebGLRenderer({
-      canvas: ref.current, antialias: true, alpha: true, premultipliedAlpha: true,
-      powerPreference: "high-performance",
-    });
-    renderer.setClearColor(0x000000, 0);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas: ref.current, antialias: true, alpha: true, premultipliedAlpha: true,
+        powerPreference: "high-performance",
+      });
+      console.log('[GlassRevealCanvas] Renderer created successfully', {
+        context: renderer.getContext(),
+        isContextLost: renderer.getContext().isContextLost()
+      });
+      renderer.setClearColor(0x000000, 0);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    } catch (error) {
+      console.error('[GlassRevealCanvas] Failed to create renderer:', error);
+      return;
+    }
 
     const scene = new THREE.Scene();
     const cam = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
@@ -129,22 +140,38 @@ export default function GlassRevealCanvas({
 
     loader.crossOrigin = "anonymous";
 
-    const texImg = loader.load(imageUrl, () => {
-      const w = ref.current!.clientWidth || texImg.image.width;
-      const h = ref.current!.clientHeight || texImg.image.height;
-      renderer.setSize(w, h, false);
-      (mat.uniforms.u_res.value as THREE.Vector2).set(w, h);
-      (mat.uniforms.u_imgRes.value as THREE.Vector2).set(texImg.image.width, texImg.image.height);
-      imgLoaded = true;
-      if (glassLoaded && !t0) startAnimation();
-    });
+    const texImg = loader.load(
+      imageUrl,
+      () => {
+        console.log('[GlassRevealCanvas] Image texture loaded', { imageUrl });
+        const w = ref.current!.clientWidth || texImg.image.width;
+        const h = ref.current!.clientHeight || texImg.image.height;
+        renderer.setSize(w, h, false);
+        (mat.uniforms.u_res.value as THREE.Vector2).set(w, h);
+        (mat.uniforms.u_imgRes.value as THREE.Vector2).set(texImg.image.width, texImg.image.height);
+        imgLoaded = true;
+        if (glassLoaded && !t0) startAnimation();
+      },
+      undefined,
+      (error) => {
+        console.error('[GlassRevealCanvas] Failed to load image texture:', error, { imageUrl });
+      }
+    );
     texImg.minFilter = THREE.LinearFilter; texImg.magFilter = THREE.LinearFilter;
     texImg.colorSpace = THREE.SRGBColorSpace;
 
-    const texGlass = loader.load(glassURL, () => {
-      glassLoaded = true;
-      if (imgLoaded && !t0) startAnimation();
-    });
+    const texGlass = loader.load(
+      glassURL,
+      () => {
+        console.log('[GlassRevealCanvas] Glass texture loaded');
+        glassLoaded = true;
+        if (imgLoaded && !t0) startAnimation();
+      },
+      undefined,
+      (error) => {
+        console.error('[GlassRevealCanvas] Failed to load glass texture:', error);
+      }
+    );
     texGlass.wrapS = texGlass.wrapT = THREE.RepeatWrapping;
     texGlass.minFilter = THREE.LinearFilter;
     texGlass.magFilter = THREE.LinearFilter;
