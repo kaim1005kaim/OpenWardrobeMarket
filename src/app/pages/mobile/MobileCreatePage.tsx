@@ -391,23 +391,6 @@ const [generatedAsset, setGeneratedAsset] = useState<{
   // ... JSX remains largely the same ...
   return (
     <div className="mobile-create-page">
-      <div className="create-hero-layer">
-        <div className="create-hero-layer__canvas">
-          <MetaballsSoft ref={metaballRef} animated={true} />
-        </div>
-        <div className="create-hero-layer__title">
-          <h1 className="create-title">CREATE</h1>
-        </div>
-        {!isGenerating && (
-          <div className="create-hero-layer__question">
-            <h2 className="create-question-overlay">{currentQuestion.question}</h2>
-            {currentQuestion.multiSelect && (
-              <p className="create-hint-overlay">複数選択可能です</p>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Header */}
       <header className="create-header">
         <button
@@ -423,8 +406,26 @@ const [generatedAsset, setGeneratedAsset] = useState<{
       </header>
 
       <div className="create-content">
+          {!isGenerating && (
+            <div className="create-hero">
+              <div className="create-hero__canvas">
+                <MetaballsSoft ref={metaballRef} animated={true} />
+              </div>
+              <div className="create-hero__title">
+                <h1 className="create-title">CREATE</h1>
+              </div>
+            </div>
+          )}
           {!isGenerating ? (
             <>
+
+              {/* Question */}
+              <div className="question-container">
+                <h2 className="question-text">{currentQuestion.question}</h2>
+                {currentQuestion.multiSelect && (
+                  <p className="hint-text">複数選択可能です</p>
+                )}
+              </div>
 
               {/* Options */}
               <div className="options-container">

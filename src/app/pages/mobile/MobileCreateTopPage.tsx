@@ -42,11 +42,11 @@ export function MobileCreateTopPage({ onNavigate, onStartCreate }: MobileCreateT
       <div className="create-top-content">
         {/* メタボール（設問画面と同じ位置） */}
         <div style={{ position: 'relative', width: 'calc(100% + 40px)', height: '320px', marginTop: '0', marginBottom: '32px', marginLeft: '-20px', marginRight: '-20px' }}>
-          <div style={{ position: 'absolute', top: '-60px', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '-80px', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
             <MetaballsSoft animated={true} />
           </div>
           {/* CREATEタイトル（エフェクトの上に重ねる） */}
-          <div style={{ position: 'absolute', top: '8px', left: '20px', right: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 70 }}>
+          <div style={{ position: 'absolute', top: '40px', left: '20px', right: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 70 }}>
             <h1 className="create-top-title">CREATE</h1>
             {/* 説明テキスト */}
             <p className="create-top-description">
