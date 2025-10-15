@@ -87,7 +87,7 @@ temp/
 
 # Generated Prisma
 /generated/prisma
-catalog/
+/catalog/
 
 # Google Cloud Service Account keys
 docs/*.json
