@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import * as routeModule from '../../app/api/likes/route';
-import { createAppRouteHandler } from '../_appRouteAdapter';
+import { getAppRouteHandler } from '../_appRouteAdapter';
 
-const handler = createAppRouteHandler(routeModule);
+const handlerPromise = getAppRouteHandler('likes/route');
 
-export default function likesHandler(req: NextApiRequest, res: NextApiResponse) {
+export default async function likesHandler(req: NextApiRequest, res: NextApiResponse) {
+  const handler = await handlerPromise;
   return handler(req, res);
 }

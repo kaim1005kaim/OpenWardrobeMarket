@@ -1,4 +1,6 @@
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
 
 export type AppRouteModule = {
   GET?: (request: Request, ctx?: any) => Promise<Response>;
@@ -9,7 +11,7 @@ export type AppRouteModule = {
   OPTIONS?: (request: Request, ctx?: any) => Promise<Response>;
 };
 
-type ContextResolver = (req: NextApiRequest, res: NextApiResponse) => any;
+export type ContextResolver = (req: NextApiRequest, res: NextApiResponse) => any;
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS' | 'HEAD';
 
@@ -91,4 +93,53 @@ export function createAppRouteHandler(module: AppRouteModule, resolveContext?: C
       res.status(500).json({ error: 'Internal Server Error', details: error?.message || 'Unknown error' });
     }
   };
+}
+
+function isModuleNotFound(error: any) {
+  if (!error) return false;
+  return error.code === 'ERR_MODULE_NOT_FOUND' || (typeof error.message === 'string' && error.message.includes('Cannot find module'));
+}
+
+let tsxLoaderPromise: Promise<void> | null = null;
+
+async function ensureTsxLoader() {
+  if (!tsxLoaderPromise) {
+    tsxLoaderPromise = import('tsx/esm')
+      .then(() => undefined)
+      .catch((error) => {
+        console.error('[AppRouteAdapter] Failed to initialise tsx loader:', error);
+        throw error;
+      });
+  }
+  return tsxLoaderPromise;
+}
+
+async function importRouteModule(modulePath: string): Promise<AppRouteModule> {
+  const absoluteBase = resolve(process.cwd(), 'app/api', modulePath);
+  const jsUrl = pathToFileURL(`${absoluteBase}.js`).href;
+
+  try {
+    return (await import(jsUrl)) as AppRouteModule;
+  } catch (error) {
+    if (!isModuleNotFound(error)) {
+      throw error;
+    }
+  }
+
+  const tsUrl = pathToFileURL(`${absoluteBase}.ts`).href;
+
+  try {
+    await ensureTsxLoader();
+    return (await import(tsUrl)) as AppRouteModule;
+  } catch (error) {
+    if (!isModuleNotFound(error)) {
+      throw error;
+    }
+    throw new Error(`[AppRouteAdapter] Unable to load module at ${modulePath}.js/.ts`);
+  }
+}
+
+export async function getAppRouteHandler(modulePath: string, resolveContext?: ContextResolver): Promise<NextApiHandler> {
+  const module = await importRouteModule(modulePath);
+  return createAppRouteHandler(module, resolveContext);
 }

@@ -1,8 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import * as routeModule from '../../app/api/assets/[assetId]/route';
-import { createAppRouteHandler } from '../_appRouteAdapter';
+import { getAppRouteHandler } from '../_appRouteAdapter';
 
-const handler = createAppRouteHandler(routeModule, (req) => {
+const handlerPromise = getAppRouteHandler('assets/[assetId]/route', (req) => {
   const { assetId } = req.query;
   return {
     params: {
@@ -11,6 +10,7 @@ const handler = createAppRouteHandler(routeModule, (req) => {
   };
 });
 
-export default function assetByIdHandler(req: NextApiRequest, res: NextApiResponse) {
+export default async function assetByIdHandler(req: NextApiRequest, res: NextApiResponse) {
+  const handler = await handlerPromise;
   return handler(req, res);
 }

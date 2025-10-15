@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import * as routeModule from '../../app/api/assets/create/route';
-import { createAppRouteHandler } from '../_appRouteAdapter';
+import { getAppRouteHandler } from '../_appRouteAdapter';
 
-const handler = createAppRouteHandler(routeModule);
+const handlerPromise = getAppRouteHandler('assets/create/route');
 
-export default function assetsCreateHandler(req: NextApiRequest, res: NextApiResponse) {
+export default async function assetsCreateHandler(req: NextApiRequest, res: NextApiResponse) {
+  const handler = await handlerPromise;
   return handler(req, res);
 }

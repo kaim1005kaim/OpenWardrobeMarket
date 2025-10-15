@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import * as routeModule from '../app/api/upload-generated/route';
-import { createAppRouteHandler } from './_appRouteAdapter';
+import { getAppRouteHandler } from './_appRouteAdapter';
 
-const handler = createAppRouteHandler(routeModule);
+const handlerPromise = getAppRouteHandler('upload-generated/route');
 
-export default function uploadGeneratedHandler(req: NextApiRequest, res: NextApiResponse) {
+export default async function uploadGeneratedHandler(req: NextApiRequest, res: NextApiResponse) {
+  const handler = await handlerPromise;
   return handler(req, res);
 }

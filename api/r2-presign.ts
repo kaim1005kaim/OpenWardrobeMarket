@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import * as routeModule from '../app/api/r2-presign/route';
-import { createAppRouteHandler } from './_appRouteAdapter';
+import { getAppRouteHandler } from './_appRouteAdapter';
 
-const handler = createAppRouteHandler(routeModule);
+const handlerPromise = getAppRouteHandler('r2-presign/route');
 
-export default function r2PresignHandler(req: NextApiRequest, res: NextApiResponse) {
+export default async function r2PresignHandler(req: NextApiRequest, res: NextApiResponse) {
+  const handler = await handlerPromise;
   return handler(req, res);
 }
