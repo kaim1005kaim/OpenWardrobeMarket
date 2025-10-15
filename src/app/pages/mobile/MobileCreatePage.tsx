@@ -527,13 +527,20 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                     borderRadius: 16,
                     overflow: 'hidden',
                     zIndex: 2,
-                    animation: 'fadeIn 0.8s ease-out forwards'
+                    animation: 'fadeIn 0.8s ease-out forwards',
+                    backgroundColor: 'blue' // Debug: image container
                   }}>
                     <img
                       src={displayUrl}
                       alt="Generated design"
                       onLoad={(e) => {
                         console.info('[img onload]', (e.target as HTMLImageElement).src);
+                        console.info('[img dimensions]', {
+                          naturalWidth: (e.target as HTMLImageElement).naturalWidth,
+                          naturalHeight: (e.target as HTMLImageElement).naturalHeight,
+                          displayWidth: (e.target as HTMLImageElement).width,
+                          displayHeight: (e.target as HTMLImageElement).height
+                        });
                         // Auto-trigger reveal done after image loads + delay
                         setTimeout(() => handleRevealDone(), 2000);
                       }}
@@ -543,7 +550,9 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                         inset: 0,
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover'
+                        objectFit: 'cover',
+                        border: '3px solid green', // Debug: image element
+                        opacity: 1 // Force opacity
                       }}
                     />
                     {/* ボタン表示 */}
