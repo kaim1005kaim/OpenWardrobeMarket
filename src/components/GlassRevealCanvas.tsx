@@ -125,11 +125,10 @@ export default function GlassRevealCanvas({
     try {
       renderer = new THREE.WebGLRenderer({
         canvas: ref.current,
-        antialias: false,              // Reduce VRAM usage
+        antialias: true,
         alpha: true,
         premultipliedAlpha: true,
-        powerPreference: "low-power",  // More stable on mobile
-        preserveDrawingBuffer: false,  // Critical: saves VRAM
+        powerPreference: "high-performance",
       });
     } catch (err) {
       console.error('[GlassRevealCanvas] renderer init failed:', err);
@@ -137,7 +136,7 @@ export default function GlassRevealCanvas({
       return;
     }
     renderer.setClearColor(0x000000, 0);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Lower limit for stability
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 
     const scene = new THREE.Scene();
     const cam = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
