@@ -285,6 +285,11 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
         prompt
       });
       setStage("revealing");
+      console.info('[MobileCreatePage] State transition', {
+        stage: 'revealing',
+        isGenerating: true,
+        hasDisplayUrl: !!displayUrl
+      });
       // Keep isGenerating true during reveal animation
 
       // Step 2 & 3 (in background): Get presigned URL and upload to R2
@@ -365,6 +370,17 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
 
   // Blob cleanup is now handled by useDisplayImage hook
   // No manual revocation needed here
+
+  // Debug rendering state
+  useEffect(() => {
+    console.info('[MobileCreatePage] Render state', {
+      stage,
+      isGenerating,
+      hasGeneratedAsset: !!generatedAsset,
+      displayUrl,
+      showButtons
+    });
+  }, [stage, isGenerating, generatedAsset, displayUrl, showButtons]);
 
   // ... JSX remains largely the same ...
   return (
@@ -485,7 +501,16 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                 )}
 
                 {/* 受信後の画像表示（シンプルフェードイン） */}
-                {stage === "revealing" && generatedAsset && displayUrl && (
+                {(() => {
+                  const shouldShow = stage === "revealing" && generatedAsset && displayUrl;
+                  console.info('[MobileCreatePage] Image render check', {
+                    stage,
+                    hasGeneratedAsset: !!generatedAsset,
+                    displayUrl,
+                    shouldShow
+                  });
+                  return shouldShow;
+                })() && (
                   <div style={{
                     position: 'absolute',
                     inset: 0,
