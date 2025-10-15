@@ -1,10 +1,13 @@
 export const runtime = 'nodejs';
 export const revalidate = 0;
 
-import { getAuthUser, getServiceSupabase, serializeAsset } from '../../_shared/assets';
-import { R2_PUBLIC_BASE_URL, R2_BUCKET } from '../../../../src/lib/r2.js';
-
-const DEFAULT_STATUS = 'private';
+import {
+  getAuthUser,
+  getServiceSupabase,
+  serializeAsset,
+  R2_PUBLIC_BASE_URL,
+  R2_BUCKET
+} from '../../_shared/assets';
 
 export async function POST(request: Request) {
   try {
@@ -22,7 +25,7 @@ export async function POST(request: Request) {
       key,
       title,
       tags,
-      status = DEFAULT_STATUS,
+      status = 'private',
       dna,
       answers,
       prompt,
@@ -39,7 +42,6 @@ export async function POST(request: Request) {
         ? `${R2_PUBLIC_BASE_URL.replace(/\/$/, '')}/${key.replace(/^\/+/, '')}`
         : null;
 
-    // generation_historyへの履歴保存（失敗しても処理は続行）
     try {
       await supabase.from('generation_history').insert({
         user_id: user.id,

@@ -1,6 +1,6 @@
-import type { NextApiRequest } from 'next';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { presignGet, R2_PUBLIC_BASE_URL, isR2Configured } from '../../../src/lib/r2.js';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -37,6 +37,41 @@ export type SerializedAssetOptions = {
   includeRaw?: boolean;
   likedIds?: Set<string>;
 };
+
+const R2_S3_API_ENDPOINT = process.env.R2_S3_ENDPOINT || null;
+const R2_CUSTOM_DOMAIN_URL = process.env.R2_CUSTOM_DOMAIN_URL || null;
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || null;
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || null;
+const R2_BUCKET_ENV = process.env.R2_BUCKET || null;
+const R2_PUBLIC_BASE_URL_ENV =
+  R2_CUSTOM_DOMAIN_URL ||
+  process.env.R2_PUBLIC_BASE_URL ||
+  process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL ||
+  null;
+
+export const R2_BUCKET = R2_BUCKET_ENV ?? null;
+export const R2_PUBLIC_BASE_URL = R2_PUBLIC_BASE_URL_ENV ?? null;
+
+export const isR2Configured = Boolean(
+  R2_S3_API_ENDPOINT && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET_ENV
+);
+
+function createR2Client(endpoint: string | null): S3Client | null {
+  if (!endpoint || !isR2Configured) return null;
+
+  return new S3Client({
+    region: 'auto',
+    endpoint,
+    credentials: {
+      accessKeyId: R2_ACCESS_KEY_ID!,
+      secretAccessKey: R2_SECRET_ACCESS_KEY!
+    },
+    forcePathStyle: true
+  });
+}
+
+const r2Client = createR2Client(R2_S3_API_ENDPOINT);
+const r2PresignClient = createR2Client(R2_CUSTOM_DOMAIN_URL || R2_S3_API_ENDPOINT);
 
 const ALLOWED_PREFIXES = ['catalog/', 'usergen/', 'generated/'];
 
@@ -100,9 +135,20 @@ export function getSupabaseForToken(token: string | null | undefined): SupabaseC
   });
 }
 
-export async function getAuthUser(req: NextApiRequest | Request) {
-  const authHeader =
-    req instanceof Request ? req.headers.get('authorization') : req.headers.authorization;
+function extractAuthHeader(req: Request | { headers?: any }): string | null {
+  if (req instanceof Request) {
+    return req.headers.get('authorization');
+  }
+  const headers = (req as any)?.headers;
+  if (!headers) return null;
+  if (typeof headers.get === 'function') {
+    return headers.get('authorization');
+  }
+  return headers.authorization || headers.Authorization || null;
+}
+
+export async function getAuthUser(req: Request | { headers?: any }) {
+  const authHeader = extractAuthHeader(req);
   if (!authHeader) {
     return { user: null, token: null };
   }
@@ -184,7 +230,14 @@ async function tryPresign(key: string | null | undefined, expiresIn = 60 * 15): 
   }
 
   try {
-    return await presignGet(key, expiresIn);
+    if (!r2PresignClient || !R2_BUCKET) {
+      throw new Error('R2 presigner is not configured');
+    }
+    return await getSignedUrl(
+      r2PresignClient,
+      new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }),
+      { expiresIn: expiresIn }
+    );
   } catch (error: any) {
     if (!hasLoggedPresignWarning) {
       console.warn(
