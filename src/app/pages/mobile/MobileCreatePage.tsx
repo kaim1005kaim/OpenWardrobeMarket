@@ -231,9 +231,15 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
     setSessionKey(`mobile-create-${Date.now()}`); // Start new session
   };
 
+  // Debug: Track stage changes
+  useEffect(() => {
+    console.log(`[MobileCreatePage] Current stage: ${stage}`);
+  }, [stage]);
+
   const handleGenerate = async () => {
     await flushNow();
 
+    console.log('[MobileCreatePage] Stage transition: idle → generating');
     setStage("generating");
     setIsGenerating(true);
 
@@ -285,6 +291,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
         dna,
         prompt
       });
+      console.log('[MobileCreatePage] Stage transition: generating → revealing');
       setStage("revealing");
 
       // Step 2 & 3 (in background): Get presigned URL and upload to R2
@@ -336,6 +343,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
     } catch (error) {
       console.error('Generation error:', error);
       alert(error instanceof Error ? error.message : '生成に失敗しました');
+      console.log('[MobileCreatePage] Stage transition: generating → idle (error)');
       setStage("idle");
       setIsGenerating(false);
     }
@@ -387,7 +395,11 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
           {stage === "idle" && (
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <MetaballsSoft ref={metaballRef} animated={true} />
+                <MetaballsSoft
+                  ref={metaballRef}
+                  animated={true}
+                  key="hero-metaballs"
+                />
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">CREATE</h1>
@@ -484,6 +496,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                 {/* 受信後のGlass Stripe Reveal */}
                 {stage === "revealing" && generatedAsset && displayUrl && (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
+                    {console.log('[MobileCreatePage] Rendering revealing stage with displayUrl:', displayUrl)}
                     {/* Background image - fallback if WebGL fails */}
                     <img
                       src={displayUrl}
@@ -502,6 +515,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                     {/* Glass reveal effect overlay */}
                     <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
                       <GlassRevealCanvas
+                        key={displayUrl}
                         imageUrl={displayUrl}
                         showButtons={showButtons}
                         onRevealDone={handleRevealDone}

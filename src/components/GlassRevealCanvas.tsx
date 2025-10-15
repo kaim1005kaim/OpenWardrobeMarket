@@ -211,8 +211,6 @@ export default function GlassRevealCanvas({
       (mat.uniforms.u_progress.value as number) = p;
       (mat.uniforms.u_fadeIn.value as number) = fade;
 
-      if (contextLost) return;
-
       renderer!.render(scene, cam);
 
       // リビール＋安定期間完了時に一度だけonRevealDone呼び出し
