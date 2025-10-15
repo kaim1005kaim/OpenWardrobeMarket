@@ -3,6 +3,7 @@ import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { buildPrompt, type Answers } from '../../../lib/prompt/buildMobile';
 import { supabase } from '../../lib/supabase';
 import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/MetaballsSoft';
+import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import './MobileCreatePage.css';
 
@@ -285,12 +286,6 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
         prompt
       });
       setStage("revealing");
-      console.info('[MobileCreatePage] State transition', {
-        stage: 'revealing',
-        isGenerating: true,
-        hasDisplayUrl: !!displayUrl
-      });
-      // Keep isGenerating true during reveal animation
 
       // Step 2 & 3 (in background): Get presigned URL and upload to R2
       const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${key}&contentType=${mimeType}`);
@@ -370,17 +365,6 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
 
   // Blob cleanup is now handled by useDisplayImage hook
   // No manual revocation needed here
-
-  // Debug rendering state
-  useEffect(() => {
-    console.info('[MobileCreatePage] Render state', {
-      stage,
-      isGenerating,
-      hasGeneratedAsset: !!generatedAsset,
-      displayUrl,
-      showButtons
-    });
-  }, [stage, isGenerating, generatedAsset, displayUrl, showButtons]);
 
   // ... JSX remains largely the same ...
   return (
@@ -476,15 +460,13 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
               <div className="viewer-container" style={{
                 position: 'relative',
                 width: 'calc(100% + 40px)',
-                height: 'calc((100vw) * 4 / 3)', // Explicit height calculation
+                height: 'calc((100vw) * 4 / 3)',
                 marginTop: '32px',
                 marginBottom: '24px',
                 marginLeft: '-20px',
-                marginRight: '-20px',
-                backgroundColor: '#f0f0f0', // Debug: visible container
-                border: '2px solid red' // Debug: visible border
+                marginRight: '-20px'
               }}>
-                {/* 生成中のプレースホルダー（WebGLなしの軽量版） */}
+                {/* 生成中のMetaballsSoft */}
                 {stage === "generating" && (
                   <div
                     style={{
@@ -492,115 +474,37 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                       inset: 0,
                       borderRadius: 16,
                       overflow: 'hidden',
-                      zIndex: 1,
-                      background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
+                      zIndex: 1
                     }}
                   >
-                    <div style={{
-                      width: 60,
-                      height: 60,
-                      border: '4px solid #e0e0e0',
-                      borderTopColor: '#333',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }} />
+                    <MetaballsSoft key={`gen-${sessionKey}`} animated={true} />
                   </div>
                 )}
 
-                {/* 受信後の画像表示（シンプルフェードイン） */}
-                {(() => {
-                  const shouldShow = stage === "revealing" && generatedAsset && displayUrl;
-                  console.info('[MobileCreatePage] Image render check', {
-                    stage,
-                    hasGeneratedAsset: !!generatedAsset,
-                    displayUrl,
-                    shouldShow
-                  });
-                  return shouldShow;
-                })() && (
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: 16,
-                    overflow: 'hidden',
-                    zIndex: 2,
-                    animation: 'fadeIn 0.8s ease-out forwards',
-                    backgroundColor: 'blue' // Debug: image container
-                  }}>
+                {/* 受信後のGlass Stripe Reveal */}
+                {stage === "revealing" && generatedAsset && displayUrl && (
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
                     <img
                       src={displayUrl}
                       alt="Generated design"
-                      onLoad={(e) => {
-                        console.info('[img onload]', (e.target as HTMLImageElement).src);
-                        console.info('[img dimensions]', {
-                          naturalWidth: (e.target as HTMLImageElement).naturalWidth,
-                          naturalHeight: (e.target as HTMLImageElement).naturalHeight,
-                          displayWidth: (e.target as HTMLImageElement).width,
-                          displayHeight: (e.target as HTMLImageElement).height
-                        });
-                        // Auto-trigger reveal done after image loads + delay
-                        setTimeout(() => handleRevealDone(), 2000);
-                      }}
+                      onLoad={(e) => console.info('[img onload]', (e.target as HTMLImageElement).src)}
                       onError={(e) => console.error('[img onerror]', (e.target as HTMLImageElement).src)}
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        border: '3px solid green', // Debug: image element
-                        opacity: 1 // Force opacity
-                      }}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-                    {/* ボタン表示 */}
-                    {showButtons && (
-                      <div style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        padding: '20px',
-                        background: 'linear-gradient(to top, rgba(0,0,0,0.6), transparent)',
-                        display: 'flex',
-                        gap: '12px',
-                        justifyContent: 'center',
-                        animation: 'fadeIn 0.4s ease-out forwards'
-                      }}>
-                        <button
-                          onClick={handleSaveDraft}
-                          style={{
-                            padding: '12px 24px',
-                            fontSize: '16px',
-                            fontWeight: 600,
-                            color: '#fff',
-                            background: 'rgba(255,255,255,0.2)',
-                            border: '1px solid rgba(255,255,255,0.3)',
-                            borderRadius: '8px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          ドラフトに保存
-                        </button>
-                        <button
-                          onClick={handlePublish}
-                          style={{
-                            padding: '12px 24px',
-                            fontSize: '16px',
-                            fontWeight: 600,
-                            color: '#000',
-                            background: '#fff',
-                            border: 'none',
-                            borderRadius: '8px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          公開する
-                        </button>
-                      </div>
-                    )}
+                    <GlassRevealCanvas
+                      imageUrl={displayUrl}
+                      showButtons={showButtons}
+                      onRevealDone={handleRevealDone}
+                      onPublish={handlePublish}
+                      onSaveDraft={handleSaveDraft}
+                      stripes={48}
+                      jitter={0.08}
+                      strength={0.9}
+                      holdMs={3000}
+                      revealMs={1200}
+                      leftToRight={true}
+                      active={true}
+                    />
                   </div>
                 )}
               </div>
