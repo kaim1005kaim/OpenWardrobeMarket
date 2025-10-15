@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import glassURL from "@/assets/glaspattern_stripe.png";
 
@@ -101,6 +101,17 @@ export default function GlassRevealCanvas({
 }: Props){
   const ref = useRef<HTMLCanvasElement|null>(null);
   const onRevealDoneRef = useRef(onRevealDone);
+  const [contextLost, setContextLost] = useState(false);
+
+  useEffect(() => {
+    setContextLost(false);
+  }, [imageUrl]);
+
+  useEffect(() => {
+    if (contextLost) {
+      onRevealDoneRef.current?.();
+    }
+  }, [contextLost]);
 
   // onRevealDoneが変わったらrefを更新（useEffect再実行は防ぐ）
   useEffect(() => {
@@ -110,10 +121,20 @@ export default function GlassRevealCanvas({
   useEffect(() => {
     if(!ref.current) return;
 
-    const renderer = new THREE.WebGLRenderer({
-      canvas: ref.current, antialias: true, alpha: true, premultipliedAlpha: true,
-      powerPreference: "high-performance",
-    });
+    let renderer: THREE.WebGLRenderer | null = null;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas: ref.current,
+        antialias: true,
+        alpha: true,
+        premultipliedAlpha: true,
+        powerPreference: "high-performance",
+      });
+    } catch (err) {
+      console.error('[GlassRevealCanvas] renderer init failed:', err);
+      setContextLost(true);
+      return;
+    }
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 
@@ -126,6 +147,14 @@ export default function GlassRevealCanvas({
     let glassLoaded = false;
     let raf = 0;
     let t0 = 0;
+
+    loader.crossOrigin = "anonymous";
+
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      setContextLost(true);
+    };
+    renderer.domElement.addEventListener('webglcontextlost', handleContextLost as EventListener, { once: true });
 
     const texImg = loader.load(imageUrl, () => {
       const w = ref.current!.clientWidth || texImg.image.width;
@@ -209,7 +238,9 @@ export default function GlassRevealCanvas({
       (mat.uniforms.u_progress.value as number) = p;
       (mat.uniforms.u_fadeIn.value as number) = fade;
 
-      renderer.render(scene, cam);
+      if (contextLost) return;
+
+      renderer!.render(scene, cam);
 
       // リビール＋安定期間完了時に一度だけonRevealDone呼び出し
       if (t >= total && !revealDoneCalled) {
@@ -228,6 +259,7 @@ export default function GlassRevealCanvas({
 
     const onResize = () => {
       const w = ref.current!.clientWidth, h = ref.current!.clientHeight;
+      if (!renderer) return;
       renderer.setSize(w, h, false);
       (mat.uniforms.u_res.value as THREE.Vector2).set(w, h);
     };
@@ -236,10 +268,70 @@ export default function GlassRevealCanvas({
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
+      renderer?.domElement.removeEventListener('webglcontextlost', handleContextLost as EventListener);
       geo.dispose(); mat.dispose(); texImg.dispose(); texGlass.dispose();
-      renderer.dispose();
+      renderer?.dispose();
     };
-  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, leftToRight]);
+  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, leftToRight, contextLost]);
+
+  if (contextLost) {
+    return (
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <img
+          src={imageUrl}
+          alt="Generated design"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+        {showButtons && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: "20px",
+              background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)",
+              display: "flex",
+              gap: "12px",
+              justifyContent: "center",
+              pointerEvents: "auto",
+            }}
+          >
+            <button
+              onClick={onSaveDraft}
+              style={{
+                padding: "12px 24px",
+                fontSize: "16px",
+                fontWeight: 600,
+                color: "#fff",
+                background: "rgba(255,255,255,0.2)",
+                border: "1px solid rgba(255,255,255,0.3)",
+                borderRadius: "8px",
+                cursor: "pointer",
+              }}
+            >
+              ドラフトに保存
+            </button>
+            <button
+              onClick={onPublish}
+              style={{
+                padding: "12px 24px",
+                fontSize: "16px",
+                fontWeight: 600,
+                color: "#000",
+                background: "#fff",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+              }}
+            >
+              公開する
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
