@@ -21,9 +21,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    console.log('[publish] Request body:', body);
+
     const { image_url, title, description, tags, colors, category, price } = body;
 
     if (!image_url) {
+      console.error('[publish] Missing image_url in request body');
       return NextResponse.json({ error: 'image_url is required' }, { status: 400 });
     }
 

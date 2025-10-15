@@ -386,15 +386,20 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
 
       if (!response.ok) {
         const error = await response.json();
+        console.error('[handlePublish] API error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error
+        });
         throw new Error(error.error || '公開に失敗しました');
       }
 
       const result = await response.json();
-      console.log('Published successfully:', result);
+      console.log('[handlePublish] Published successfully:', result);
       alert('ギャラリーに公開しました！');
       onNavigate?.('gallery');
     } catch (error) {
-      console.error('Publish error:', error);
+      console.error('[handlePublish] Publish error:', error);
       alert(error instanceof Error ? error.message : '公開に失敗しました');
     }
   };
