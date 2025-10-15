@@ -57,6 +57,33 @@ export async function POST(req: NextRequest) {
     const historyRecord = historyRecords[0];
     console.log('[publish] Found generation_history:', historyRecord);
 
+    // Create images table record first
+    const { data: imageRecord, error: imageError } = await supabase
+      .from('images')
+      .insert({
+        user_id: user.id,
+        r2_url: image_url,
+        r2_key: full_path,
+        title: title || 'Untitled Design',
+        description: description || '',
+        width: 1024, // Default for generated images
+        height: 1024,
+        mime_type: 'image/png',
+        tags: tags || [],
+        colors: colors || [],
+        price: price || 0,
+        is_public: true
+      })
+      .select()
+      .single();
+
+    if (imageError) {
+      console.error('[publish] Error creating image record:', imageError);
+      return NextResponse.json({ error: 'Failed to create image record: ' + imageError.message }, { status: 500 });
+    }
+
+    console.log('[publish] Created image record:', imageRecord);
+
     // Update generation_history to mark as public
     const { error: updateError } = await supabase
       .from('generation_history')
@@ -68,17 +95,15 @@ export async function POST(req: NextRequest) {
 
     if (updateError) {
       console.error('[publish] Error updating generation_history:', updateError);
-      return NextResponse.json({ error: 'Failed to update image status' }, { status: 500 });
+      // Don't fail the whole operation if this update fails
     }
 
     // Create published_items record
-    // Note: published_items references images table, but we're using generation_history
-    // We'll store the generation_history.id in a custom field or skip image_id for now
     const { data: publishedItem, error: publishError } = await supabase
       .from('published_items')
       .insert({
         user_id: user.id,
-        // image_id: null, // Skip for now since we don't have images table integration
+        image_id: imageRecord.id,
         title: title || 'Untitled Design',
         description: description || '',
         price: price || 0,
@@ -95,7 +120,7 @@ export async function POST(req: NextRequest) {
 
     if (publishError) {
       console.error('[publish] Error creating published_item:', publishError);
-      return NextResponse.json({ error: 'Failed to publish item' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to publish item: ' + publishError.message }, { status: 500 });
     }
 
     console.log('[publish] Successfully published item:', publishedItem);
