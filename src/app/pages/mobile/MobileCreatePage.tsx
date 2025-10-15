@@ -472,7 +472,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
               <div className="viewer-container" style={{
                 position: 'relative',
                 width: 'calc(100% + 40px)',
-                height: 'calc((100vw) * 4 / 3)',
+                height: 'calc(100vw)',
                 marginTop: '32px',
                 marginBottom: '24px',
                 marginLeft: '-20px',
@@ -498,22 +498,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                   console.log('[MobileCreatePage] Rendering revealing stage with displayUrl:', displayUrl);
                   return (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
-                    {/* Background image - fallback if WebGL fails */}
-                    <img
-                      src={displayUrl}
-                      alt="Generated design"
-                      onLoad={(e) => console.info('[img onload]', (e.target as HTMLImageElement).src)}
-                      onError={(e) => console.error('[img onerror]', (e.target as HTMLImageElement).src)}
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        zIndex: 1
-                      }}
-                    />
-                    {/* Glass reveal effect overlay */}
+                    {/* Glass reveal effect overlay - renders on top */}
                     <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
                       <GlassRevealCanvas
                         key={sessionKey}
