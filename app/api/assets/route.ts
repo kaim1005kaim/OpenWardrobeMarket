@@ -79,25 +79,102 @@ export async function GET(request: Request) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let query = supabase
-      .from('assets')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limitValue);
+    let data: any[] = [];
+    let error: any = null;
 
+    // For public scope, fetch from both assets and published_items
     if (scope === 'public') {
-      query = query.eq('status', 'public');
-    } else if (scope === 'mine') {
-      query = query.eq('user_id', user!.id);
-    } else if (scope === 'liked' && user) {
-      // handled after fetching likes
-    }
+      // Fetch from assets table
+      let assetsQuery = supabase
+        .from('assets')
+        .select('*')
+        .eq('status', 'public')
+        .order('created_at', { ascending: false })
+        .limit(limitValue);
 
-    if (cursor) {
-      query = query.lt('created_at', cursor);
-    }
+      if (cursor) {
+        assetsQuery = assetsQuery.lt('created_at', cursor);
+      }
 
-    const { data, error } = await query;
+      const { data: assetsData, error: assetsError } = await assetsQuery;
+
+      // Fetch from published_items table (joined with images)
+      let publishedQuery = supabase
+        .from('published_items')
+        .select(`
+          *,
+          images (
+            id,
+            r2_url,
+            r2_key,
+            width,
+            height,
+            mime_type
+          )
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(limitValue);
+
+      if (cursor) {
+        publishedQuery = publishedQuery.lt('created_at', cursor);
+      }
+
+      const { data: publishedData, error: publishedError } = await publishedQuery;
+
+      console.log('[api/assets] Published items count:', publishedData?.length || 0);
+
+      // Convert published_items to asset format
+      const publishedAsAssets = (publishedData || []).map((item: any) => ({
+        id: item.id,
+        user_id: item.user_id,
+        title: item.title,
+        description: item.description,
+        status: 'public',
+        tags: item.tags || [],
+        price: item.price,
+        likes: item.likes || 0,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        final_key: item.images?.r2_key || item.original_url,
+        final_url: item.original_url,
+        raw_key: null,
+        raw_url: null,
+        metadata: {
+          width: item.images?.width || 1024,
+          height: item.images?.height || 1024,
+          mime_type: item.images?.mime_type || 'image/png'
+        }
+      }));
+
+      // Combine and sort by created_at
+      data = [...(assetsData || []), ...publishedAsAssets].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      error = assetsError || publishedError;
+    } else {
+      // For other scopes, use existing logic
+      let query = supabase
+        .from('assets')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limitValue);
+
+      if (scope === 'mine') {
+        query = query.eq('user_id', user!.id);
+      } else if (scope === 'liked' && user) {
+        // handled after fetching likes
+      }
+
+      if (cursor) {
+        query = query.lt('created_at', cursor);
+      }
+
+      const result = await query;
+      data = result.data || [];
+      error = result.error;
+    }
 
     if (error) {
       console.error('[api/assets] Supabase error:', error);
