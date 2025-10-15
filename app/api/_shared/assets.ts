@@ -285,6 +285,9 @@ export async function serializeAsset(
   const rawKey = extractWithFallback(row, ['raw_key', 'raw_r2_key', 'raw_path', 'raw_object_key']);
   const finalKey = extractWithFallback(row, ['final_key', 'final_r2_key', 'poster_key', 'r2_key', 'image_key']);
 
+  const rawKeyNormalised = normaliseR2Key(rawKey);
+  const finalKeyNormalised = normaliseR2Key(finalKey);
+
   const storedRawUrl = ensureHttps(
     extractWithFallback(row, ['raw_url', 'raw_r2_url', 'raw_signed_url'])
   );
@@ -299,7 +302,7 @@ export async function serializeAsset(
 
   if (options.kind === 'raw' || options.includeRaw) {
     const rawCandidates = [
-      typeof rawKey === 'string' ? rawKey : null,
+      rawKeyNormalised,
       storedRawUrl && !isAbsoluteUrl(storedRawUrl) ? storedRawUrl : null
     ].filter(Boolean) as string[];
 
@@ -312,8 +315,8 @@ export async function serializeAsset(
     }
   }
 
-  if ((!finalUrl || !isAbsoluteUrl(finalUrl)) && finalKey) {
-    const presignedFinal = await tryPresign(finalKey);
+  if ((!finalUrl || !isAbsoluteUrl(finalUrl)) && finalKeyNormalised) {
+    const presignedFinal = await tryPresign(finalKeyNormalised);
     if (presignedFinal) {
       finalUrl = presignedFinal;
     }
@@ -328,8 +331,7 @@ export async function serializeAsset(
 
   if (!rawUrl || !isAbsoluteUrl(rawUrl)) {
     const fallbackRawKey =
-      normaliseR2Key(typeof rawKey === 'string' ? rawKey : null) ||
-      normaliseR2Key(rawUrl && !isAbsoluteUrl(rawUrl) ? rawUrl : null);
+      rawKeyNormalised || normaliseR2Key(rawUrl && !isAbsoluteUrl(rawUrl) ? rawUrl : null);
     const fallbackRawUrl = buildR2Url(r2BaseUrl, fallbackRawKey);
     if (fallbackRawUrl) {
       rawUrl = fallbackRawUrl;
@@ -340,8 +342,7 @@ export async function serializeAsset(
 
   if (!finalUrl || !isAbsoluteUrl(finalUrl)) {
     const fallbackFinalKey =
-      normaliseR2Key(typeof finalKey === 'string' ? finalKey : null) ||
-      normaliseR2Key(finalUrl && !isAbsoluteUrl(finalUrl) ? finalUrl : null);
+      finalKeyNormalised || normaliseR2Key(finalUrl && !isAbsoluteUrl(finalUrl) ? finalUrl : null);
     const fallbackFinalUrl = buildR2Url(r2BaseUrl, fallbackFinalKey);
     if (fallbackFinalUrl) {
       finalUrl = fallbackFinalUrl;
@@ -372,8 +373,8 @@ export async function serializeAsset(
     src,
     finalUrl,
     rawUrl: rawUrl ?? null,
-    finalKey: normaliseR2Key(finalKey) ?? finalKey ?? null,
-    rawKey: normaliseR2Key(rawKey) ?? rawKey ?? null,
+    finalKey: finalKeyNormalised ?? finalKey ?? null,
+    rawKey: rawKeyNormalised ?? rawKey ?? null,
     coverColor: extractWithFallback(row, ['dominant_color', 'cover_color'], null),
     isLiked: likedIds ? likedIds.has(row.id) : undefined,
     metadata: row.metadata || row.generation_data || null
