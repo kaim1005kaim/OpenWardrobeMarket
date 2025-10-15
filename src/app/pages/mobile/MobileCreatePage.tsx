@@ -484,13 +484,6 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                 {/* 受信後のGlass Stripe Reveal */}
                 {stage === "revealing" && generatedAsset && displayUrl && (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
-                    <img
-                      src={displayUrl}
-                      alt="Generated design"
-                      onLoad={(e) => console.info('[img onload]', (e.target as HTMLImageElement).src)}
-                      onError={(e) => console.error('[img onerror]', (e.target as HTMLImageElement).src)}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
                     <GlassRevealCanvas
                       imageUrl={displayUrl}
                       showButtons={showButtons}

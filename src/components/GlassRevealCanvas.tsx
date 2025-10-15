@@ -268,6 +268,13 @@ export default function GlassRevealCanvas({
 
     const startAnimation = () => {
       t0 = performance.now();
+      console.info('[GlassRevealCanvas] Animation started', {
+        fadeInMs,
+        holdMs,
+        revealMs,
+        total,
+        timestamp: t0
+      });
       raf = requestAnimationFrame(render);
     };
 
