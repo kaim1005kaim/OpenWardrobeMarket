@@ -476,7 +476,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
               <div className="viewer-container" style={{
                 position: 'relative',
                 width: 'calc(100% + 40px)',
-                aspectRatio: '3:4',
+                height: 'calc((100vw) * 4 / 3)', // Explicit height calculation
                 marginTop: '32px',
                 marginBottom: '24px',
                 marginLeft: '-20px',
