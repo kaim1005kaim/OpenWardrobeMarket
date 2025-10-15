@@ -217,6 +217,30 @@ function buildR2Url(baseUrl: string | null, key: string | null | undefined): str
   return `${baseUrl}/${sanitizedKey}`;
 }
 
+function preferCustomDomain(
+  currentUrl: string | null,
+  key: string | null | undefined
+): string | null {
+  if (!R2_CUSTOM_DOMAIN_URL) return currentUrl;
+  const customBase = normaliseBaseUrl(R2_CUSTOM_DOMAIN_URL);
+  const normalizedKey =
+    normaliseR2Key(key) || (currentUrl && normaliseR2Key(currentUrl));
+  if (!customBase || !normalizedKey) return currentUrl;
+
+  try {
+    if (currentUrl) {
+      const { hostname } = new URL(currentUrl);
+      if (!hostname.endsWith('.r2.cloudflarestorage.com')) {
+        return currentUrl;
+      }
+    }
+  } catch {
+    // ignore parse errors
+  }
+
+  return buildR2Url(customBase, normalizedKey);
+}
+
 function extractPathFromUrl(value: string): string {
   try {
     const url = new URL(value);
@@ -245,6 +269,10 @@ function normaliseR2Key(value: string | null | undefined): string | null {
 let hasLoggedPresignWarning = false;
 
 async function tryPresign(key: string | null | undefined, expiresIn = 60 * 15): Promise<string | null> {
+  if (R2_CUSTOM_DOMAIN_URL) {
+    // カスタムドメインが利用可能なら署名URLを使わず公開URLを優先
+    return null;
+  }
   const normalisedKey = normaliseR2Key(key);
   if (!normalisedKey) return null;
   if (!isR2Configured) {
@@ -355,6 +383,9 @@ export async function serializeAsset(
     rawUrl ||
     finalUrl ||
     'https://via.placeholder.com/640x960/EEECE6/999?text=Design';
+
+  finalUrl = preferCustomDomain(finalUrl, finalKey);
+  rawUrl = preferCustomDomain(rawUrl, rawKey);
 
   const likedIds = options.likedIds;
   const price = extractWithFallback(row, ['price', 'listing_price', 'buyout_price'], null);
