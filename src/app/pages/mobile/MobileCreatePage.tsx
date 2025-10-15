@@ -285,6 +285,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
         prompt
       });
       setStage("revealing");
+      setIsGenerating(false); // Stop generating state to show image
 
       // Step 2 & 3 (in background): Get presigned URL and upload to R2
       const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${key}&contentType=${mimeType}`);
