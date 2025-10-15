@@ -285,7 +285,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
         prompt
       });
       setStage("revealing");
-      setIsGenerating(false); // Stop generating state to show image
+      // Keep isGenerating true during reveal animation
 
       // Step 2 & 3 (in background): Get presigned URL and upload to R2
       const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${key}&contentType=${mimeType}`);
@@ -343,6 +343,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
 
   const handleRevealDone = () => {
     setShowButtons(true);
+    setIsGenerating(false);
   };
 
   const handlePublish = () => {
@@ -383,7 +384,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
       </header>
 
       <div className="create-content">
-          {!isGenerating && stage === "idle" && (
+          {stage === "idle" && (
             <div className="create-hero">
               <div className="create-hero__canvas">
                 <MetaballsSoft ref={metaballRef} animated={true} />
@@ -393,7 +394,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
               </div>
             </div>
           )}
-          {!isGenerating ? (
+          {stage === "idle" ? (
             <>
 
               {/* Question */}
