@@ -148,9 +148,10 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   const [stage, setStage] = useState<Stage>("idle");
   const [showButtons, setShowButtons] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedAsset, setGeneratedAsset] = useState<{
+const [generatedAsset, setGeneratedAsset] = useState<{
     key: string;
     blobUrl: string;
+    displayUrl: string;
     finalUrl?: string | null;
     answers: Answers;
     dna: DNA;
@@ -262,7 +263,20 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
       // Prepare for reveal effect and background upload
       const imageBlob = base64ToBlob(imageData, mimeType);
       const blobUrl = URL.createObjectURL(imageBlob);
-      setGeneratedAsset({ key, blobUrl, finalUrl: blobUrl, answers: answersData, dna, prompt });
+      setGeneratedAsset((prev) => {
+        if (prev?.blobUrl && prev.blobUrl !== blobUrl) {
+          URL.revokeObjectURL(prev.blobUrl);
+        }
+        return {
+          key,
+          blobUrl,
+          displayUrl: blobUrl,
+          finalUrl: blobUrl,
+          answers: answersData,
+          dna,
+          prompt
+        };
+      });
       setStage("revealing");
 
       // Step 2 & 3 (in background): Get presigned URL and upload to R2
@@ -295,7 +309,12 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
       const createdAssetPayload = await createAssetRes.json().catch(() => null);
       if (createdAssetPayload?.asset?.finalUrl) {
         setGeneratedAsset((prev) =>
-          prev ? { ...prev, finalUrl: createdAssetPayload.asset.finalUrl } : prev
+          prev
+            ? {
+                ...prev,
+                finalUrl: createdAssetPayload.asset.finalUrl
+              }
+            : prev
         );
       }
 
@@ -329,6 +348,45 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   const handleMenuNavigate = (page: string) => {
     onNavigate?.(page);
   };
+
+  useEffect(() => {
+    return () => {
+      if (generatedAsset?.blobUrl) {
+        URL.revokeObjectURL(generatedAsset.blobUrl);
+      }
+    };
+  }, [generatedAsset?.blobUrl]);
+
+  useEffect(() => {
+    if (!generatedAsset?.finalUrl) return;
+    const targetUrl = generatedAsset.finalUrl;
+    let cancelled = false;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (!cancelled) {
+        setGeneratedAsset((prev) =>
+          prev && prev.finalUrl === targetUrl && prev.displayUrl !== targetUrl
+            ? { ...prev, displayUrl: targetUrl }
+            : prev
+        );
+      }
+    };
+    img.onerror = () => {
+      if (!cancelled) {
+        setGeneratedAsset((prev) =>
+          prev && prev.finalUrl === targetUrl && prev.displayUrl !== prev.blobUrl
+            ? { ...prev, displayUrl: prev.blobUrl }
+            : prev
+        );
+      }
+    };
+    img.src = targetUrl;
+    return () => {
+      cancelled = true;
+      img.src = '';
+    };
+  }, [generatedAsset?.finalUrl]);
 
   // ... JSX remains largely the same ...
   return (
@@ -433,7 +491,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                       zIndex: 1
                     }}
                   >
-                    <MetaballsSoft animated={true} />
+                    <MetaballsSoft key={`gen-${sessionKey}`} animated={true} />
                   </div>
                 )}
 
@@ -458,12 +516,12 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                 {stage === "revealing" && generatedAsset && (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
                     <img
-                      src={generatedAsset.finalUrl ?? generatedAsset.blobUrl}
+                      src={generatedAsset.displayUrl}
                       alt="Generated design"
                       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                     <GlassRevealCanvas
-                      imageUrl={generatedAsset.finalUrl ?? generatedAsset.blobUrl}
+                      imageUrl={generatedAsset.displayUrl}
                       showButtons={showButtons}
                       onRevealDone={handleRevealDone}
                       onPublish={handlePublish}
