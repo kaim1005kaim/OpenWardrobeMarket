@@ -383,7 +383,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
       </header>
 
       <div className="create-content">
-          {!isGenerating && (
+          {!isGenerating && stage === "idle" && (
             <div className="create-hero">
               <div className="create-hero__canvas">
                 <MetaballsSoft ref={metaballRef} animated={true} />
@@ -457,7 +457,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
             <>
               {/* 画像コンテナ - 横幅いっぱいに表示 */}
               <div className="viewer-container" style={{ position: 'relative', width: 'calc(100% + 40px)', aspectRatio: '3:4', marginTop: '32px', marginBottom: '24px', marginLeft: '-20px', marginRight: '-20px' }}>
-                {/* 生成中のProcedural（フェードアウト可能） */}
+                {/* 生成中のプレースホルダー（WebGLなしの軽量版） */}
                 {stage === "generating" && (
                   <div
                     style={{
@@ -465,27 +465,21 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                       inset: 0,
                       borderRadius: 16,
                       overflow: 'hidden',
-                      zIndex: 1
-                    }}
-                  >
-                    <MetaballsSoft key={`gen-${sessionKey}`} animated={true} />
-                  </div>
-                )}
-
-                {/* メタボールフェードアウト用オーバーレイ */}
-                {stage === "revealing" && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      borderRadius: 16,
-                      overflow: 'hidden',
                       zIndex: 1,
-                      opacity: 1,
-                      animation: 'fadeOut 0.4s ease-out forwards'
+                      background: 'linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                   >
-                    <MetaballsSoft animated={true} />
+                    <div style={{
+                      width: 60,
+                      height: 60,
+                      border: '4px solid #e0e0e0',
+                      borderTopColor: '#333',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
                   </div>
                 )}
 

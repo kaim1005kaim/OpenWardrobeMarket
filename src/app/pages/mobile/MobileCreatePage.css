@@ -377,3 +377,10 @@
     opacity: 0;
   }
 }
+
+/* Spinner animation for loading state */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
