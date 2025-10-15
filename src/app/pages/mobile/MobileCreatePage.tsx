@@ -354,11 +354,49 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
     setIsGenerating(false);
   };
 
-  const handlePublish = () => {
-    // TODO: Implement publish logic (e.g., call an API to update asset status to 'public')
-    console.log('Publishing asset:', generatedAsset?.key);
-    alert('公開機能は現在実装中です。');
-    onNavigate?.('gallery');
+  const handlePublish = async () => {
+    if (!generatedAsset?.finalUrl) {
+      alert('画像のアップロードが完了していません。');
+      return;
+    }
+
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) {
+        alert('ログインが必要です。');
+        return;
+      }
+
+      const response = await fetch('/api/publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          image_url: generatedAsset.finalUrl,
+          title: 'My Design',
+          description: '生成されたデザイン',
+          tags: [],
+          colors: [],
+          category: 'clothing',
+          price: 0
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || '公開に失敗しました');
+      }
+
+      const result = await response.json();
+      console.log('Published successfully:', result);
+      alert('ギャラリーに公開しました！');
+      onNavigate?.('gallery');
+    } catch (error) {
+      console.error('Publish error:', error);
+      alert(error instanceof Error ? error.message : '公開に失敗しました');
+    }
   };
 
   const handleSaveDraft = () => {
