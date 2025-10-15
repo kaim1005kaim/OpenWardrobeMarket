@@ -92,3 +92,4 @@ temp/
 # Google Cloud Service Account keys
 docs/*.json
 *.json.key
+tsconfig.tsbuildinfo

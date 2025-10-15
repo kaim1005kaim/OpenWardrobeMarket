@@ -5,11 +5,14 @@ import { getAuthUser, getServiceSupabase, serializeAsset } from '../../_shared/a
 
 const ALLOWED_STATUSES = new Set(['public', 'private', 'delisted']);
 
+type AssetRouteParams = { assetId: string };
+type AssetRouteContext = { params: Promise<AssetRouteParams> };
+
 export async function PATCH(
   request: Request,
-  { params }: { params: { assetId: string } }
+  context: AssetRouteContext
 ) {
-  const assetId = params.assetId;
+  const { assetId } = await context.params;
 
   if (!assetId) {
     return Response.json({ error: 'assetId is required' }, { status: 400 });
@@ -73,9 +76,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { assetId: string } }
+  context: AssetRouteContext
 ) {
-  const assetId = params.assetId;
+  const { assetId } = await context.params;
 
   if (!assetId) {
     return Response.json({ error: 'assetId is required' }, { status: 400 });
@@ -125,9 +128,9 @@ export async function DELETE(
 
 export async function GET(
   request: Request,
-  { params }: { params: { assetId: string } }
+  context: AssetRouteContext
 ) {
-  const assetId = params.assetId;
+  const { assetId } = await context.params;
 
   if (!assetId) {
     return Response.json({ error: 'assetId is required' }, { status: 400 });

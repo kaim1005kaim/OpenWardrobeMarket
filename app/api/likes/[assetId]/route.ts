@@ -3,11 +3,14 @@ export const revalidate = 0;
 
 import { getAuthUser, getServiceSupabase } from '../../_shared/assets';
 
+type RouteParams = { assetId: string };
+type RouteContext = { params: Promise<RouteParams> };
+
 export async function POST(
   request: Request,
-  { params }: { params: { assetId: string } }
+  context: RouteContext
 ) {
-  const assetId = params.assetId;
+  const { assetId } = await context.params;
   if (!assetId) {
     return Response.json({ error: 'assetId is required' }, { status: 400 });
   }
@@ -47,9 +50,9 @@ export async function POST(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { assetId: string } }
+  context: RouteContext
 ) {
-  const assetId = params.assetId;
+  const { assetId } = await context.params;
   if (!assetId) {
     return Response.json({ error: 'assetId is required' }, { status: 400 });
   }

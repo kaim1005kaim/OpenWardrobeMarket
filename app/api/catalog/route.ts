@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 export const revalidate = 0;
 
 import { getServiceSupabase } from '../_shared/assets';
-import { R2_PUBLIC_BASE_URL } from '../../../src/lib/r2.js';
+import { R2_PUBLIC_BASE_URL } from '../../../src/lib/r2';
 
 const PUBLIC_URL =
   R2_PUBLIC_BASE_URL || 'https://pub-4215f21494de4f369c2bde9f2769dfd4.r2.dev';
