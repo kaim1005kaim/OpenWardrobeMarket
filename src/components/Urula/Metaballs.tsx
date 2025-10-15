@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { MarchingCubes, MarchingCube, Environment } from '@react-three/drei';
 import * as THREE from 'three';
@@ -6,31 +6,21 @@ import type { DNA } from '../../types/dna';
 
 /**
  * Map DNA to visual parameters for Urula metaballs
+ * Smoothly interpolates to create seamless evolution
  */
 function dnaToVisualParams(dna: DNA) {
   // Isolation: controls boundary hardness (minimal_maximal)
-  // -1 (minimal) -> lower isolation (60) = harder edges
-  // +1 (maximal) -> higher isolation (90) = softer, more merged
   const isolation = THREE.MathUtils.lerp(60, 90, (dna.minimal_maximal + 1) / 2);
 
   // Strength: controls volume (oversized_fitted)
-  // -1 (oversized) -> higher strength (+0.2)
-  // +1 (fitted) -> lower strength (-0.2)
   const strengthDelta = THREE.MathUtils.lerp(0.2, -0.2, (dna.oversized_fitted + 1) / 2);
 
   // Roughness: surface finish (relaxed_tailored)
-  // -1 (relaxed) -> higher roughness (0.22)
-  // +1 (tailored) -> lower roughness (0.06)
   const roughness = THREE.MathUtils.lerp(0.22, 0.06, (dna.relaxed_tailored + 1) / 2);
 
   // Metalness & envMapIntensity: luxury vs street
-  // -1 (street) -> low metalness (0.02), low envMap (0.7)
-  // +1 (luxury) -> higher metalness (0.08), higher envMap (1.5)
   const metalness = THREE.MathUtils.lerp(0.02, 0.08, (dna.street_luxury + 1) / 2);
   const envMapIntensity = THREE.MathUtils.lerp(0.7, 1.5, (dna.street_luxury + 1) / 2);
-
-  // Rim light strength (tailored = more defined edges)
-  const rimStrength = THREE.MathUtils.lerp(0.3, 0.6, (dna.relaxed_tailored + 1) / 2);
 
   // Color from DNA hue/sat/light
   const hslColor = new THREE.Color();
@@ -42,24 +32,60 @@ function dnaToVisualParams(dna: DNA) {
     roughness,
     metalness,
     envMapIntensity,
-    rimStrength,
     baseColor: hslColor,
   };
 }
 
-interface MetaballsProps {
-  dna: DNA;
+export interface UrulaMetaballsHandle {
+  triggerImpact: () => void;
+  changePalette: () => void;
 }
 
-function MetaballsInner({ dna }: MetaballsProps) {
+interface MetaballsProps {
+  dna: DNA;
+  animated?: boolean;
+}
+
+interface MetaballsInnerProps extends MetaballsProps {
+  onImpact?: () => void;
+  onPaletteChange?: () => void;
+  innerRef?: React.Ref<UrulaMetaballsHandle>;
+}
+
+function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, innerRef }: MetaballsInnerProps) {
   const visualParams = useMemo(() => dnaToVisualParams(dna), [dna]);
   const meshRef = useRef<THREE.Mesh>(null);
+  const impactRef = useRef(0);
+  const paletteChangeRef = useRef(0);
 
-  // Animate metaballs slightly for "breathing" effect
-  useFrame((state) => {
-    if (meshRef.current) {
+  useImperativeHandle(innerRef, () => ({
+    triggerImpact: () => {
+      impactRef.current = 1;
+      onImpact?.();
+    },
+    changePalette: () => {
+      paletteChangeRef.current = 1;
+      onPaletteChange?.();
+    },
+  }));
+
+  // Animate metaballs with breathing and reactions
+  useFrame((state, delta) => {
+    if (meshRef.current && animated) {
       const time = state.clock.elapsedTime;
+
+      // Gentle rotation
       meshRef.current.rotation.y = Math.sin(time * 0.2) * 0.1;
+
+      // Impact decay
+      if (impactRef.current > 0) {
+        impactRef.current = Math.max(0, impactRef.current - delta * 2);
+      }
+
+      // Palette change decay
+      if (paletteChangeRef.current > 0) {
+        paletteChangeRef.current = Math.max(0, paletteChangeRef.current - delta * 1.5);
+      }
     }
   });
 
@@ -115,18 +141,23 @@ function MetaballsInner({ dna }: MetaballsProps) {
 /**
  * Urula: DNA-driven metaballs organism
  * Visualizes fashion DNA as a living, breathing entity
+ * Reacts to user interactions and evolves with DNA changes
  */
-export function UrulaMetaballs({ dna }: MetaballsProps) {
-  return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <Canvas
-        gl={{ alpha: true, antialias: true }}
-        camera={{ position: [0, 0, 5], fov: 50 }}
-        style={{ background: 'transparent' }}
-      >
-        <color attach="background" args={['#00000000']} />
-        <MetaballsInner dna={dna} />
-      </Canvas>
-    </div>
-  );
-}
+export const UrulaMetaballs = forwardRef<UrulaMetaballsHandle, MetaballsProps>(
+  ({ dna, animated = true }, ref) => {
+    return (
+      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+        <Canvas
+          gl={{ alpha: true, antialias: true }}
+          camera={{ position: [0, 0, 5], fov: 50 }}
+          style={{ background: 'transparent' }}
+        >
+          <color attach="background" args={['#00000000']} />
+          <MetaballsInner dna={dna} animated={animated} innerRef={ref} />
+        </Canvas>
+      </div>
+    );
+  }
+);
+
+UrulaMetaballs.displayName = 'UrulaMetaballs';

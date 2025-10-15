@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef, useReducer, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
-import { buildPrompt, type Answers } from '../../../lib/prompt/buildMobile';
 import { supabase } from '../../lib/supabase';
-import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/MetaballsSoft';
+import { UrulaMetaballs, UrulaMetaballsHandle } from '../../../components/Urula/Metaballs';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import { useDisplayImage } from '../../../hooks/useDisplayImage';
+import { useDNA } from '../../../hooks/useDNA';
+import { DEFAULT_DNA, type DNA, type Answers, type GeminiCoachOut } from '../../../types/dna';
 import './MobileCreatePage.css';
 
-// --- Helper Functions ---
-
+// Helper: Base64 to Blob
 function base64ToBlob(base64: string, mimeType: string): Blob {
   const byteCharacters = atob(base64);
   const byteNumbers = new Array(byteCharacters.length);
@@ -19,87 +19,8 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
   return new Blob([byteArray], { type: mimeType });
 }
 
-// --- DNA and Sync Logic from Design Document ---
-
-export type DNA = {
-  hue: number;      // 0..1
-  sat: number;      // 0..1
-  light: number;    // 0..1
-  minimal_maximal: number;   // -1..1
-  street_luxury: number;     // -1..1
-  oversized_fitted: number;  // -1..1
-  relaxed_tailored: number;  // -1..1
-  texture: number;  // 0..1
-};
-
-const initialDNA: DNA = {
-  hue: 0.56, sat: 0.25, light: 0.62, minimal_maximal: -0.2,
-  street_luxury: 0, oversized_fitted: 0, relaxed_tailored: 0, texture: 0.3
-};
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function dnaReducer(state: DNA, action: {type:'set'|'delta'; key?: keyof DNA; value?: number; delta?: number}) {
-  if (action.type === 'set' && action.key) return {...state, [action.key]: action.value!};
-  if (action.type === 'delta' && action.key) return {...state, [action.key]: clamp(state[action.key] + (action.delta||0), -1, 1)};
-  return state;
-}
-
-function useDNASync(sessionKey: string, getPayload: () => {
-  answers:any; freeText?:string; dna:DNA; geminiTags?:any; promptPreview?:string;
-}) {
-  const queue = useRef<any>(null);
-  const timer = useRef<number|undefined>();
-
-  const checkpoint = useCallback(() => {
-    if (!sessionKey) return;
-    queue.current = getPayload();
-    if (timer.current) return;
-    timer.current = window.setTimeout(async () => {
-      const payload = queue.current; queue.current = null; timer.current = undefined;
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      if (!token) return;
-
-      await fetch('/api/dna-sync', { 
-        method:'POST', 
-        headers:{
-          'Content-Type':'application/json',
-          'Authorization': `Bearer ${token}`
-        }, 
-        body: JSON.stringify({sessionKey, ...payload}) 
-      });
-    }, 1200); // 1.2s
-  }, [sessionKey, getPayload]);
-
-  const flushNow = useCallback(async () => {
-    const payload = queue.current ?? getPayload();
-    queue.current = null;
-    if (timer.current) { clearTimeout(timer.current); timer.current = undefined; }
-    if (!sessionKey || !payload) return;
-
-    const token = (await supabase.auth.getSession()).data.session?.access_token;
-    if (!token) return;
-
-    await fetch('/api/dna-sync', { 
-      method:'POST', 
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization': `Bearer ${token}`
-      }, 
-      body: JSON.stringify({sessionKey, ...payload}) 
-    });
-  }, [sessionKey, getPayload]);
-
-  return { checkpoint, flushNow };
-}
-
-// --- Component Interfaces and Constants ---
-
 interface MobileCreatePageProps {
   onNavigate?: (page: string) => void;
-  onPublishRequest?: (imageUrl: string, generationData: any) => void;
 }
 
 interface Question {
@@ -138,17 +59,27 @@ const createQuestions: Question[] = [
   },
 ];
 
-type Stage = "idle" | "generating" | "revealing";
+type Stage = 'answering' | 'coaching' | 'preview' | 'generating' | 'revealing' | 'done';
 
-// --- Main Component ---
-
-export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreatePageProps) {
+export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
+  const [stage, setStage] = useState<Stage>('answering');
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [freeText, setFreeText] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [stage, setStage] = useState<Stage>("idle");
-  const [showButtons, setShowButtons] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+
+  // DNA management
+  const sessionKey = useRef(`mobile-create-${Date.now()}`).current;
+  const { dna, updateDNA, syncNow, updateContext } = useDNA(sessionKey, DEFAULT_DNA);
+  const urulaRef = useRef<UrulaMetaballsHandle>(null);
+
+  // Coaching state
+  const [coachData, setCoachData] = useState<GeminiCoachOut | null>(null);
+  const [selectedChips, setSelectedChips] = useState<string[]>([]);
+  const [askAnswer, setAskAnswer] = useState<string | null>(null);
+  const [isCoaching, setIsCoaching] = useState(false);
+
+  // Generation state
   const [generatedAsset, setGeneratedAsset] = useState<{
     key: string;
     blobUrl: string;
@@ -157,38 +88,38 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
     dna: DNA;
     prompt: string;
   } | null>(null);
-  const metaballRef = useRef<MetaballsSoftHandle>(null);
+  const [showButtons, setShowButtons] = useState(false);
 
-  // Use robust image display hook
   const { src: displayUrl } = useDisplayImage({
     blobUrl: generatedAsset?.blobUrl,
-    finalUrl: generatedAsset?.finalUrl
+    finalUrl: generatedAsset?.finalUrl,
   });
-
-  // DNA State Management
-  const [dna, dispatchDNA] = useReducer(dnaReducer, initialDNA);
-  const [sessionKey, setSessionKey] = useState(() => `mobile-create-${Date.now()}`);
-
-  // DNA Sync Logic
-  const getPayload = useCallback(() => ({
-    answers,
-    dna,
-  }), [answers, dna]);
-  const { checkpoint, flushNow } = useDNASync(sessionKey, getPayload);
 
   const currentQuestion = createQuestions[currentStep];
   const progress = ((currentStep + 1) / createQuestions.length) * 100;
+
+  // Update DNA context when answers/freeText change
+  useEffect(() => {
+    const answersData: Answers = {
+      vibe: answers.vibe || [],
+      silhouette: answers.silhouette || [],
+      color: answers.color || [],
+      occasion: answers.occasion || [],
+      season: answers.season || [],
+    };
+    updateContext({ answers: answersData, freeText });
+  }, [answers, freeText, updateContext]);
 
   const handleSelect = (option: string) => {
     const questionId = currentQuestion.id;
     const currentAnswers = answers[questionId] || [];
 
-    metaballRef.current?.triggerImpact();
+    urulaRef.current?.triggerImpact();
 
     let newAnswers: Record<string, string[]>;
     if (currentQuestion.multiSelect) {
       if (currentAnswers.includes(option)) {
-        newAnswers = { ...answers, [questionId]: currentAnswers.filter(a => a !== option) };
+        newAnswers = { ...answers, [questionId]: currentAnswers.filter((a) => a !== option) };
       } else {
         newAnswers = { ...answers, [questionId]: [...currentAnswers, option] };
       }
@@ -196,7 +127,35 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
       newAnswers = { ...answers, [questionId]: [option] };
     }
     setAnswers(newAnswers);
-    checkpoint(); // Save on interaction
+
+    // Apply simple DNA delta based on selection
+    applyAnswerDNA(questionId, option);
+  };
+
+  const applyAnswerDNA = (questionId: string, option: string) => {
+    // Simple heuristic DNA adjustments
+    const deltasMap: Record<string, Partial<DNA>> = {
+      minimal: { minimal_maximal: -0.2 },
+      luxury: { street_luxury: 0.2 },
+      street: { street_luxury: -0.2 },
+      oversized: { oversized_fitted: -0.2 },
+      fitted: { oversized_fitted: 0.2 },
+      tailored: { relaxed_tailored: 0.2 },
+      relaxed: { relaxed_tailored: -0.2 },
+    };
+
+    const delta = deltasMap[option];
+    if (delta) {
+      updateDNA((prev) => ({
+        ...prev,
+        ...Object.fromEntries(
+          Object.entries(delta).map(([k, v]) => [
+            k,
+            Math.max(-1, Math.min(1, (prev[k as keyof DNA] as number) + v)),
+          ])
+        ),
+      }));
+    }
   };
 
   const isSelected = (option: string) => {
@@ -208,13 +167,13 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   };
 
   const handleNext = () => {
-    checkpoint(); // Save on step change
-    metaballRef.current?.changePalette();
+    urulaRef.current?.changePalette();
 
     if (currentStep < createQuestions.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      handleGenerate();
+      // All 5 questions answered -> go to coaching
+      setStage('coaching');
     }
   };
 
@@ -227,21 +186,14 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   const handleReset = () => {
     setCurrentStep(0);
     setAnswers({});
-    dispatchDNA({ type: 'set', key: 'hue', value: initialDNA.hue }); // Reset DNA
-    setSessionKey(`mobile-create-${Date.now()}`); // Start new session
+    setFreeText('');
+    setStage('answering');
+    updateDNA(DEFAULT_DNA);
   };
 
-  // Debug: Track stage changes
-  useEffect(() => {
-    console.log(`[MobileCreatePage] Current stage: ${stage}`);
-  }, [stage]);
-
-  const handleGenerate = async () => {
-    await flushNow();
-
-    console.log('[MobileCreatePage] Stage transition: idle → generating');
-    setStage("generating");
-    setIsGenerating(true);
+  // Coaching: Fetch chips/ask from Gemini
+  const handleCoach = async () => {
+    setIsCoaching(true);
 
     try {
       const answersData: Answers = {
@@ -252,106 +204,151 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
         season: answers.season || [],
       };
 
-      const prompt = buildPrompt(answersData);
-      const negative = "no text, no words, no logos, no brands, no celebrities, no multiple people";
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) throw new Error('ログインが必要です');
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('ログインが必要です');
-
-      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
-
-      // Step 1: Generate image data from our API
-      const genRes = await fetch(`${apiUrl}/api/nano-generate`, {
+      const response = await fetch('/api/gemini/coach', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${sessionData.session.access_token}`,
         },
-        body: JSON.stringify({ prompt, negative, aspectRatio: '3:4', dna }),
+        body: JSON.stringify({
+          answers: answersData,
+          freeText,
+          dna,
+        }),
       });
-      if (!genRes.ok) throw new Error((await genRes.json()).error || 'Image generation failed');
-      const { imageData, mimeType, key } = await genRes.json();
 
-      // Prepare for reveal effect and background upload
-      const imageBlob = base64ToBlob(imageData, mimeType);
-      const blobUrl = URL.createObjectURL(imageBlob);
+      if (!response.ok) throw new Error('Coach API failed');
 
-      console.info('[MobileCreatePage] Image generated', {
-        key,
-        blobUrl,
-        blobSize: imageBlob.size,
-        mimeType
+      const coachResult: GeminiCoachOut = await response.json();
+      setCoachData(coachResult);
+
+      // Apply coach deltas to DNA
+      coachResult.deltas.forEach((delta) => {
+        updateDNA((prev) => ({
+          ...prev,
+          [delta.key]: Math.max(-1, Math.min(1, prev[delta.key] + delta.delta)),
+        }));
       });
+
+      updateContext({ geminiTags: coachResult.tags });
+    } catch (error) {
+      console.error('[handleCoach] Error:', error);
+      alert('ガイダンス取得に失敗しました');
+    } finally {
+      setIsCoaching(false);
+    }
+  };
+
+  const handleChipToggle = (chip: string) => {
+    setSelectedChips((prev) =>
+      prev.includes(chip) ? prev.filter((c) => c !== chip) : [...prev, chip]
+    );
+  };
+
+  const handleAskSelect = (option: string) => {
+    setAskAnswer(option);
+  };
+
+  const handlePreview = () => {
+    setStage('preview');
+  };
+
+  const handleGenerate = async () => {
+    await syncNow(); // Sync DNA before generation
+
+    setStage('generating');
+
+    try {
+      const answersData: Answers = {
+        vibe: answers.vibe || [],
+        silhouette: answers.silhouette || [],
+        color: answers.color || [],
+        occasion: answers.occasion || [],
+        season: answers.season || [],
+      };
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) throw new Error('ログインが必要です');
+
+      const token = sessionData.session.access_token;
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+
+      // Compose prompt
+      const composeRes = await fetch(`${apiUrl}/api/prompt/compose`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          answers: answersData,
+          dna,
+          chipsChosen: selectedChips,
+          askAnswers: askAnswer ? { [coachData?.ask?.id || 'ask']: askAnswer } : {},
+          freeTextTags: freeText ? [freeText] : [],
+        }),
+      });
+
+      if (!composeRes.ok) throw new Error('Prompt composition failed');
+
+      const { prompt, negatives } = await composeRes.json();
+
+      console.log('[MobileCreatePage] Composed prompt:', prompt);
+
+      // Generate image
+      const genRes = await fetch(`${apiUrl}/api/nano/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          prompt,
+          negative: negatives,
+          aspectRatio: '3:4',
+          answers: answersData,
+          dna,
+        }),
+      });
+
+      if (!genRes.ok) {
+        const error = await genRes.json();
+        throw new Error(error.error || 'Generation failed');
+      }
+
+      const { id, url, key } = await genRes.json();
+
+      console.log('[MobileCreatePage] Generated:', { id, url, key });
+
+      // For reveal, we need blob URL for immediate display
+      // Fetch the image as blob
+      const imgRes = await fetch(url);
+      const imgBlob = await imgRes.blob();
+      const blobUrl = URL.createObjectURL(imgBlob);
 
       setGeneratedAsset({
         key,
         blobUrl,
-        finalUrl: null, // Will be set after R2 upload
+        finalUrl: url,
         answers: answersData,
         dna,
-        prompt
+        prompt,
       });
-      console.log('[MobileCreatePage] Stage transition: generating → revealing');
-      setStage("revealing");
 
-      // Step 2 & 3 (in background): Get presigned URL and upload to R2
-      const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${key}&contentType=${mimeType}`);
-      if (!presignRes.ok) throw new Error('Failed to get presigned URL');
-      const { url: uploadUrl } = await presignRes.json();
-
-      const uploadRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: imageBlob });
-      if (!uploadRes.ok) throw new Error('Upload to R2 failed');
-
-      // Step 4 (in background): Create asset record in DB
-      const createAssetRes = await fetch(`${apiUrl}/api/assets/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          key: key,
-          title: prompt,
-          tags: [answersData.vibe, answersData.silhouette, ...answersData.color].flat().filter(Boolean),
-          status: 'private',
-          dna: dna,
-          fileSize: imageBlob.size,
-          answers: answersData,
-          prompt: prompt,
-        }),
-      });
-      if (!createAssetRes.ok) throw new Error('Failed to create asset record');
-      const createdAssetPayload = await createAssetRes.json().catch(() => null);
-
-      if (createdAssetPayload?.asset?.finalUrl) {
-        console.info('[MobileCreatePage] R2 upload complete', {
-          finalUrl: createdAssetPayload.asset.finalUrl
-        });
-
-        setGeneratedAsset((prev) =>
-          prev
-            ? {
-                ...prev,
-                finalUrl: createdAssetPayload.asset.finalUrl
-              }
-            : prev
-        );
-      }
-
-      console.log('[MobileCreatePage] Asset created successfully in the background.');
-
+      setStage('revealing');
     } catch (error) {
-      console.error('Generation error:', error);
+      console.error('[handleGenerate] Error:', error);
       alert(error instanceof Error ? error.message : '生成に失敗しました');
-      console.log('[MobileCreatePage] Stage transition: generating → idle (error)');
-      setStage("idle");
-      setIsGenerating(false);
+      setStage('coaching');
     }
   };
 
   const handleRevealDone = () => {
     setShowButtons(true);
-    setIsGenerating(false);
+    setStage('done');
   };
 
   const handlePublish = async () => {
@@ -371,7 +368,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           image_url: generatedAsset.finalUrl,
@@ -380,33 +377,25 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
           tags: [],
           colors: [],
           category: 'clothing',
-          price: 0
-        })
+          price: 0,
+        }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('[handlePublish] API error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          error
-        });
         throw new Error(error.error || '公開に失敗しました');
       }
 
-      const result = await response.json();
-      console.log('[handlePublish] Published successfully:', result);
       alert('ギャラリーに公開しました！');
       onNavigate?.('gallery');
     } catch (error) {
-      console.error('[handlePublish] Publish error:', error);
+      console.error('[handlePublish] Error:', error);
       alert(error instanceof Error ? error.message : '公開に失敗しました');
     }
   };
 
   const handleSaveDraft = () => {
-    // Asset is already saved as private, so just navigate
-    console.log('Draft saved for asset:', generatedAsset?.key);
+    console.log('Draft saved:', generatedAsset?.key);
     onNavigate?.('mypage');
   };
 
@@ -414,10 +403,6 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
     onNavigate?.(page);
   };
 
-  // Blob cleanup is now handled by useDisplayImage hook
-  // No manual revocation needed here
-
-  // ... JSX remains largely the same ...
   return (
     <div className="mobile-create-page">
       {/* Header */}
@@ -428,177 +413,363 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
           aria-label="Menu"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path
+              d="M3 12H21M3 6H21M3 18H21"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
           </svg>
         </button>
-        <button className="create-logo-btn" onClick={() => onNavigate?.('home')}>OWM</button>
+        <button className="create-logo-btn" onClick={() => onNavigate?.('home')}>
+          OWM
+        </button>
       </header>
 
       <div className="create-content">
-          {stage === "idle" && (
+        {/* Stage: Answering (5 questions) */}
+        {stage === 'answering' && (
+          <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <MetaballsSoft
-                  ref={metaballRef}
-                  animated={true}
-                  key="hero-metaballs"
-                />
+                <UrulaMetaballs ref={urulaRef} dna={dna} animated={true} />
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">CREATE</h1>
               </div>
             </div>
-          )}
-          {stage === "idle" ? (
-            <>
 
-              {/* Question */}
-              <div className="question-container">
-                <h2 className="question-text">{currentQuestion.question}</h2>
-                {currentQuestion.multiSelect && (
-                  <p className="hint-text">複数選択可能です</p>
-                )}
-              </div>
+            <div className="question-container">
+              <h2 className="question-text">{currentQuestion.question}</h2>
+              {currentQuestion.multiSelect && <p className="hint-text">複数選択可能です</p>}
+            </div>
 
-              {/* Options */}
-              <div className="options-container">
-                {currentQuestion.options.map((option) => (
-                  <button
-                    key={option}
-                    className={`option-btn ${isSelected(option) ? 'selected' : ''}`}
-                    onClick={() => handleSelect(option)}
-                  >
-                    <span className="option-check">
-                      {isSelected(option) && '✓'}
-                    </span>
-                    <span className="option-label">{option}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Progress bar */}
-              <div className="progress-container">
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${progress}%` }}></div>
-                </div>
-                <p className="progress-text">
-                  {currentStep + 1} / {createQuestions.length}
-                </p>
-              </div>
-
-              {/* Navigation */}
-              <div className="nav-buttons">
+            <div className="options-container">
+              {currentQuestion.options.map((option) => (
                 <button
-                  className="nav-btn primary"
-                  onClick={handleNext}
-                  disabled={!canProceed()}
+                  key={option}
+                  className={`option-btn ${isSelected(option) ? 'selected' : ''}`}
+                  onClick={() => handleSelect(option)}
                 >
-                  {currentStep === createQuestions.length - 1 ? '生成する' : '次へ'}
+                  <span className="option-check">{isSelected(option) && '✓'}</span>
+                  <span className="option-label">{option}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="progress-container">
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+              </div>
+              <p className="progress-text">
+                {currentStep + 1} / {createQuestions.length}
+              </p>
+            </div>
+
+            <div className="nav-buttons">
+              <button className="nav-btn primary" onClick={handleNext} disabled={!canProceed()}>
+                {currentStep === createQuestions.length - 1 ? '次へ' : '次へ'}
+              </button>
+            </div>
+
+            {currentStep >= 1 && (
+              <div className="secondary-nav-buttons">
+                <button className="reset-btn" onClick={handleReset}>
+                  はじめからやり直す
+                </button>
+                <button className="back-btn" onClick={handleBack}>
+                  一つ前に戻る
                 </button>
               </div>
+            )}
+          </>
+        )}
 
-              {/* 設問2以降のリセット・戻るボタン */}
-              {currentStep >= 1 && (
-                <div className="secondary-nav-buttons">
-                  <button className="reset-btn" onClick={handleReset}>
-                    はじめからやり直す
-                  </button>
-                  <button className="back-btn" onClick={handleBack}>
-                    一つ前に戻る
-                  </button>
-                </div>
+        {/* Stage: Coaching */}
+        {stage === 'coaching' && (
+          <>
+            <div className="create-hero">
+              <div className="create-hero__canvas">
+                <UrulaMetaballs ref={urulaRef} dna={dna} animated={true} />
+              </div>
+              <div className="create-hero__title">
+                <h1 className="create-title">DNA注入</h1>
+              </div>
+            </div>
+
+            <div className="coaching-container">
+              <h2 className="question-text">詳細を教えてください（任意）</h2>
+              <textarea
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                placeholder="例: 撥水機能のあるビジネスカジュアル..."
+                style={{
+                  width: '100%',
+                  minHeight: '80px',
+                  padding: '12px',
+                  fontSize: '14px',
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  marginBottom: '16px',
+                }}
+              />
+
+              {!coachData && (
+                <button
+                  className="nav-btn primary"
+                  onClick={handleCoach}
+                  disabled={isCoaching}
+                  style={{ marginBottom: '16px' }}
+                >
+                  {isCoaching ? 'AIが分析中...' : 'AIガイダンスを取得'}
+                </button>
               )}
-            </>
-          ) : (
-            <>
-              {/* 画像コンテナ - 横幅いっぱいに表示 */}
-              <div className="viewer-container" style={{
+
+              {coachData && (
+                <>
+                  <h3 style={{ fontSize: '16px', marginBottom: '12px', fontWeight: 600 }}>
+                    提案チップ
+                  </h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+                    {coachData.chips.map((chip) => (
+                      <button
+                        key={chip}
+                        onClick={() => handleChipToggle(chip)}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          border: selectedChips.includes(chip)
+                            ? '2px solid #000'
+                            : '1px solid #ccc',
+                          background: selectedChips.includes(chip) ? '#000' : '#fff',
+                          color: selectedChips.includes(chip) ? '#fff' : '#000',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+
+                  {coachData.ask && (
+                    <>
+                      <h3 style={{ fontSize: '16px', marginBottom: '12px', fontWeight: 600 }}>
+                        {coachData.ask.title}
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                        {coachData.ask.options.map((option) => (
+                          <button
+                            key={option}
+                            onClick={() => handleAskSelect(option)}
+                            style={{
+                              padding: '12px',
+                              borderRadius: '8px',
+                              border: askAnswer === option ? '2px solid #000' : '1px solid #ddd',
+                              background: askAnswer === option ? '#f0f0f0' : '#fff',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  <button className="nav-btn primary" onClick={handlePreview}>
+                    プレビューへ
+                  </button>
+                </>
+              )}
+
+              {!coachData && (
+                <button
+                  className="nav-btn secondary"
+                  onClick={handlePreview}
+                  style={{ marginTop: '8px' }}
+                >
+                  スキップしてプレビュー
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Stage: Preview */}
+        {stage === 'preview' && (
+          <>
+            <div className="create-hero">
+              <div className="create-hero__canvas">
+                <UrulaMetaballs ref={urulaRef} dna={dna} animated={true} />
+              </div>
+              <div className="create-hero__title">
+                <h1 className="create-title">PREVIEW</h1>
+                <p style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
+                  Urulaが最終形態に進化しました
+                </p>
+              </div>
+            </div>
+
+            <div className="nav-buttons">
+              <button className="nav-btn primary" onClick={handleGenerate}>
+                生成する
+              </button>
+              <button
+                className="nav-btn secondary"
+                onClick={() => setStage('coaching')}
+                style={{ marginTop: '8px' }}
+              >
+                戻る
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Stage: Generating */}
+        {stage === 'generating' && (
+          <>
+            <div
+              className="viewer-container"
+              style={{
                 position: 'relative',
                 width: 'calc(100% + 40px)',
                 height: 'calc(100vw)',
                 marginTop: '32px',
                 marginBottom: '24px',
                 marginLeft: '-20px',
-                marginRight: '-20px'
-              }}>
-                {/* 生成中のMetaballsSoft */}
-                {stage === "generating" && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      borderRadius: 16,
-                      overflow: 'hidden',
-                      zIndex: 1
-                    }}
-                  >
-                    <MetaballsSoft key={`gen-${sessionKey}`} animated={true} />
-                  </div>
-                )}
-
-                {/* 受信後のGlass Stripe Reveal */}
-                {stage === "revealing" && generatedAsset && displayUrl && (() => {
-                  console.log('[MobileCreatePage] Rendering revealing stage with displayUrl:', displayUrl);
-                  return (
-                  <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
-                    {/* Glass reveal effect overlay - renders on top */}
-                    <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
-                      <GlassRevealCanvas
-                        key={sessionKey}
-                        imageUrl={displayUrl}
-                        showButtons={showButtons}
-                        onRevealDone={handleRevealDone}
-                        onPublish={handlePublish}
-                        onSaveDraft={handleSaveDraft}
-                        stripes={48}
-                        jitter={0.08}
-                        strength={0.9}
-                        holdMs={3000}
-                        revealMs={1200}
-                        leftToRight={true}
-                        active={true}
-                      />
-                    </div>
-                  </div>
-                  );
-                })()}
+                marginRight: '-20px',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: 16,
+                  overflow: 'hidden',
+                }}
+              >
+                <UrulaMetaballs dna={dna} animated={true} />
               </div>
+            </div>
 
-              {/* テキスト表示エリア（画像の下） */}
-              {stage === "generating" && (
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 20, fontWeight: 300, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
-                    PLEASE WAIT
-                  </div>
-                  <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
-                    お待ちください
-                  </div>
-                </div>
-              )}
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div
+                style={{
+                  fontFamily: "'Trajan Pro', serif",
+                  fontSize: 20,
+                  fontWeight: 300,
+                  letterSpacing: '0.1em',
+                  color: '#000',
+                  marginBottom: 8,
+                }}
+              >
+                PLEASE WAIT
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif",
+                  fontSize: 14,
+                  fontWeight: 300,
+                  color: '#666',
+                }}
+              >
+                お待ちください
+              </div>
+            </div>
+          </>
+        )}
 
-              {stage === "revealing" && !showButtons && (
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 20, fontWeight: 300, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
-                    PLEASE WAIT
-                  </div>
-                  <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
-                    お待ちください
-                  </div>
-                </div>
-              )}
+        {/* Stage: Revealing & Done */}
+        {(stage === 'revealing' || stage === 'done') && generatedAsset && displayUrl && (
+          <>
+            <div
+              className="viewer-container"
+              style={{
+                position: 'relative',
+                width: 'calc(100% + 40px)',
+                height: 'calc(100vw)',
+                marginTop: '32px',
+                marginBottom: '24px',
+                marginLeft: '-20px',
+                marginRight: '-20px',
+              }}
+            >
+              <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
+                <GlassRevealCanvas
+                  key={sessionKey}
+                  imageUrl={displayUrl}
+                  showButtons={showButtons}
+                  onRevealDone={handleRevealDone}
+                  onPublish={handlePublish}
+                  onSaveDraft={handleSaveDraft}
+                  stripes={48}
+                  jitter={0.08}
+                  strength={0.9}
+                  holdMs={3000}
+                  revealMs={1200}
+                  leftToRight={true}
+                  active={stage === 'revealing'}
+                />
+              </div>
+            </div>
 
-              {stage === "revealing" && showButtons && (
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ fontFamily: "'Trajan Pro', serif", fontSize: 20, fontWeight: 300, letterSpacing: '0.1em', color: '#000', marginBottom: 8 }}>
-                    PERFECT
-                  </div>
-                  <div style={{ fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif", fontSize: 14, fontWeight: 300, color: '#666' }}>
-                    世界でひとつのデザインが出来上がりました
-                  </div>
+            {stage === 'revealing' && !showButtons && (
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div
+                  style={{
+                    fontFamily: "'Trajan Pro', serif",
+                    fontSize: 20,
+                    fontWeight: 300,
+                    letterSpacing: '0.1em',
+                    color: '#000',
+                    marginBottom: 8,
+                  }}
+                >
+                  標本ガラスを開いています
                 </div>
-              )}
-            </>
-          )}
+                <div
+                  style={{
+                    fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif",
+                    fontSize: 14,
+                    fontWeight: 300,
+                    color: '#666',
+                  }}
+                >
+                  お待ちください
+                </div>
+              </div>
+            )}
+
+            {stage === 'done' && showButtons && (
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div
+                  style={{
+                    fontFamily: "'Trajan Pro', serif",
+                    fontSize: 20,
+                    fontWeight: 300,
+                    letterSpacing: '0.1em',
+                    color: '#000',
+                    marginBottom: 8,
+                  }}
+                >
+                  PERFECT
+                </div>
+                <div
+                  style={{
+                    fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif",
+                    fontSize: 14,
+                    fontWeight: 300,
+                    color: '#666',
+                  }}
+                >
+                  世界でひとつのデザインが出来上がりました
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <MenuOverlay
