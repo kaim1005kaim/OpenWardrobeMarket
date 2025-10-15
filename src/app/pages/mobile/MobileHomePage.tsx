@@ -12,6 +12,24 @@ import {
 } from '../../lib/api/assets';
 import './MobileHomePage.css';
 
+const RECOMMENDATION_COUNT = 10;
+
+function shuffleArray<T>(items: T[]): T[] {
+  const array = [...items];
+  for (let i = array.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function filterByAllowedPrefixes(asset: Asset): boolean {
+  const key = asset.finalKey || asset.rawKey || '';
+  if (typeof key !== 'string') return false;
+  const lower = key.toLowerCase();
+  return lower.includes('catalog/') || lower.includes('usergen/');
+}
+
 interface MobileHomePageProps {
   onNavigate?: (page: string) => void;
 }
@@ -42,32 +60,52 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
   const fetchRecommended = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { assets } = await fetchAssetsFromApi({
-        scope: 'mine',
-        kind: 'raw',
-        limit: 20
-      });
+      const requests = [];
 
-      if (assets.length > 0) {
-        setRecommendedAssets(assets.map(mapApiAsset));
-        return;
+      if (user) {
+        requests.push(
+          fetchAssetsFromApi({
+            scope: 'mine',
+            kind: 'raw',
+            limit: 30
+          })
+        );
       }
 
-      // fallback to public assets if user has none
-      const { assets: publicAssets } = await fetchAssetsFromApi({
-        scope: 'public',
-        kind: 'final',
-        limit: 20
-      });
+      requests.push(
+        fetchAssetsFromApi({
+          scope: 'public',
+          kind: 'final',
+          limit: 60
+        })
+      );
 
-      setRecommendedAssets(publicAssets.map(mapApiAsset));
+      const responses = await Promise.all(requests);
+
+      const combined = responses.flatMap((response) => response.assets ?? []);
+      const mapped = combined.map(mapApiAsset);
+      const filtered = mapped.filter(filterByAllowedPrefixes);
+
+      const uniqueById = new Map<string, Asset>();
+      for (const asset of filtered) {
+        if (!uniqueById.has(asset.id)) {
+          uniqueById.set(asset.id, asset);
+        }
+      }
+
+      const randomized = shuffleArray(Array.from(uniqueById.values())).slice(
+        0,
+        RECOMMENDATION_COUNT
+      );
+
+      setRecommendedAssets(randomized);
     } catch (error) {
       console.error('[MobileHomePage] Failed to load recommended assets:', error);
       setRecommendedAssets([]);
     } finally {
       setIsLoading(false);
     }
-  }, [mapApiAsset]);
+  }, [mapApiAsset, user]);
 
   const handleMenuNavigate = (page: string) => {
     if (onNavigate) {
