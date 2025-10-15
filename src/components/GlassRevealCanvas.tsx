@@ -109,7 +109,7 @@ export default function GlassRevealCanvas({
 
   useEffect(() => {
     if(!ref.current) return;
-    console.log('[GlassRevealCanvas] useEffect started', { imageUrl, canvasElement: !!ref.current });
+    console.log('[GlassRevealCanvas] useEffect started', { imageUrl, glassURL, canvasElement: !!ref.current });
 
     let renderer: THREE.WebGLRenderer;
     try {
@@ -163,13 +163,13 @@ export default function GlassRevealCanvas({
     const texGlass = loader.load(
       glassURL,
       () => {
-        console.log('[GlassRevealCanvas] Glass texture loaded');
+        console.log('[GlassRevealCanvas] Glass texture loaded', { glassURL });
         glassLoaded = true;
         if (imgLoaded && !t0) startAnimation();
       },
       undefined,
       (error) => {
-        console.error('[GlassRevealCanvas] Failed to load glass texture:', error);
+        console.error('[GlassRevealCanvas] Failed to load glass texture:', { glassURL, error });
       }
     );
     texGlass.wrapS = texGlass.wrapT = THREE.RepeatWrapping;
