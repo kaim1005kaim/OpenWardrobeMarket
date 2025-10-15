@@ -1,6 +1,11 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import glassURL from "@/assets/glaspattern_stripe.png";
+import glassURLImport from "@/assets/glaspattern_stripe.png";
+
+// Fix path for production build (copy-spa.mjs moves assets to /spa/assets/)
+const glassURL = glassURLImport.startsWith('/assets/')
+  ? glassURLImport.replace('/assets/', '/spa/assets/')
+  : glassURLImport;
 
 const VERT = `
 varying vec2 vUv;
