@@ -148,7 +148,14 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   const [stage, setStage] = useState<Stage>("idle");
   const [showButtons, setShowButtons] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedAsset, setGeneratedAsset] = useState<{ key: string; blobUrl: string; answers: Answers, dna: DNA, prompt: string } | null>(null);
+  const [generatedAsset, setGeneratedAsset] = useState<{
+    key: string;
+    blobUrl: string;
+    finalUrl?: string | null;
+    answers: Answers;
+    dna: DNA;
+    prompt: string;
+  } | null>(null);
   const metaballRef = useRef<MetaballsSoftHandle>(null);
 
   // DNA State Management
@@ -255,7 +262,7 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
       // Prepare for reveal effect and background upload
       const imageBlob = base64ToBlob(imageData, mimeType);
       const blobUrl = URL.createObjectURL(imageBlob);
-      setGeneratedAsset({ key, blobUrl, answers: answersData, dna, prompt });
+      setGeneratedAsset({ key, blobUrl, finalUrl: blobUrl, answers: answersData, dna, prompt });
       setStage("revealing");
 
       // Step 2 & 3 (in background): Get presigned URL and upload to R2
@@ -285,6 +292,12 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
         }),
       });
       if (!createAssetRes.ok) throw new Error('Failed to create asset record');
+      const createdAssetPayload = await createAssetRes.json().catch(() => null);
+      if (createdAssetPayload?.asset?.finalUrl) {
+        setGeneratedAsset((prev) =>
+          prev ? { ...prev, finalUrl: createdAssetPayload.asset.finalUrl } : prev
+        );
+      }
 
       console.log('Asset created successfully in the background.');
 
@@ -444,8 +457,13 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                 {/* 受信後の"Glass Stripe Reveal" → 完成品表示（同じCanvas） */}
                 {stage === "revealing" && generatedAsset && (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
+                    <img
+                      src={generatedAsset.finalUrl ?? generatedAsset.blobUrl}
+                      alt="Generated design"
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
                     <GlassRevealCanvas
-                      imageUrl={generatedAsset.blobUrl}
+                      imageUrl={generatedAsset.finalUrl ?? generatedAsset.blobUrl}
                       showButtons={showButtons}
                       onRevealDone={handleRevealDone}
                       onPublish={handlePublish}
