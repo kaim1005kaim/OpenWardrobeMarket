@@ -320,15 +320,6 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
   // ... JSX remains largely the same ...
   return (
     <div className="mobile-create-page">
-      <div className="create-hero">
-        <div className="create-hero__canvas">
-          <MetaballsSoft ref={metaballRef} animated={true} />
-        </div>
-        <div className="create-hero__title">
-          <h1 className="create-title">CREATE</h1>
-        </div>
-      </div>
-
       {/* Header */}
       <header className="create-header">
         <button
@@ -344,6 +335,16 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
       </header>
 
       <div className="create-content">
+          {!isGenerating && (
+            <div className="create-hero">
+              <div className="create-hero__canvas">
+                <MetaballsSoft ref={metaballRef} animated={true} />
+              </div>
+              <div className="create-hero__title">
+                <h1 className="create-title">CREATE</h1>
+              </div>
+            </div>
+          )}
           {!isGenerating ? (
             <>
 

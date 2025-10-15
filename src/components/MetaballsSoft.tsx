@@ -386,7 +386,7 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
 
           <MarchingCubes
             resolution={80}
-            maxPolyCount={20000}
+            maxPolyCount={60000}
             enableUvs={false}
             enableColors
           >
