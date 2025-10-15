@@ -71,7 +71,7 @@ function createR2Client(endpoint: string | null): S3Client | null {
 }
 
 const r2Client = createR2Client(R2_S3_API_ENDPOINT);
-const r2PresignClient = createR2Client(R2_CUSTOM_DOMAIN_URL || R2_S3_API_ENDPOINT);
+const r2PresignClient = createR2Client(R2_S3_API_ENDPOINT);
 
 const ALLOWED_PREFIXES = ['catalog/', 'usergen/', 'generated/'];
 
