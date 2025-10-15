@@ -161,7 +161,7 @@ async function exportSingleItem(
           break;
       }
 
-      processedImage = await pipeline.toBuffer();
+      processedImage = Buffer.from(await pipeline.toBuffer());
     }
 
     const exportData: any = {
