@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import glassURL from "@/assets/glaspattern_stripe.png";
 
@@ -101,17 +101,6 @@ export default function GlassRevealCanvas({
 }: Props){
   const ref = useRef<HTMLCanvasElement|null>(null);
   const onRevealDoneRef = useRef(onRevealDone);
-  const [contextLost, setContextLost] = useState(false);
-
-  useEffect(() => {
-    setContextLost(false);
-  }, [imageUrl]);
-
-  useEffect(() => {
-    if (contextLost) {
-      onRevealDoneRef.current?.();
-    }
-  }, [contextLost]);
 
   // onRevealDoneが変わったらrefを更新（useEffect再実行は防ぐ）
   useEffect(() => {
@@ -121,20 +110,10 @@ export default function GlassRevealCanvas({
   useEffect(() => {
     if(!ref.current) return;
 
-    let renderer: THREE.WebGLRenderer | null = null;
-    try {
-      renderer = new THREE.WebGLRenderer({
-        canvas: ref.current,
-        antialias: true,
-        alpha: true,
-        premultipliedAlpha: true,
-        powerPreference: "high-performance",
-      });
-    } catch (err) {
-      console.error('[GlassRevealCanvas] renderer init failed:', err);
-      setContextLost(true);
-      return;
-    }
+    const renderer = new THREE.WebGLRenderer({
+      canvas: ref.current, antialias: true, alpha: true, premultipliedAlpha: true,
+      powerPreference: "high-performance",
+    });
     renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
 
@@ -149,25 +128,6 @@ export default function GlassRevealCanvas({
     let t0 = 0;
 
     loader.crossOrigin = "anonymous";
-
-    const handleContextLost = (event: Event) => {
-      event.preventDefault();
-      console.error('[GlassRevealCanvas] WebGL context lost', {
-        timestamp: performance.now(),
-        memoryInfo: (renderer as any)?.info?.memory
-      });
-      setContextLost(true);
-    };
-
-    const handleContextRestored = () => {
-      console.warn('[GlassRevealCanvas] WebGL context restored', {
-        timestamp: performance.now()
-      });
-      // Context restored - component will re-init on next render
-    };
-
-    renderer.domElement.addEventListener('webglcontextlost', handleContextLost as EventListener, false);
-    renderer.domElement.addEventListener('webglcontextrestored', handleContextRestored as EventListener, false);
 
     const texImg = loader.load(imageUrl, () => {
       const w = ref.current!.clientWidth || texImg.image.width;
@@ -288,84 +248,10 @@ export default function GlassRevealCanvas({
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
-
-      // Remove event listeners
-      renderer?.domElement.removeEventListener('webglcontextlost', handleContextLost as EventListener);
-      renderer?.domElement.removeEventListener('webglcontextrestored', handleContextRestored as EventListener);
-
-      // Dispose all resources properly
-      try {
-        geo.dispose();
-        mat.dispose();
-        texImg.dispose();
-        texGlass.dispose();
-        renderer?.clear(true, true, true);
-        renderer?.dispose();
-        console.info('[GlassRevealCanvas] Resources disposed');
-      } catch (e) {
-        console.warn('[GlassRevealCanvas] Error during disposal', e);
-      }
+      geo.dispose(); mat.dispose(); texImg.dispose(); texGlass.dispose();
+      renderer.dispose();
     };
-  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, leftToRight, contextLost]);
-
-  if (contextLost) {
-    return (
-      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-        <img
-          src={imageUrl}
-          alt="Generated design"
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-        {showButtons && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              padding: "20px",
-              background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)",
-              display: "flex",
-              gap: "12px",
-              justifyContent: "center",
-              pointerEvents: "auto",
-            }}
-          >
-            <button
-              onClick={onSaveDraft}
-              style={{
-                padding: "12px 24px",
-                fontSize: "16px",
-                fontWeight: 600,
-                color: "#fff",
-                background: "rgba(255,255,255,0.2)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                borderRadius: "8px",
-                cursor: "pointer",
-              }}
-            >
-              ドラフトに保存
-            </button>
-            <button
-              onClick={onPublish}
-              style={{
-                padding: "12px 24px",
-                fontSize: "16px",
-                fontWeight: 600,
-                color: "#000",
-                background: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-              }}
-            >
-              公開する
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
+  }, [imageUrl, stripes, jitter, strength, holdMs, revealMs, leftToRight]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
