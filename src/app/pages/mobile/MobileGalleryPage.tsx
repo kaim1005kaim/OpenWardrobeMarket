@@ -69,7 +69,9 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
         });
 
         if (fetched.length > 0) {
-          const mapped = fetched.map(mapApiAsset);
+          const mapped = fetched
+            .map(mapApiAsset)
+            .filter((asset) => !(asset.finalKey && asset.finalKey.toLowerCase().includes('catalog/01.png')));
           setAssets((prev) => (reset ? mapped : [...prev, ...mapped]));
           setCursor(nextCursor);
           setHasMore(Boolean(nextCursor));

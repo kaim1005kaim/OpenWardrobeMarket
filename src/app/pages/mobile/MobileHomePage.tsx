@@ -27,6 +27,7 @@ function filterByAllowedPrefixes(asset: Asset): boolean {
   const key = asset.finalKey || asset.rawKey || '';
   if (typeof key !== 'string') return false;
   const lower = key.toLowerCase();
+  if (lower.includes('catalog/01.png')) return false;
   return lower.includes('catalog/') || lower.includes('usergen/');
 }
 
