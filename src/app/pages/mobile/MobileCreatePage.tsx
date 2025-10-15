@@ -494,9 +494,10 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                 )}
 
                 {/* 受信後のGlass Stripe Reveal */}
-                {stage === "revealing" && generatedAsset && displayUrl && (
+                {stage === "revealing" && generatedAsset && displayUrl && (() => {
+                  console.log('[MobileCreatePage] Rendering revealing stage with displayUrl:', displayUrl);
+                  return (
                   <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', zIndex: 2 }}>
-                    {console.log('[MobileCreatePage] Rendering revealing stage with displayUrl:', displayUrl)}
                     {/* Background image - fallback if WebGL fails */}
                     <img
                       src={displayUrl}
@@ -531,7 +532,8 @@ export function MobileCreatePage({ onNavigate, onPublishRequest }: MobileCreateP
                       />
                     </div>
                   </div>
-                )}
+                  );
+                })()}
               </div>
 
               {/* テキスト表示エリア（画像の下） */}
