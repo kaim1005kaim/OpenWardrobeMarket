@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       parentAssetId,
     });
 
-    // Generate image with Gemini
+    // Generate image with Gemini using @google/genai
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
     const cleanNegative = (negative || '')
@@ -168,8 +168,11 @@ export async function POST(req: NextRequest) {
       key: key,
       historyId: historyRecord?.id,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('[nano/generate] Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message || 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
