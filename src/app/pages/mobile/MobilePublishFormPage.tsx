@@ -138,14 +138,42 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
         console.log('[MobilePublishFormPage] Item published:', item.id);
       }
 
+      // Show success toast
+      showToast('✓ ギャラリーに公開しました');
+
       // 3. 完了画面に遷移
       if (onPublish) {
         onPublish({ ...publishData, posterUrl });
       }
     } catch (error) {
       console.error('[MobilePublishFormPage] Publish error:', error);
+      showToast('✗ 公開に失敗しました', true);
       alert(error instanceof Error ? error.message : '公開に失敗しました');
     }
+  };
+
+  const showToast = (message: string, isError: boolean = false) => {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: ${isError ? 'rgba(220, 38, 38, 0.95)' : 'rgba(0, 0, 0, 0.85)'};
+      color: white;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      z-index: 10000;
+      animation: fadeInUp 0.3s ease-out;
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.animation = 'fadeOutDown 0.3s ease-out';
+      setTimeout(() => toast.remove(), 300);
+    }, 2000);
   };
 
   const handleSaveDraft = () => {

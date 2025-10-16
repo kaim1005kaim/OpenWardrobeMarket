@@ -384,37 +384,9 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
       const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${asset.key}`;
 
-      // First save to generation_history (as public for publish action)
-      const uploadRes = await fetch(`${apiUrl}/api/upload-generated`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          images: [{
-            url: finalUrl,
-            r2_key: asset.key,  // Already uploaded to R2
-          }],
-          generation_data: {
-            session_id: sessionKey,
-            prompt: asset.prompt,
-            parameters: {
-              answers: asset.answers,
-              dna: asset.dna,
-            },
-          },
-          is_public: true, // Mark as public for publish action
-        }),
-      });
+      console.log('[handlePublish] Publishing to gallery:', finalUrl);
 
-      if (!uploadRes.ok) {
-        const error = await uploadRes.json();
-        throw new Error(error.error || '画像の保存に失敗しました');
-      }
-
-      // Then publish to gallery
+      // Publish directly - this will create both images and published_items records
       const response = await fetch(`${apiUrl}/api/publish`, {
         method: 'POST',
         headers: {
@@ -423,19 +395,32 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         },
         body: JSON.stringify({
           image_url: finalUrl,
+          r2_key: asset.key,
           title: 'My Design',
           description: '生成されたデザイン',
           tags: [],
           colors: [],
           category: 'clothing',
           price: 0,
+          generation_data: {
+            session_id: sessionKey,
+            prompt: asset.prompt,
+            parameters: {
+              answers: asset.answers,
+              dna: asset.dna,
+            },
+          },
         }),
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || '公開に失敗しました');
+        const errorData = await response.json();
+        console.error('[handlePublish] Publish failed:', errorData);
+        throw new Error(errorData.error || '公開に失敗しました');
       }
+
+      const result = await response.json();
+      console.log('[handlePublish] Successfully published:', result);
 
       alert('ギャラリーに公開しました！');
       onNavigate?.('gallery');

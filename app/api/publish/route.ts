@@ -26,20 +26,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log('[publish] Request body:', body);
 
-    const { image_url, title, description, tags, colors, category, price } = body;
+    const { image_url, r2_key, title, description, tags, colors, category, price, generation_data } = body;
 
     if (!image_url) {
       console.error('[publish] Missing image_url in request body');
       return NextResponse.json({ error: 'image_url is required' }, { status: 400 });
     }
 
-    // Extract key from image_url to find images record
-    const urlParts = image_url.split('/');
-    const filename = urlParts[urlParts.length - 1];
-    const folderPath = urlParts.slice(3).slice(0, -1).join('/');
-    const full_path = `${folderPath}/${filename}`;
+    // Use provided r2_key or extract from URL
+    let full_path = r2_key;
+    if (!full_path) {
+      const urlParts = image_url.split('/');
+      const filename = urlParts[urlParts.length - 1];
+      const folderPath = urlParts.slice(3).slice(0, -1).join('/');
+      full_path = `${folderPath}/${filename}`;
+    }
 
     console.log('[publish] Looking for image with URL:', image_url);
+    console.log('[publish] R2 key:', full_path);
 
     // Find the images record first (more reliable than generation_history)
     const { data: imageRecords, error: imageQueryError } = await supabase
@@ -113,32 +117,96 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Create published_items record
-    const { data: publishedItem, error: publishError } = await supabase
+    // Check if published_items already exists for this image
+    const { data: existingPublished } = await supabase
       .from('published_items')
-      .insert({
-        user_id: user.id,
-        image_id: imageRecord.id,
-        title: title || 'Untitled Design',
-        description: description || '',
-        price: price || 0,
-        tags: tags || [],
-        colors: colors || [],
-        category: category || 'clothing',
-        is_active: true,
-        original_url: image_url,
-        poster_url: image_url, // Use same image for now
-        sale_type: 'buyout'
-      })
-      .select()
+      .select('id, is_active')
+      .eq('image_id', imageRecord.id)
       .single();
 
-    if (publishError) {
-      console.error('[publish] Error creating published_item:', publishError);
-      return NextResponse.json({ error: 'Failed to publish item: ' + publishError.message }, { status: 500 });
+    let publishedItem;
+
+    if (existingPublished) {
+      // Update existing published_items if it was deactivated
+      if (!existingPublished.is_active) {
+        const { data: updatedItem, error: updateError } = await supabase
+          .from('published_items')
+          .update({
+            is_active: true,
+            title: title || 'Untitled Design',
+            description: description || '',
+            price: price || 0,
+            tags: tags || [],
+            colors: colors || [],
+            category: category || 'clothing',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingPublished.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('[publish] Error updating published_item:', updateError);
+          return NextResponse.json({ error: 'Failed to update published item: ' + updateError.message }, { status: 500 });
+        }
+
+        publishedItem = updatedItem;
+        console.log('[publish] Reactivated existing published_item:', publishedItem.id);
+      } else {
+        // Already published and active
+        console.log('[publish] Image already published:', existingPublished.id);
+        publishedItem = existingPublished;
+      }
+    } else {
+      // Create new published_items record
+      const { data: newItem, error: publishError } = await supabase
+        .from('published_items')
+        .insert({
+          user_id: user.id,
+          image_id: imageRecord.id,
+          title: title || 'Untitled Design',
+          description: description || '',
+          price: price || 0,
+          tags: tags || [],
+          colors: colors || [],
+          category: category || 'clothing',
+          is_active: true,
+          original_url: image_url,
+          poster_url: image_url,
+          sale_type: 'buyout'
+        })
+        .select()
+        .single();
+
+      if (publishError) {
+        console.error('[publish] Error creating published_item:', publishError);
+        return NextResponse.json({ error: 'Failed to publish item: ' + publishError.message }, { status: 500 });
+      }
+
+      publishedItem = newItem;
+      console.log('[publish] Successfully created published_item:', publishedItem.id);
     }
 
-    console.log('[publish] Successfully published item:', publishedItem);
+    // Optionally save generation_data if provided
+    if (generation_data) {
+      const { error: historyError } = await supabase
+        .from('generation_history')
+        .insert({
+          user_id: user.id,
+          prompt: generation_data.prompt || '',
+          generation_data: {
+            session_id: generation_data.session_id || `gen-${Date.now()}`,
+            parameters: generation_data.parameters || {},
+            result_images: [image_url]
+          },
+          completion_status: 'completed'
+        });
+
+      if (historyError) {
+        console.warn('[publish] Failed to save generation history:', historyError.message);
+        // Continue anyway - this is optional
+      }
+    }
 
     return NextResponse.json({
       success: true,
