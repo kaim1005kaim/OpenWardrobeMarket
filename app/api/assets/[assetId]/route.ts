@@ -33,26 +33,62 @@ export async function PATCH(
       return Response.json({ error: 'Invalid status value' }, { status: 400 });
     }
 
-    const { data: existing, error: fetchError } = await supabase
+    // Try assets table first
+    let { data: existing, error: fetchError } = await supabase
       .from('assets')
       .select('*')
       .eq('id', assetId)
       .single();
 
+    let isFromImagesTable = false;
+
+    // If not found in assets, check images table
     if (fetchError || !existing) {
-      return Response.json({ error: 'Asset not found' }, { status: 404 });
+      const { data: imageData, error: imageError } = await supabase
+        .from('images')
+        .select('*')
+        .eq('id', assetId)
+        .single();
+
+      if (imageError || !imageData) {
+        return Response.json({ error: 'Asset not found' }, { status: 404 });
+      }
+
+      existing = imageData;
+      isFromImagesTable = true;
     }
 
     if (existing.user_id !== user.id) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { data: updated, error: updateError } = await supabase
-      .from('assets')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', assetId)
-      .select('*')
-      .single();
+    let updated;
+    let updateError;
+
+    if (isFromImagesTable) {
+      // Update is_public in images table
+      const isPublic = status === 'public';
+      const result = await supabase
+        .from('images')
+        .update({ is_public: isPublic, updated_at: new Date().toISOString() })
+        .eq('id', assetId)
+        .select('*')
+        .single();
+
+      updated = result.data;
+      updateError = result.error;
+    } else {
+      // Update status in assets table
+      const result = await supabase
+        .from('assets')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', assetId)
+        .select('*')
+        .single();
+
+      updated = result.data;
+      updateError = result.error;
+    }
 
     if (updateError || !updated) {
       console.error('[api/assets/[id]] Update error:', updateError?.message);
@@ -92,24 +128,55 @@ export async function DELETE(
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: existing, error: fetchError } = await supabase
+    // Try assets table first
+    let { data: existing, error: fetchError } = await supabase
       .from('assets')
       .select('id, user_id')
       .eq('id', assetId)
       .single();
 
+    let isFromImagesTable = false;
+
+    // If not found in assets, check images table
     if (fetchError || !existing) {
-      return Response.json({ error: 'Asset not found' }, { status: 404 });
+      const { data: imageData, error: imageError } = await supabase
+        .from('images')
+        .select('id, user_id')
+        .eq('id', assetId)
+        .single();
+
+      if (imageError || !imageData) {
+        return Response.json({ error: 'Asset not found' }, { status: 404 });
+      }
+
+      existing = imageData;
+      isFromImagesTable = true;
     }
 
     if (existing.user_id !== user.id) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { error: deleteError } = await supabase
-      .from('assets')
-      .update({ status: 'delisted', updated_at: new Date().toISOString() })
-      .eq('id', assetId);
+    let deleteError;
+
+    if (isFromImagesTable) {
+      // For images table, we can either delete or set is_public to false
+      // Let's actually delete the record
+      const result = await supabase
+        .from('images')
+        .delete()
+        .eq('id', assetId);
+
+      deleteError = result.error;
+    } else {
+      // For assets table, soft delete by setting status to delisted
+      const result = await supabase
+        .from('assets')
+        .update({ status: 'delisted', updated_at: new Date().toISOString() })
+        .eq('id', assetId);
+
+      deleteError = result.error;
+    }
 
     if (deleteError) {
       console.error('[api/assets/[id]] Delete error:', deleteError.message);
