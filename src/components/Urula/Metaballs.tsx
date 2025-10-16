@@ -54,7 +54,7 @@ interface MetaballsInnerProps extends MetaballsProps {
 
 function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, innerRef }: MetaballsInnerProps) {
   const visualParams = useMemo(() => dnaToVisualParams(dna), [dna]);
-  const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const impactRef = useRef(0);
   const paletteChangeRef = useRef(0);
 
@@ -71,11 +71,11 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
 
   // Animate metaballs with breathing and reactions
   useFrame((state, delta) => {
-    if (meshRef.current && animated) {
+    if (groupRef.current && animated) {
       const time = state.clock.elapsedTime;
 
       // Gentle rotation
-      meshRef.current.rotation.y = Math.sin(time * 0.2) * 0.1;
+      groupRef.current.rotation.y = Math.sin(time * 0.2) * 0.1;
 
       // Impact decay
       if (impactRef.current > 0) {
@@ -90,13 +90,12 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
   });
 
   return (
-    <>
+    <group ref={groupRef}>
       <ambientLight intensity={0.4} />
       <directionalLight position={[5, 5, 5]} intensity={0.6} />
       <pointLight position={[-5, 2, -5]} intensity={0.3} />
 
       <MarchingCubes
-        ref={meshRef}
         resolution={64}
         maxPolyCount={20000}
         isolation={visualParams.isolation}
@@ -134,7 +133,7 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
       </MarchingCubes>
 
       <Environment preset="studio" />
-    </>
+    </group>
   );
 }
 

@@ -74,11 +74,6 @@ function MobileAppContent() {
       case 'createQuestions':
         return <MobileCreatePage
           onNavigate={handleNavigate}
-          onPublishRequest={(imageUrl, generationData) => {
-            setPublishImageUrl(imageUrl);
-            setPublishGenerationData(generationData);
-            setCurrentPage('publishForm');
-          }}
         />;
 
       case 'publishForm':
