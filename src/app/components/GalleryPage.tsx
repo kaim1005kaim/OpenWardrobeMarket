@@ -16,6 +16,17 @@ const posterTemplates = [
   { id: 8, bgColor: '#FF6347', textColor: '#000', fontStyle: 'street' },
 ]
 
+// Fisher-Yates shuffle for random template assignment
+function getShuffledTemplates(count: number) {
+  const templates = [...posterTemplates];
+  const result = [];
+  for (let i = 0; i < count; i++) {
+    const randomIndex = Math.floor(Math.random() * templates.length);
+    result.push(templates[randomIndex]);
+  }
+  return result;
+}
+
 export function GalleryPage() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
@@ -24,6 +35,7 @@ export function GalleryPage() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'clean' | 'poster'>('poster')
+  const [shuffledTemplates, setShuffledTemplates] = useState<typeof posterTemplates>([])
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -72,6 +84,7 @@ export function GalleryPage() {
 
           // 全データを設定（appendは無視して全件取得）
           setAssets(catalogAssets)
+          setShuffledTemplates(getShuffledTemplates(catalogAssets.length))
           setLoading(false)
           setIsLoadingMore(false)
           return
@@ -86,7 +99,9 @@ export function GalleryPage() {
         .limit(10000)
 
       if (error) throw error
-      setAssets(data || [])
+      const fetchedAssets = data || []
+      setAssets(fetchedAssets)
+      setShuffledTemplates(getShuffledTemplates(fetchedAssets.length))
     } catch (error) {
       console.error('Error fetching assets:', error)
     } finally {
@@ -159,7 +174,7 @@ export function GalleryPage() {
       <div className="gallery-masonry-wrapper">
         <div className="gallery-masonry-grid">
           {assets.map((asset, index) => {
-            const template = posterTemplates[index % posterTemplates.length]
+            const template = shuffledTemplates[index] || posterTemplates[0]
             const aspectRatio = getAspectRatio(index)
             return (
               <div

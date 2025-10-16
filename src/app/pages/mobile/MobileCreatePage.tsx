@@ -940,7 +940,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               style={{
                 position: 'relative',
                 width: 'calc(100% + 40px)',
-                height: 'calc(100vw)',
+                height: 'calc(100vw * 4 / 3)',
                 marginTop: '32px',
                 marginBottom: '24px',
                 marginLeft: '-20px',
