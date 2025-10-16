@@ -384,7 +384,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
       const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${asset.key}`;
 
-      // First save to generation_history
+      // First save to generation_history (as public for publish action)
       const uploadRes = await fetch(`${apiUrl}/api/upload-generated`, {
         method: 'POST',
         headers: {
@@ -402,6 +402,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               dna: asset.dna,
             },
           },
+          is_public: true, // Mark as public for publish action
         }),
       });
 
@@ -475,7 +476,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
       const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${asset.key}`;
 
-      // Save to generation_history using correct API format
+      // Save to generation_history as draft (is_public: false)
       const response = await fetch(`${apiUrl}/api/upload-generated`, {
         method: 'POST',
         headers: {
@@ -493,6 +494,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               dna: asset.dna,
             },
           },
+          is_public: false, // Mark as draft (not public)
         }),
       });
 

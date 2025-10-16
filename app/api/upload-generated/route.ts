@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { user_id, images, generation_data } = body;
+  const { user_id, images, generation_data, is_public = false } = body;
 
   if (!user_id || !images || !generation_data) {
     return Response.json(
@@ -201,7 +201,7 @@ export async function POST(request: Request) {
             colors,
             width: 1024,
             height: 1536,
-            is_public: true,
+            is_public: is_public,
             generation_params: generation_data.parameters,
             original_prompt: generation_data.prompt,
             aspect_ratio: '2:3'
