@@ -3,18 +3,31 @@ export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
+import https from 'https';
+import dns from 'dns';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
+// Use same R2 client configuration as r2-presign (with SSL/TLS fix)
 const r2Client = new S3Client({
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
   region: 'auto',
-  endpoint: process.env.R2_S3_ENDPOINT,
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
   },
+  forcePathStyle: true,
+  requestHandler: new NodeHttpHandler({
+    httpsAgent: new https.Agent({
+      keepAlive: true,
+      // IPv6経路の相性切り分け：IPv4を優先
+      lookup: (host, options, cb) => dns.lookup(host, { ...options, family: 4 }, cb),
+      minVersion: 'TLSv1.2',
+    }),
+  }),
 });
 
 export async function POST(req: NextRequest) {
