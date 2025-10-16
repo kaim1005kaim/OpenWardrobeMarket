@@ -342,7 +342,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       setGeneratedAsset({
         key,
         blobUrl,
-        finalUrl: url,
+        finalUrl,
         answers: answersData,
         dna,
         prompt,
