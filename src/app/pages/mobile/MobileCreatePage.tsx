@@ -404,9 +404,48 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     }
   };
 
-  const handleSaveDraft = () => {
-    console.log('Draft saved:', generatedAsset?.key);
-    onNavigate?.('mypage');
+  const handleSaveDraft = async () => {
+    if (!generatedAsset?.finalUrl) {
+      alert('画像のアップロードが完了していません。');
+      return;
+    }
+
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) {
+        alert('ログインが必要です。');
+        return;
+      }
+
+      // Save to generation_history via existing endpoint
+      const response = await fetch('/api/upload-generated', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          image_url: generatedAsset.finalUrl,
+          prompt: generatedAsset.prompt,
+          metadata: {
+            answers: generatedAsset.answers,
+            dna: generatedAsset.dna,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'ドラフト保存に失敗しました');
+      }
+
+      console.log('Draft saved:', generatedAsset.key);
+      alert('ドラフトを保存しました！');
+      onNavigate?.('mypage');
+    } catch (error) {
+      console.error('[handleSaveDraft] Error:', error);
+      alert(error instanceof Error ? error.message : 'ドラフト保存に失敗しました');
+    }
   };
 
   const handleMenuNavigate = (page: string) => {
@@ -715,32 +754,6 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               </div>
             </div>
 
-            {stage === 'revealing' && !showButtons && (
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <div
-                  style={{
-                    fontFamily: "'Trajan Pro', serif",
-                    fontSize: 20,
-                    fontWeight: 300,
-                    letterSpacing: '0.1em',
-                    color: '#000',
-                    marginBottom: 8,
-                  }}
-                >
-                  標本ガラスを開いています
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif",
-                    fontSize: 14,
-                    fontWeight: 300,
-                    color: '#666',
-                  }}
-                >
-                  お待ちください
-                </div>
-              </div>
-            )}
 
             {stage === 'done' && showButtons && (
               <div style={{ textAlign: 'center', marginBottom: '24px' }}>
