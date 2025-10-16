@@ -87,6 +87,8 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     answers: Answers;
     dna: DNA;
     prompt: string;
+    imageData?: string;
+    mimeType?: string;
   } | null>(null);
   const [showButtons, setShowButtons] = useState(false);
 
@@ -366,24 +368,30 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       const token = sessionData.session.access_token;
       const userId = sessionData.session.user.id;
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
-      const asset = generatedAsset as any;
+      const asset = generatedAsset;
 
-      // Upload to R2 and get public URL
-      const imgBlob = base64ToBlob(asset.imageData, asset.mimeType);
-
-      const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${asset.key}&contentType=${asset.mimeType}`);
-      if (!presignRes.ok) throw new Error('Failed to get presigned URL');
-
-      const { url: uploadUrl } = await presignRes.json();
-
-      await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': asset.mimeType },
-        body: imgBlob,
+      // Upload to R2 via server-side API (avoids CORS issues)
+      console.log('[handlePublish] Uploading to R2 via server...');
+      const uploadRes = await fetch(`${apiUrl}/api/upload-to-r2`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          imageData: asset.imageData,
+          mimeType: asset.mimeType,
+          key: asset.key,
+        }),
       });
 
-      const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${asset.key}`;
+      if (!uploadRes.ok) {
+        const error = await uploadRes.json();
+        throw new Error(error.error || 'R2アップロードに失敗しました');
+      }
 
+      const { url: finalUrl } = await uploadRes.json();
+      console.log('[handlePublish] Upload successful:', finalUrl);
       console.log('[handlePublish] Publishing to gallery:', finalUrl);
 
       // Publish directly - this will create both images and published_items records
@@ -446,23 +454,30 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       const token = sessionData.session.access_token;
       const userId = sessionData.session.user.id;
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
-      const asset = generatedAsset as any;
+      const asset = generatedAsset;
 
-      // Upload to R2 and get public URL
-      const imgBlob = base64ToBlob(asset.imageData, asset.mimeType);
-
-      const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${asset.key}&contentType=${asset.mimeType}`);
-      if (!presignRes.ok) throw new Error('Failed to get presigned URL');
-
-      const { url: uploadUrl } = await presignRes.json();
-
-      await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': asset.mimeType },
-        body: imgBlob,
+      // Upload to R2 via server-side API (avoids CORS issues)
+      console.log('[handleSaveDraft] Uploading to R2 via server...');
+      const uploadRes = await fetch(`${apiUrl}/api/upload-to-r2`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          imageData: asset.imageData,
+          mimeType: asset.mimeType,
+          key: asset.key,
+        }),
       });
 
-      const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${asset.key}`;
+      if (!uploadRes.ok) {
+        const error = await uploadRes.json();
+        throw new Error(error.error || 'R2アップロードに失敗しました');
+      }
+
+      const { url: finalUrl } = await uploadRes.json();
+      console.log('[handleSaveDraft] Upload successful:', finalUrl);
 
       // Save to generation_history as draft (is_public: false)
       const response = await fetch(`${apiUrl}/api/upload-generated`, {
