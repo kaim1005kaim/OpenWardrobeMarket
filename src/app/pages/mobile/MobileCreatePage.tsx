@@ -393,7 +393,10 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         },
         body: JSON.stringify({
           user_id: userId,
-          images: [{ url: finalUrl }],
+          images: [{
+            url: finalUrl,
+            r2_key: asset.key,  // Already uploaded to R2
+          }],
           generation_data: {
             session_id: sessionKey,
             prompt: asset.prompt,
@@ -485,7 +488,10 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         },
         body: JSON.stringify({
           user_id: userId,
-          images: [{ url: finalUrl }],
+          images: [{
+            url: finalUrl,
+            r2_key: asset.key,  // Already uploaded to R2
+          }],
           generation_data: {
             session_id: sessionKey,
             prompt: asset.prompt,

@@ -157,35 +157,47 @@ export async function POST(request: Request) {
 
     for (const [index, image] of images.entries()) {
       try {
-        const imageResponse = await fetch(image.url);
-        if (!imageResponse.ok) {
-          throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+        // If r2_key is provided, image is already uploaded to R2
+        let r2Key: string;
+        let r2PublicUrl: string;
+
+        if (image.r2_key) {
+          // Image already uploaded, use existing key
+          r2Key = image.r2_key;
+          r2PublicUrl = image.url;
+          console.log('[Upload] Using existing R2 upload:', { r2Key, url: r2PublicUrl });
+        } else {
+          // Need to fetch and upload image
+          const imageResponse = await fetch(image.url);
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+          }
+
+          const imageBuffer = await imageResponse.arrayBuffer();
+          const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+
+          const timestamp = new Date().toISOString().slice(0, 10);
+          const imageId = `gen-${historyData.id}-${index}`;
+          const extension = contentType.includes('png') ? 'png' : 'jpg';
+          r2Key = `generated/${user_id}/${timestamp}/${imageId}.${extension}`;
+
+          const uploadCommand = new PutObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: r2Key,
+            Body: new Uint8Array(imageBuffer),
+            ContentType: contentType,
+            Metadata: {
+              'user-id': user_id,
+              'generation-id': historyData.id,
+              prompt: generation_data.prompt?.slice(0, 500) || '',
+              'original-url': image.url
+            }
+          });
+
+          await r2Client.send(uploadCommand);
+          r2PublicUrl = `https://pub-${R2_ACCOUNT_ID}.r2.dev/${r2Key}`;
         }
 
-        const imageBuffer = await imageResponse.arrayBuffer();
-        const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-
-        const timestamp = new Date().toISOString().slice(0, 10);
-        const imageId = `gen-${historyData.id}-${index}`;
-        const extension = contentType.includes('png') ? 'png' : 'jpg';
-        const r2Key = `generated/${user_id}/${timestamp}/${imageId}.${extension}`;
-
-        const uploadCommand = new PutObjectCommand({
-          Bucket: R2_BUCKET,
-          Key: r2Key,
-          Body: new Uint8Array(imageBuffer),
-          ContentType: contentType,
-          Metadata: {
-            'user-id': user_id,
-            'generation-id': historyData.id,
-            prompt: generation_data.prompt?.slice(0, 500) || '',
-            'original-url': image.url
-          }
-        });
-
-        await r2Client.send(uploadCommand);
-
-        const r2PublicUrl = `https://pub-${R2_ACCOUNT_ID}.r2.dev/${r2Key}`;
         const tags = extractTagsFromPrompt(generation_data.prompt || '');
         const colors = extractColorsFromParams(generation_data.parameters);
 
