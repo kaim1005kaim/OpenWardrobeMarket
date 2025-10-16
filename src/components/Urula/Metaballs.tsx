@@ -9,11 +9,11 @@ import type { DNA } from '../../types/dna';
  * Smoothly interpolates to create seamless evolution
  */
 function dnaToVisualParams(dna: DNA) {
-  // Isolation: controls boundary hardness (minimal_maximal)
-  const isolation = THREE.MathUtils.lerp(60, 90, (dna.minimal_maximal + 1) / 2);
-
-  // Strength: controls volume (oversized_fitted)
-  const strengthDelta = THREE.MathUtils.lerp(0.2, -0.2, (dna.oversized_fitted + 1) / 2);
+  // Strength multiplier: controls volume and boundary (minimal_maximal + oversized_fitted)
+  // Minimal = smaller strength, Maximal = larger strength
+  // Oversized = larger strength, Fitted = smaller strength
+  const strengthBase = THREE.MathUtils.lerp(0.3, 0.6, (dna.minimal_maximal + 1) / 2);
+  const strengthDelta = THREE.MathUtils.lerp(0.15, -0.15, (dna.oversized_fitted + 1) / 2);
 
   // Roughness: surface finish (relaxed_tailored)
   const roughness = THREE.MathUtils.lerp(0.22, 0.06, (dna.relaxed_tailored + 1) / 2);
@@ -27,7 +27,7 @@ function dnaToVisualParams(dna: DNA) {
   hslColor.setHSL(dna.hue, dna.sat, dna.light);
 
   return {
-    isolation,
+    strengthBase,
     strengthDelta,
     roughness,
     metalness,
@@ -98,28 +98,27 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
       <MarchingCubes
         resolution={64}
         maxPolyCount={20000}
-        isolation={visualParams.isolation}
       >
         {/* Core ball */}
         <MarchingCube
-          strength={0.5 + visualParams.strengthDelta}
+          strength={visualParams.strengthBase + visualParams.strengthDelta}
           subtract={0}
           position={[0, 0, 0]}
         />
 
         {/* Orbiting satellites for variety */}
         <MarchingCube
-          strength={0.3 + visualParams.strengthDelta * 0.5}
+          strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.6}
           subtract={0}
           position={[0.8, 0.5, 0]}
         />
         <MarchingCube
-          strength={0.25 + visualParams.strengthDelta * 0.5}
+          strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.5}
           subtract={0}
           position={[-0.6, -0.4, 0.3]}
         />
         <MarchingCube
-          strength={0.2 + visualParams.strengthDelta * 0.5}
+          strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.4}
           subtract={0}
           position={[0.2, -0.7, -0.4]}
         />
