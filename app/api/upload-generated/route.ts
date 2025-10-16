@@ -215,8 +215,7 @@ export async function POST(request: Request) {
             height: 1536,
             is_public: is_public,
             generation_params: generation_data.parameters,
-            original_prompt: generation_data.prompt,
-            aspect_ratio: '2:3'
+            original_prompt: generation_data.prompt
           })
           .select()
           .single();
