@@ -40,21 +40,21 @@ export function MobileCreateTopPage({ onNavigate, onStartCreate }: MobileCreateT
       </header>
 
       <div className="create-top-content">
-        {/* メタボール（設問画面と同じ位置） */}
-        <div style={{ position: 'relative', width: 'calc(100% + 40px)', height: '320px', marginTop: '0', marginBottom: '32px', marginLeft: '-20px', marginRight: '-20px' }}>
-          <div style={{ position: 'absolute', top: '-80px', left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+        {/* メタボール（設問画面と同じ構造） */}
+        <div className="create-hero">
+          <div className="create-hero__canvas">
             <MetaballsSoft animated={true} />
           </div>
-          {/* CREATEタイトル（エフェクトの上に重ねる） */}
-          <div style={{ position: 'absolute', top: '40px', left: '20px', right: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 70 }}>
-            <h1 className="create-top-title">CREATE</h1>
-            {/* 説明テキスト */}
-            <p className="create-top-description">
-              選んで、答えて、話しかけて、<br />
-              あなただけのデザインをつくろう
-            </p>
+          <div className="create-hero__title">
+            <h1 className="create-title">CREATE</h1>
           </div>
         </div>
+
+        {/* 説明テキスト */}
+        <p className="create-top-description">
+          選んで、答えて、話しかけて、<br />
+          あなただけのデザインをつくろう
+        </p>
 
         {/* デザインを始めるボタン */}
         <button className="start-btn" onClick={handleStartCreate}>

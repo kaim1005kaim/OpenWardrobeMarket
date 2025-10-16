@@ -11,6 +11,7 @@ import {
   deleteAsset,
   toggleLike
 } from '../../lib/api/assets';
+import { COPY } from '../../../constants/copy';
 import './MobileMyPage.css';
 
 interface MobileMyPageProps {
@@ -190,7 +191,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
       setSelectedAsset((prev) => (prev && prev.id === assetId ? mapped : prev));
 
       // Show success message
-      const message = makePublic ? '✓ ギャラリーに公開しました' : '✓ 非公開にしました';
+      const message = makePublic ? COPY.status.publishSuccess : COPY.status.unpublishSuccess;
       showToast(message);
 
       // Refresh assets after a short delay to get updated state
@@ -203,7 +204,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
       // Revert optimistic update
       fetchMyAssets();
 
-      alert('更新に失敗しました');
+      alert(COPY.errors.updateFailed);
     }
   };
 
@@ -239,7 +240,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
       setSelectedAsset((prev) => (prev && prev.id === assetId ? null : prev));
     } catch (error) {
       console.error('[MobileMyPage] Error deleting asset:', error);
-      alert('削除に失敗しました');
+      alert(COPY.errors.deleteFailed);
     }
   };
 
@@ -300,7 +301,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
       }
     } catch (error) {
       console.error('[MobileMyPage] Error toggling favorite:', error);
-      alert('お気に入りの更新に失敗しました');
+      alert(COPY.errors.like);
     }
   };
 
@@ -328,7 +329,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
 
           {/* Title with Profile */}
           <div className="title-section">
-            <h1 className="page-title">MY PAGE</h1>
+            <h1 className="page-title">{COPY.mypage.title}</h1>
             <div className="profile-avatar-circle">
               <img
                 src={user?.user_metadata?.avatar_url || 'https://via.placeholder.com/120/EEECE6/999?text=User'}

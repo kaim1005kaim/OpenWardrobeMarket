@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../lib/AuthContext';
+import { COPY } from '../../../constants/copy';
 import './MenuOverlay.css';
 
 interface MenuOverlayProps {
@@ -45,16 +46,16 @@ export function MenuOverlay({ isOpen, onClose, onNavigate }: MenuOverlayProps) {
         </button>
 
         <nav className="menu-nav-main">
-          <button onClick={() => handleNavigate('home')}>TOP</button>
-          <button onClick={() => handleNavigate('gallery')}>GALLERY</button>
-          <button onClick={() => handleNavigate('create')}>CREATE</button>
-          <button onClick={() => handleNavigate('mypage')}>MY PAGE</button>
+          <button onClick={() => handleNavigate('home')}>{COPY.nav.STUDIO}</button>
+          <button onClick={() => handleNavigate('gallery')}>{COPY.nav.SHOWCASE}</button>
+          <button onClick={() => handleNavigate('create')}>{COPY.nav.CREATE}</button>
+          <button onClick={() => handleNavigate('mypage')}>{COPY.nav.ARCHIVE}</button>
         </nav>
 
         <div className="menu-nav-secondary">
-          <button onClick={() => handleNavigate('faq')}>FAQ</button>
-          <button onClick={() => handleNavigate('privacy')}>PRIVACY POLICY</button>
-          <button onClick={() => handleNavigate('contact')}>CONTACT</button>
+          <button onClick={() => handleNavigate('faq')}>{COPY.footer.faq}</button>
+          <button onClick={() => handleNavigate('privacy')}>{COPY.footer.privacy}</button>
+          <button onClick={() => handleNavigate('contact')}>{COPY.footer.contact}</button>
         </div>
 
         {user && (
@@ -63,7 +64,7 @@ export function MenuOverlay({ isOpen, onClose, onNavigate }: MenuOverlayProps) {
               {user.user_metadata?.username || user.email?.split('@')[0] || 'USER NAME'}
             </div>
             <button className="menu-logout-button" onClick={handleLogout}>
-              LOGOUT
+              {COPY.misc.logout}
             </button>
           </div>
         )}

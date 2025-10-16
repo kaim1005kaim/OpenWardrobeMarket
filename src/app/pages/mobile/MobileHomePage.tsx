@@ -10,6 +10,7 @@ import {
   deleteAsset,
   toggleLike
 } from '../../lib/api/assets';
+import { COPY } from '../../../constants/copy';
 import './MobileHomePage.css';
 
 const RECOMMENDATION_COUNT = 10;
@@ -210,8 +211,8 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
         {/* Spacer to maintain layout consistency */}
         <div className="home-spacer" aria-hidden="true" />
 
-        {/* RECOMMEND Title */}
-        <h1 className="recommend-title">RECOMMEND</h1>
+        {/* STUDIO Title */}
+        <h1 className="recommend-title">{COPY.pages.STUDIO}</h1>
 
         {/* Card Swiper */}
         <div className="card-swiper-section">
@@ -224,12 +225,12 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
             />
           ) : (
             <div className="home-empty-state">
-              まだ提案はありません
+              {COPY.misc.noRecommendations}
             </div>
           )}
           {isLoading && recommendedAssets.length === 0 && (
             <div className="home-loading-indicator">
-              Loading...
+              {COPY.loading.preparing}
             </div>
           )}
         </div>
@@ -239,7 +240,7 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
           className="cta-button"
           onClick={() => onNavigate?.('create')}
         >
-          あなただけのデザインを完成させよう
+          {COPY.cta.heroPrimary}
         </button>
 
         {/* Gallery Layout Link */}
@@ -247,28 +248,28 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
           className="gallery-layout-link"
           onClick={() => onNavigate?.('gallery')}
         >
-          ギャラリーレイアウトを見る
+          {COPY.cta.toGallery}
         </button>
 
         {/* Footer */}
         <footer className="mobile-home-footer">
           <div className="footer-links">
-            <a href="#" className="footer-link">F.A.Q.</a>
-            <a href="#" className="footer-link">PRIVACY POLICY</a>
-            <a href="#" className="footer-link">CONTACT</a>
+            <a href="#" className="footer-link">{COPY.footer.faq}</a>
+            <a href="#" className="footer-link">{COPY.footer.privacy}</a>
+            <a href="#" className="footer-link">{COPY.footer.contact}</a>
           </div>
 
           <div className="footer-logo">
             <img src="/logo.png" alt="OWM Logo" className="footer-logo-image" />
             <div className="footer-logo-text">
-              <p className="footer-brand">OPEN WARDROBE MARKET</p>
-              <p className="footer-tagline">DESIGN, GENERATE, AND PUBLISH YOUR ORIGINAL FASHION</p>
-              <p className="footer-tagline">FASHION POWERED BY OPEN DESIGN</p>
+              <p className="footer-brand">{COPY.footer.brand}</p>
+              <p className="footer-tagline">{COPY.footer.tagline1}</p>
+              <p className="footer-tagline">{COPY.footer.tagline2}</p>
             </div>
           </div>
 
           <div className="footer-copyright">
-            <p>©︎2025 OPEN WARDROBE MARKET. ALL RIGHTS RESERVED.</p>
+            <p>{COPY.footer.copyright}</p>
           </div>
         </footer>
       </div>

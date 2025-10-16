@@ -71,8 +71,14 @@ body.menu-open .mobile-header .hamburger-btn {
 
 /* Content */
 .mobile-content {
-  padding-top: 60px;
+  padding-top: 0;
   padding-bottom: 0;
+  min-height: 100vh;
+}
+
+/* Add padding only when header is shown */
+.mobile-layout:has(.mobile-header) .mobile-content {
+  padding-top: 60px;
   min-height: calc(100vh - 60px);
 }
 

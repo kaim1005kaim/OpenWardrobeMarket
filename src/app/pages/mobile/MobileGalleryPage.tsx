@@ -14,6 +14,7 @@ import {
   deleteAsset,
   toggleLike
 } from '../../lib/api/assets';
+import { COPY } from '../../../constants/copy';
 import './MobileHomePage.css';
 
 interface MobileGalleryPageProps {
@@ -205,12 +206,12 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
         <div className="gallery-page-content">
           <SearchTrigger
             tone="dark"
-            placeholder="Search"
+            placeholder={COPY.misc.search}
             className="gallery-search-trigger"
             showLabel={false}
             onClick={() => setIsSearchOpen(true)}
           />
-          <h1 className="gallery-title" onClick={handleTitleClick}>GALLERY</h1>
+          <h1 className="gallery-title" onClick={handleTitleClick}>{COPY.pages.SHOWCASE}</h1>
           <MobileGallery
             assets={assets}
             viewMode={viewMode}

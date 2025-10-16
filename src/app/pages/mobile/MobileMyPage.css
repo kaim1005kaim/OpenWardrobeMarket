@@ -1,7 +1,7 @@
 .mypage-content {
   background: #EEECE6;
   min-height: 100vh;
-  padding-bottom: 80px;
+  padding: 0 0 80px;
 }
 
 /* Header */
@@ -9,7 +9,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 0 20px;
+  height: 60px;
   background: #EEECE6;
 }
 
@@ -113,9 +114,9 @@
   background: #FFFFFF;
   border: 1px solid #000000;
   border-radius: 4px;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Forum', serif;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 1px;
   color: #000000;
   margin: 0 0 8px 0;
@@ -163,9 +164,9 @@
 .more-btn {
   background: none;
   border: none;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Forum', serif;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 1px;
   color: #000000;
   text-decoration: underline;
@@ -300,9 +301,9 @@
 .tab-btn {
   background: none;
   border: none;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
+  font-family: 'Forum', serif;
+  font-size: 16px;
+  font-weight: 400;
   letter-spacing: 0.5px;
   color: #999999;
   cursor: pointer;
@@ -384,21 +385,26 @@
 
 .create-design-btn {
   width: 100%;
-  padding: 16px 24px;
+  height: 56px;
   background: transparent;
-  border: 2px solid #000000;
-  border-radius: 8px;
-  font-family: 'Noto Sans CJK JP', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
+  border: 1px solid #000000;
+  border-radius: 0;
+  font-family: 'Noto Sans CJK JP', 'Noto Sans JP', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
   color: #000000;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
+.create-design-btn:hover {
+  background: #000000;
+  color: #FFFFFF;
+}
+
 .create-design-btn:active {
-  background: rgba(0, 0, 0, 0.05);
-  transform: scale(0.98);
+  background: #000000;
+  color: #FFFFFF;
 }
 
 /* Setting Content */

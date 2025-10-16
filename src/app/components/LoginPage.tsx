@@ -91,9 +91,24 @@ export function LoginPage() {
 
     setIsLoading(true)
     try {
-      // Use fixed apex domain to avoid www subdomain origin mismatch
-      const appOrigin = import.meta.env.VITE_PUBLIC_APP_URL || 'https://open-wardrobe-market.com'
-      const redirectUrl = appOrigin.replace(/^https?:\/\/www\./, 'https://')
+      // Use current origin for development, fixed apex domain for production
+      const isDevelopment = window.location.hostname === 'localhost'
+      const appOrigin = isDevelopment
+        ? window.location.origin
+        : (import.meta.env.VITE_PUBLIC_APP_URL || 'https://open-wardrobe-market.com')
+      const redirectUrl = isDevelopment
+        ? appOrigin
+        : appOrigin.replace(/^https?:\/\/www\./, 'https://')
+
+      console.log('[LoginPage] Google OAuth redirect config:', {
+        isDevelopment,
+        hostname: window.location.hostname,
+        origin: window.location.origin,
+        appOrigin,
+        redirectUrl,
+        finalRedirectTo: `${redirectUrl}/auth/callback`
+      })
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

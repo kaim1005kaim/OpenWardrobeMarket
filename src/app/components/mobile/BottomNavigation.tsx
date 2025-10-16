@@ -1,4 +1,5 @@
 import React from 'react';
+import { COPY } from '../../../constants/copy';
 import './BottomNavigation.css';
 
 type TabType = 'home' | 'gallery' | 'create' | 'mypage';
@@ -10,10 +11,10 @@ interface BottomNavigationProps {
 
 export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
   const tabs = [
-    { id: 'home' as TabType, label: 'HOME', icon: '🏠' },
-    { id: 'gallery' as TabType, label: 'GALLERY', icon: '🖼️' },
-    { id: 'create' as TabType, label: 'CREATE', icon: '✨' },
-    { id: 'mypage' as TabType, label: 'MY PAGE', icon: '👤' }
+    { id: 'home' as TabType, label: COPY.nav.STUDIO, icon: '🏠' },
+    { id: 'gallery' as TabType, label: COPY.nav.SHOWCASE, icon: '🖼️' },
+    { id: 'create' as TabType, label: COPY.nav.CREATE, icon: '✨' },
+    { id: 'mypage' as TabType, label: COPY.nav.ARCHIVE, icon: '👤' }
   ];
 
   return (
@@ -34,13 +35,13 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
 
         <div className="footer-info">
           <div className="footer-links">
-            <a href="/faq">FAQ</a>
-            <a href="/privacy">privacy policy</a>
-            <a href="/contact">contact</a>
+            <a href="/faq">{COPY.footer.faq}</a>
+            <a href="/privacy">{COPY.footer.privacy}</a>
+            <a href="/contact">{COPY.footer.contact}</a>
           </div>
           <div className="copyright">
-            <p>OPEN WARDROBE MARKET</p>
-            <p className="small">©︎ OPEN WARDROBE MARKET. All rights reserved.</p>
+            <p>{COPY.footer.brand}</p>
+            <p className="small">{COPY.footer.copyright}</p>
           </div>
         </div>
       </nav>

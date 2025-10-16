@@ -6,6 +6,7 @@ import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import { useDNA } from '../../../hooks/useDNA';
 import { DEFAULT_DNA, type DNA, type Answers, type GeminiCoachOut } from '../../../types/dna';
+import { COPY } from '../../../constants/copy';
 import './MobileCreatePage.css';
 
 // Helper: Base64 to Blob
@@ -33,29 +34,29 @@ interface Question {
 const createQuestions: Question[] = [
   {
     id: 'vibe',
-    question: 'どんな雰囲気のデザインにしたいですか？',
-    options: ['minimal', 'street', 'luxury', 'outdoor', 'workwear', 'athleisure'],
+    question: COPY.questions.vibe,
+    options: ['ミニマル', 'ストリート', 'ラグジュアリー', 'アウトドア', 'ワークウェア', 'アスレジャー'],
   },
   {
     id: 'silhouette',
-    question: 'シルエットはどうしますか？',
-    options: ['oversized', 'fitted', 'loose', 'tailored', 'relaxed'],
+    question: COPY.questions.silhouette,
+    options: ['オーバーサイズ', 'フィット', 'ルーズ', 'テーラード', 'リラックス', 'スリム'],
   },
   {
     id: 'color',
-    question: 'カラーパレットを選択してください',
-    options: ['black', 'white', 'navy', 'earth', 'pastel', 'neon', 'monochrome'],
+    question: COPY.questions.color,
+    options: ['ブラック', 'ホワイト', 'ネイビー', 'アースカラー', 'パステル', 'ネオン', 'モノトーン', 'ビビッド'],
     multiSelect: true,
   },
   {
     id: 'occasion',
-    question: '着用シーンは？',
-    options: ['casual', 'business', 'formal', 'sports', 'outdoor'],
+    question: COPY.questions.occasion,
+    options: ['カジュアル', 'ビジネス', 'フォーマル', 'スポーツ', 'アウトドア', 'リゾート'],
   },
   {
     id: 'season',
-    question: 'シーズンは？',
-    options: ['spring/summer', 'autumn/winter', 'resort', 'all season'],
+    question: COPY.questions.season,
+    options: ['春夏', '秋冬', 'リゾート', 'オールシーズン'],
   },
 ];
 
@@ -238,7 +239,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       updateContext({ geminiTags: coachResult.tags });
     } catch (error) {
       console.error('[handleCoach] Error:', error);
-      alert('ガイダンス取得に失敗しました');
+      alert(COPY.errors.guidance);
     } finally {
       setIsCoaching(false);
     }
@@ -342,7 +343,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       setStage('revealing');
     } catch (error) {
       console.error('[handleGenerate] Error:', error);
-      alert(error instanceof Error ? error.message : '生成に失敗しました');
+      alert(error instanceof Error ? error.message : COPY.errors.generateFailed);
       setStage('coaching');
     }
   };
@@ -354,14 +355,14 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
   const handlePublish = async () => {
     if (!generatedAsset) {
-      alert('生成された画像がありません。');
+      alert(COPY.errors.noImage);
       return;
     }
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        alert('ログインが必要です。');
+        alert(COPY.errors.loginRequired);
         return;
       }
 
@@ -387,7 +388,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
       if (!uploadRes.ok) {
         const error = await uploadRes.json();
-        throw new Error(error.error || 'R2アップロードに失敗しました');
+        throw new Error(error.error || COPY.errors.upload);
       }
 
       const { url: finalUrl } = await uploadRes.json();
@@ -430,24 +431,24 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       const result = await response.json();
       console.log('[handlePublish] Successfully published:', result);
 
-      alert('ギャラリーに公開しました！');
+      alert(COPY.status.publishSuccess);
       onNavigate?.('gallery');
     } catch (error) {
       console.error('[handlePublish] Error:', error);
-      alert(error instanceof Error ? error.message : '公開に失敗しました');
+      alert(error instanceof Error ? error.message : COPY.status.publishError);
     }
   };
 
   const handleSaveDraft = async () => {
     if (!generatedAsset) {
-      alert('生成された画像がありません。');
+      alert(COPY.errors.noImage);
       return;
     }
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        alert('ログインが必要です。');
+        alert(COPY.errors.loginRequired);
         return;
       }
 
@@ -473,7 +474,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
       if (!uploadRes.ok) {
         const error = await uploadRes.json();
-        throw new Error(error.error || 'R2アップロードに失敗しました');
+        throw new Error(error.error || COPY.errors.upload);
       }
 
       const { url: finalUrl } = await uploadRes.json();
@@ -506,15 +507,15 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'ドラフト保存に失敗しました');
+        throw new Error(error.error || COPY.drafts.failed);
       }
 
       console.log('Draft saved:', asset.key);
-      alert('ドラフトを保存しました！');
+      alert(COPY.drafts.saved);
       onNavigate?.('mypage');
     } catch (error) {
       console.error('[handleSaveDraft] Error:', error);
-      alert(error instanceof Error ? error.message : 'ドラフト保存に失敗しました');
+      alert(error instanceof Error ? error.message : COPY.drafts.failed);
     }
   };
 
@@ -560,7 +561,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
             <div className="question-container">
               <h2 className="question-text">{currentQuestion.question}</h2>
-              {currentQuestion.multiSelect && <p className="hint-text">複数選択可能です</p>}
+              {currentQuestion.multiSelect && <p className="hint-text">{COPY.flow.multiSelectHint}</p>}
             </div>
 
             <div className="options-container">
@@ -587,17 +588,17 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
             <div className="nav-buttons">
               <button className="nav-btn primary" onClick={handleNext} disabled={!canProceed()}>
-                {currentStep === createQuestions.length - 1 ? '次へ' : '次へ'}
+                {COPY.flow.next}
               </button>
             </div>
 
             {currentStep >= 1 && (
               <div className="secondary-nav-buttons">
                 <button className="reset-btn" onClick={handleReset}>
-                  はじめからやり直す
+                  {COPY.flow.restart}
                 </button>
                 <button className="back-btn" onClick={handleBack}>
-                  一つ前に戻る
+                  {COPY.flow.back}
                 </button>
               </div>
             )}
@@ -612,16 +613,16 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 <MetaballsSoft ref={metaballsRef} animated={true} />
               </div>
               <div className="create-hero__title">
-                <h1 className="create-title">DNA注入</h1>
+                <h1 className="create-title">{COPY.flow.guidance}</h1>
               </div>
             </div>
 
             <div className="coaching-container">
-              <h2 className="question-text">入力と回答からタグとDNA差分を提案します</h2>
+              <h2 className="question-text">{COPY.flow.guidanceTooltip}</h2>
               <textarea
                 value={freeText}
                 onChange={(e) => setFreeText(e.target.value)}
-                placeholder="例: 撥水機能のあるビジネスカジュアル..."
+                placeholder={COPY.flow.placeholder}
                 style={{
                   width: '100%',
                   minHeight: '80px',
@@ -640,14 +641,14 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   disabled={isCoaching}
                   style={{ marginBottom: '16px' }}
                 >
-                  {isCoaching ? 'AIが分析中...' : '意匠を提案'}
+                  {isCoaching ? COPY.flow.coachButtonLoading : COPY.flow.coachButton}
                 </button>
               )}
 
               {coachData && (
                 <>
                   <h3 style={{ fontSize: '16px', marginBottom: '12px', fontWeight: 600 }}>
-                    提案チップ
+                    {COPY.flow.chips}
                   </h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
                     {coachData.chips.map((chip) => (
@@ -698,7 +699,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   )}
 
                   <button className="nav-btn primary" onClick={handlePreview}>
-                    プレビューへ
+                    {COPY.flow.toPreview}
                   </button>
                 </>
               )}
@@ -709,7 +710,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   onClick={handlePreview}
                   style={{ marginTop: '8px' }}
                 >
-                  スキップしてプレビュー
+                  {COPY.flow.skip}
                 </button>
               )}
             </div>
@@ -724,7 +725,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 <MetaballsSoft ref={metaballsRef} animated={true} />
               </div>
               <div className="create-hero__title">
-                <h1 className="create-title">PREVIEW</h1>
+                <h1 className="create-title">{COPY.pages.REVIEW}</h1>
               </div>
             </div>
 
@@ -736,19 +737,19 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               marginBottom: '16px',
               textAlign: 'center'
             }}>
-              Urulaがあなたの提案をデザインに組み込みました。デザインに反映します。
+              {COPY.flow.reflected}
             </p>
 
             <div className="nav-buttons">
               <button className="nav-btn primary" onClick={handleGenerate}>
-                生成する
+                {COPY.cta.generate}
               </button>
               <button
                 className="nav-btn secondary"
                 onClick={() => setStage('coaching')}
                 style={{ marginTop: '8px' }}
               >
-                戻る
+                {COPY.flow.back}
               </button>
             </div>
           </>
@@ -774,7 +775,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   marginBottom: 8,
                 }}
               >
-                PLEASE WAIT
+                {COPY.pages.CREATE}
               </div>
               <div
                 style={{
@@ -784,7 +785,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   color: '#666',
                 }}
               >
-                お待ちください
+                {COPY.loading.generating}
               </div>
             </div>
           </>
@@ -837,7 +838,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                     marginBottom: 8,
                   }}
                 >
-                  PERFECT
+                  {COPY.pages.REFINE}
                 </div>
                 <div
                   style={{
@@ -847,7 +848,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                     color: '#666',
                   }}
                 >
-                  世界でひとつのデザインが出来上がりました
+                  {COPY.cta.heroSecondary}
                 </div>
               </div>
             )}

@@ -375,7 +375,7 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
           }}
           frameloop="always"
           dpr={[1, 1.5]}
-          camera={{ position: [0, 0, 2.4], fov: 45 }}
+          camera={{ position: [0, -0.3, 2.4], fov: 45 }}
           style={{ width: "100%", height: "100%", background: "transparent" }}
         >
           <ambientLight intensity={0.8} />
