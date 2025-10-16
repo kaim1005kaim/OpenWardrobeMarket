@@ -137,11 +137,13 @@ export async function POST(request: Request) {
       .from('generation_history')
       .insert({
         user_id,
-        session_id: generation_data.session_id || `gen-${Date.now()}`,
         prompt: generation_data.prompt,
-        parameters: generation_data.parameters || {},
-        result_images: images.map((img: any) => img.url),
-        status: 'completed'
+        generation_data: {
+          session_id: generation_data.session_id || `gen-${Date.now()}`,
+          parameters: generation_data.parameters || {},
+          result_images: images.map((img: any) => img.url),
+        },
+        completion_status: 'completed'
       })
       .select()
       .single();
