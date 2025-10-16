@@ -77,12 +77,18 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
       // Gentle rotation
       groupRef.current.rotation.y = Math.sin(time * 0.2) * 0.1;
 
-      // Impact decay
+      // Breathing scale animation
+      const breathScale = 1 + Math.sin(time * 0.5) * 0.05;
+      groupRef.current.scale.setScalar(breathScale);
+
+      // Impact decay with scale pulse
       if (impactRef.current > 0) {
+        const impactScale = 1 + impactRef.current * 0.2;
+        groupRef.current.scale.setScalar(impactScale);
         impactRef.current = Math.max(0, impactRef.current - delta * 2);
       }
 
-      // Palette change decay
+      // Palette change decay with color shift
       if (paletteChangeRef.current > 0) {
         paletteChangeRef.current = Math.max(0, paletteChangeRef.current - delta * 1.5);
       }
@@ -150,7 +156,6 @@ export const UrulaMetaballs = forwardRef<UrulaMetaballsHandle, MetaballsProps>(
           camera={{ position: [0, 0, 5], fov: 50 }}
           style={{ background: 'transparent' }}
         >
-          <color attach="background" args={['#00000000']} />
           <MetaballsInner dna={dna} animated={animated} innerRef={ref} />
         </Canvas>
       </div>

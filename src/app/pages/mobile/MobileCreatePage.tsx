@@ -498,7 +498,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
             </div>
 
             <div className="coaching-container">
-              <h2 className="question-text">詳細を教えてください（任意）</h2>
+              <h2 className="question-text">入力と回答からタグとDNA差分を提案します</h2>
               <textarea
                 value={freeText}
                 onChange={(e) => setFreeText(e.target.value)}
@@ -521,7 +521,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   disabled={isCoaching}
                   style={{ marginBottom: '16px' }}
                 >
-                  {isCoaching ? 'AIが分析中...' : 'AIガイダンスを取得'}
+                  {isCoaching ? 'AIが分析中...' : '意匠を提案'}
                 </button>
               )}
 
@@ -606,11 +606,19 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">PREVIEW</h1>
-                <p style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
-                  Urulaが最終形態に進化しました
-                </p>
               </div>
             </div>
+
+            <p style={{
+              fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif",
+              fontSize: '14px',
+              color: '#666',
+              marginTop: '16px',
+              marginBottom: '16px',
+              textAlign: 'center'
+            }}>
+              Urulaがあなたの提案をデザインに組み込みました。デザインに反映します。
+            </p>
 
             <div className="nav-buttons">
               <button className="nav-btn primary" onClick={handleGenerate}>
@@ -630,26 +638,8 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         {/* Stage: Generating */}
         {stage === 'generating' && (
           <>
-            <div
-              className="viewer-container"
-              style={{
-                position: 'relative',
-                width: 'calc(100% + 40px)',
-                height: 'calc(100vw)',
-                marginTop: '32px',
-                marginBottom: '24px',
-                marginLeft: '-20px',
-                marginRight: '-20px',
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                }}
-              >
+            <div className="create-hero">
+              <div className="create-hero__canvas">
                 <UrulaMetaballs dna={dna} animated={true} />
               </div>
             </div>
