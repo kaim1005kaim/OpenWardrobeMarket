@@ -325,28 +325,17 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       const imgBlob = base64ToBlob(imageData, mimeType);
       const blobUrl = URL.createObjectURL(imgBlob);
 
-      // Upload to R2 in background
-      const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${key}&contentType=${mimeType}`);
-      if (!presignRes.ok) throw new Error('Failed to get presigned URL');
-
-      const { url: uploadUrl } = await presignRes.json();
-
-      await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': mimeType },
-        body: imgBlob,
-      });
-
-      const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${key}`;
-
+      // Store blob and base64 data for later upload
       setGeneratedAsset({
         key,
         blobUrl,
-        finalUrl,
+        finalUrl: null, // Will be set after upload on save/publish
         answers: answersData,
         dna,
         prompt,
-      });
+        imageData, // Store base64 for upload
+        mimeType,
+      } as any);
 
       setStage('revealing');
     } catch (error) {
@@ -362,8 +351,8 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   };
 
   const handlePublish = async () => {
-    if (!generatedAsset?.finalUrl) {
-      alert('画像のアップロードが完了していません。');
+    if (!generatedAsset) {
+      alert('生成された画像がありません。');
       return;
     }
 
@@ -374,14 +363,34 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         return;
       }
 
-      const response = await fetch('/api/publish', {
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+      const asset = generatedAsset as any;
+
+      // Upload to R2 and get public URL
+      const imgBlob = base64ToBlob(asset.imageData, asset.mimeType);
+
+      const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${asset.key}&contentType=${asset.mimeType}`);
+      if (!presignRes.ok) throw new Error('Failed to get presigned URL');
+
+      const { url: uploadUrl } = await presignRes.json();
+
+      await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': asset.mimeType },
+        body: imgBlob,
+      });
+
+      const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${asset.key}`;
+
+      // Publish to gallery
+      const response = await fetch(`${apiUrl}/api/publish`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          image_url: generatedAsset.finalUrl,
+          image_url: finalUrl,
           title: 'My Design',
           description: '生成されたデザイン',
           tags: [],
@@ -405,8 +414,8 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   };
 
   const handleSaveDraft = async () => {
-    if (!generatedAsset?.finalUrl) {
-      alert('画像のアップロードが完了していません。');
+    if (!generatedAsset) {
+      alert('生成された画像がありません。');
       return;
     }
 
@@ -417,19 +426,38 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         return;
       }
 
-      // Save to generation_history via existing endpoint
-      const response = await fetch('/api/upload-generated', {
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+      const asset = generatedAsset as any;
+
+      // Upload to R2 and get public URL
+      const imgBlob = base64ToBlob(asset.imageData, asset.mimeType);
+
+      const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${asset.key}&contentType=${asset.mimeType}`);
+      if (!presignRes.ok) throw new Error('Failed to get presigned URL');
+
+      const { url: uploadUrl } = await presignRes.json();
+
+      await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': asset.mimeType },
+        body: imgBlob,
+      });
+
+      const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${asset.key}`;
+
+      // Save to generation_history
+      const response = await fetch(`${apiUrl}/api/upload-generated`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          image_url: generatedAsset.finalUrl,
-          prompt: generatedAsset.prompt,
+          image_url: finalUrl,
+          prompt: asset.prompt,
           metadata: {
-            answers: generatedAsset.answers,
-            dna: generatedAsset.dna,
+            answers: asset.answers,
+            dna: asset.dna,
           },
         }),
       });
@@ -439,7 +467,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         throw new Error(error.error || 'ドラフト保存に失敗しました');
       }
 
-      console.log('Draft saved:', generatedAsset.key);
+      console.log('Draft saved:', asset.key);
       alert('ドラフトを保存しました！');
       onNavigate?.('mypage');
     } catch (error) {
