@@ -154,7 +154,7 @@ export async function GET(request: Request) {
 
       error = assetsError || publishedError;
     } else if (scope === 'mine' && user) {
-      // For 'mine' scope, fetch from both assets and published_items
+      // For 'mine' scope, fetch from assets, published_items, and images (drafts)
       let assetsQuery = supabase
         .from('assets')
         .select('*')
@@ -192,7 +192,23 @@ export async function GET(request: Request) {
 
       const { data: publishedData, error: publishedError } = await publishedQuery;
 
+      // Fetch user's draft images (not yet published)
+      let imagesQuery = supabase
+        .from('images')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_public', false)
+        .order('created_at', { ascending: false })
+        .limit(limitValue);
+
+      if (cursor) {
+        imagesQuery = imagesQuery.lt('created_at', cursor);
+      }
+
+      const { data: imagesData, error: imagesError } = await imagesQuery;
+
       console.log('[api/assets] User published items count:', publishedData?.length || 0);
+      console.log('[api/assets] User draft images count:', imagesData?.length || 0);
 
       // Convert published_items to asset format
       const publishedAsAssets = (publishedData || []).map((item: any) => ({
@@ -217,12 +233,35 @@ export async function GET(request: Request) {
         }
       }));
 
+      // Convert images to asset format (drafts)
+      const draftAsAssets = (imagesData || []).map((item: any) => ({
+        id: item.id,
+        user_id: item.user_id,
+        title: item.title || 'Untitled Design',
+        description: item.description || '',
+        status: 'private',
+        tags: item.tags || [],
+        price: item.price || 0,
+        likes: 0,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        final_key: item.r2_key,
+        final_url: item.r2_url,
+        raw_key: null,
+        raw_url: null,
+        metadata: {
+          width: item.width || 1024,
+          height: item.height || 1024,
+          mime_type: item.mime_type || 'image/png'
+        }
+      }));
+
       // Combine and sort by created_at
-      data = [...(assetsData || []), ...publishedAsAssets].sort(
+      data = [...(assetsData || []), ...publishedAsAssets, ...draftAsAssets].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
-      error = assetsError || publishedError;
+      error = assetsError || publishedError || imagesError;
     } else {
       // For other scopes (liked), use existing logic
       let query = supabase
