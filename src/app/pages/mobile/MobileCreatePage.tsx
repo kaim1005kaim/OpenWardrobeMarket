@@ -420,12 +420,14 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     }
 
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      if (!token) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
         alert('ログインが必要です。');
         return;
       }
 
+      const token = sessionData.session.access_token;
+      const userId = sessionData.session.user.id;
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
       const asset = generatedAsset as any;
 
@@ -445,7 +447,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
       const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${asset.key}`;
 
-      // Save to generation_history
+      // Save to generation_history using correct API format
       const response = await fetch(`${apiUrl}/api/upload-generated`, {
         method: 'POST',
         headers: {
@@ -453,11 +455,15 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          image_url: finalUrl,
-          prompt: asset.prompt,
-          metadata: {
-            answers: asset.answers,
-            dna: asset.dna,
+          user_id: userId,
+          images: [{ url: finalUrl }],
+          generation_data: {
+            session_id: sessionKey,
+            prompt: asset.prompt,
+            parameters: {
+              answers: asset.answers,
+              dna: asset.dna,
+            },
           },
         }),
       });
