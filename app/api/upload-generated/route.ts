@@ -205,17 +205,16 @@ export async function POST(request: Request) {
           .from('images')
           .insert({
             title: generateImageTitle(generation_data.prompt || '', index),
+            description: generation_data.prompt?.slice(0, 200) || '',
             r2_url: r2PublicUrl,
             r2_key: r2Key,
             user_id,
-            type: 'generated',
             tags,
             colors,
             width: 1024,
             height: 1536,
-            is_public: is_public,
-            generation_params: generation_data.parameters,
-            original_prompt: generation_data.prompt
+            mime_type: 'image/png',
+            is_public: is_public
           })
           .select()
           .single();
