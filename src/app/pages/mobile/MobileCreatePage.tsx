@@ -357,12 +357,14 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     }
 
     try {
-      const token = (await supabase.auth.getSession()).data.session?.access_token;
-      if (!token) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
         alert('ログインが必要です。');
         return;
       }
 
+      const token = sessionData.session.access_token;
+      const userId = sessionData.session.user.id;
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
       const asset = generatedAsset as any;
 
@@ -382,7 +384,33 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
       const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${asset.key}`;
 
-      // Publish to gallery
+      // First save to generation_history
+      const uploadRes = await fetch(`${apiUrl}/api/upload-generated`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          images: [{ url: finalUrl }],
+          generation_data: {
+            session_id: sessionKey,
+            prompt: asset.prompt,
+            parameters: {
+              answers: asset.answers,
+              dna: asset.dna,
+            },
+          },
+        }),
+      });
+
+      if (!uploadRes.ok) {
+        const error = await uploadRes.json();
+        throw new Error(error.error || '画像の保存に失敗しました');
+      }
+
+      // Then publish to gallery
       const response = await fetch(`${apiUrl}/api/publish`, {
         method: 'POST',
         headers: {
