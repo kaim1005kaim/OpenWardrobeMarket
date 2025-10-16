@@ -167,19 +167,19 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
 
   const handleTogglePublish = async (assetId: string, makePublic: boolean) => {
     // Optimistically update UI
+    const nextStatus: AssetStatus = makePublic ? 'public' : 'private';
     const optimisticUpdate = (prev: Asset[]) =>
       prev.map((asset) =>
-        asset.id === assetId ? { ...asset, status: makePublic ? 'public' : 'private', isPublic: makePublic } : asset
+        asset.id === assetId ? { ...asset, status: nextStatus, isPublic: makePublic } : asset
       );
 
     setMyAssets(optimisticUpdate);
     setCollectionAssets(optimisticUpdate);
     if (selectedAsset?.id === assetId) {
-      setSelectedAsset({ ...selectedAsset, status: makePublic ? 'public' : 'private', isPublic: makePublic });
+      setSelectedAsset({ ...selectedAsset, status: nextStatus, isPublic: makePublic });
     }
 
     try {
-      const nextStatus: AssetStatus = makePublic ? 'public' : 'private';
       const updated = await updateAssetStatus(assetId, nextStatus);
       const mapped = mapAsset(updated);
 
