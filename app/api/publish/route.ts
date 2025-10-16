@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       item: publishedItem,
-      history_id: historyRecord.id
+      image_id: imageRecord.id
     });
 
   } catch (error) {
