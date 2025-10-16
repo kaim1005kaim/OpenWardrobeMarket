@@ -77,6 +77,57 @@ export async function PATCH(
 
       updated = result.data;
       updateError = result.error;
+
+      // If making public, create published_items entry
+      if (!updateError && isPublic && updated) {
+        // Check if published_items entry already exists
+        const { data: existingPublished } = await supabase
+          .from('published_items')
+          .select('id')
+          .eq('image_id', assetId)
+          .single();
+
+        if (!existingPublished) {
+          // Create new published_items entry
+          const { error: publishError } = await supabase
+            .from('published_items')
+            .insert({
+              user_id: user.id,
+              image_id: assetId,
+              title: updated.title || 'Untitled Design',
+              description: updated.description || '',
+              price: updated.price || 0,
+              tags: updated.tags || [],
+              colors: updated.colors || [],
+              category: 'clothing',
+              is_active: true,
+              original_url: updated.r2_url,
+              poster_url: updated.r2_url,
+              sale_type: 'buyout'
+            });
+
+          if (publishError) {
+            console.error('[api/assets/[id]] Failed to create published_items:', publishError.message);
+            // Continue anyway - the image is still marked as public
+          } else {
+            console.log('[api/assets/[id]] Created published_items entry for image:', assetId);
+          }
+        }
+      }
+
+      // If making private, deactivate published_items entry
+      if (!updateError && !isPublic && updated) {
+        const { error: unpublishError } = await supabase
+          .from('published_items')
+          .update({ is_active: false })
+          .eq('image_id', assetId);
+
+        if (unpublishError) {
+          console.error('[api/assets/[id]] Failed to deactivate published_items:', unpublishError.message);
+        } else {
+          console.log('[api/assets/[id]] Deactivated published_items for image:', assetId);
+        }
+      }
     } else {
       // Update status in assets table
       const result = await supabase

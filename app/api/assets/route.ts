@@ -147,10 +147,15 @@ export async function GET(request: Request) {
         }
       }));
 
-      // Combine and sort by created_at
-      data = [...(assetsData || []), ...publishedAsAssets].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      // Combine, deduplicate by image URL, and sort by created_at
+      const combined = [...(assetsData || []), ...publishedAsAssets];
+      const seenUrls = new Set<string>();
+      data = combined.filter((item) => {
+        const url = item.final_url || item.final_key;
+        if (!url || seenUrls.has(url)) return false;
+        seenUrls.add(url);
+        return true;
+      }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       error = assetsError || publishedError;
     } else if (scope === 'mine' && user) {
@@ -256,10 +261,15 @@ export async function GET(request: Request) {
         }
       }));
 
-      // Combine and sort by created_at
-      data = [...(assetsData || []), ...publishedAsAssets, ...draftAsAssets].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      // Combine all sources, deduplicate, and sort by created_at
+      const combined = [...(assetsData || []), ...publishedAsAssets, ...draftAsAssets];
+      const seenUrls = new Set<string>();
+      data = combined.filter((item) => {
+        const url = item.final_url || item.final_key;
+        if (!url || seenUrls.has(url)) return false;
+        seenUrls.add(url);
+        return true;
+      }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       error = assetsError || publishedError || imagesError;
     } else {

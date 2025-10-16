@@ -166,6 +166,18 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const isCurrentTabLoading = activeTab === 'collections' ? isLoadingCollections : isLoadingAssets;
 
   const handleTogglePublish = async (assetId: string, makePublic: boolean) => {
+    // Optimistically update UI
+    const optimisticUpdate = (prev: Asset[]) =>
+      prev.map((asset) =>
+        asset.id === assetId ? { ...asset, status: makePublic ? 'public' : 'private', isPublic: makePublic } : asset
+      );
+
+    setMyAssets(optimisticUpdate);
+    setCollectionAssets(optimisticUpdate);
+    if (selectedAsset?.id === assetId) {
+      setSelectedAsset({ ...selectedAsset, status: makePublic ? 'public' : 'private', isPublic: makePublic });
+    }
+
     try {
       const nextStatus: AssetStatus = makePublic ? 'public' : 'private';
       const updated = await updateAssetStatus(assetId, nextStatus);
@@ -176,10 +188,47 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
         prev.map((asset) => (asset.id === assetId ? mapped : asset))
       );
       setSelectedAsset((prev) => (prev && prev.id === assetId ? mapped : prev));
+
+      // Show success message
+      const message = makePublic ? '✓ ギャラリーに公開しました' : '✓ 非公開にしました';
+      showToast(message);
+
+      // Refresh assets after a short delay to get updated state
+      setTimeout(() => {
+        fetchMyAssets();
+      }, 500);
     } catch (error) {
       console.error('[MobileMyPage] Error toggling publish:', error);
+
+      // Revert optimistic update
+      fetchMyAssets();
+
       alert('更新に失敗しました');
     }
+  };
+
+  const showToast = (message: string) => {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      z-index: 10000;
+      animation: fadeInUp 0.3s ease-out;
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.animation = 'fadeOutDown 0.3s ease-out';
+      setTimeout(() => toast.remove(), 300);
+    }, 2000);
   };
 
   const handleDelete = async (assetId: string) => {
