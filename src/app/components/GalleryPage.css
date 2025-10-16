@@ -176,7 +176,7 @@
 
 /* Aspect ratio specific styles - removed to use dynamic height */
 .masonry-item.square .poster-image {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 3 / 4;
 }
 
 .masonry-item.portrait .poster-image {

@@ -123,7 +123,7 @@ export function composePrompt(
     allTags.length > 0 ? allTags.join(", ") : ""
   ].filter(Boolean);
 
-  const prompt = parts.join(". ").trim();
+  const prompt = parts.join(". ").trim() + " --width 960 --height 1280";
 
   return {
     prompt,

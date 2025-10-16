@@ -74,6 +74,27 @@ const colorPaletteGrid = [
   ['#27AE60', '#52C41A', '#A8E6CF', '#F4D03F', '#F39C12', '#E67E22', '#FF8C42'],
 ];
 
+// カラーIDから色名に変換するマップ
+const colorIdToName: Record<string, string> = {
+  // Row 1: Black to white grayscale
+  'color-0-0': 'black', 'color-0-1': 'dark gray', 'color-0-2': 'gray', 'color-0-3': 'light gray',
+  'color-0-4': 'silver', 'color-0-5': 'light silver', 'color-0-6': 'white',
+  // Row 2: Reds, pinks, purples, blues
+  'color-1-0': 'red', 'color-1-1': 'coral red', 'color-1-2': 'hot pink', 'color-1-3': 'orchid',
+  'color-1-4': 'medium orchid', 'color-1-5': 'medium purple', 'color-1-6': 'blue',
+  // Row 3: Teals, cyans, light blues, mid blues, royal blues, navy blues
+  'color-2-0': 'teal', 'color-2-1': 'cyan', 'color-2-2': 'turquoise', 'color-2-3': 'sky blue',
+  'color-2-4': 'dodger blue', 'color-2-5': 'steel blue', 'color-2-6': 'navy',
+  // Row 4: Greens, lime, yellow, orange shades
+  'color-3-0': 'green', 'color-3-1': 'lime green', 'color-3-2': 'mint', 'color-3-3': 'gold',
+  'color-3-4': 'orange', 'color-3-5': 'coral', 'color-3-6': 'light coral',
+};
+
+// カラーIDの配列を色名の配列に変換する関数
+const convertColorIdsToNames = (colorIds: string[]): string[] => {
+  return colorIds.map(id => colorIdToName[id] || id).filter(Boolean);
+};
+
 export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const [stage, setStage] = useState<Stage>('answering');
   const [currentStep, setCurrentStep] = useState(0);
@@ -128,7 +149,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
   // ステージが変更されたときにカラーを維持
   useEffect(() => {
-    if (selectedBlendedColor && (stage === 'coaching' || stage === 'preview')) {
+    if (selectedBlendedColor && (stage === 'coaching' || stage === 'preview' || stage === 'generating')) {
       // 少し遅延させてからカラーを適用（レンダリング完了後）
       const timer = setTimeout(() => {
         metaballsRef.current?.triggerImpact(selectedBlendedColor);
@@ -359,7 +380,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       const answersData: Answers = {
         vibe: answers.vibe || [],
         silhouette: answers.silhouette || [],
-        color: answers.color || [],
+        color: convertColorIdsToNames(answers.color || []),
         occasion: answers.occasion || [],
         season: answers.season || [],
       };
