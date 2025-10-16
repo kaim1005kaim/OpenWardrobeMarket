@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { supabase } from '../../lib/supabase';
-import { UrulaMetaballs, UrulaMetaballsHandle } from '../../../components/Urula/Metaballs';
+import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/MetaballsSoft';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import { useDNA } from '../../../hooks/useDNA';
@@ -71,7 +71,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   // DNA management
   const sessionKey = useRef(`mobile-create-${Date.now()}`).current;
   const { dna, updateDNA, syncNow, updateContext } = useDNA(sessionKey, DEFAULT_DNA);
-  const urulaRef = useRef<UrulaMetaballsHandle>(null);
+  const metaballsRef = useRef<MetaballsSoftHandle>(null);
 
   // Coaching state
   const [coachData, setCoachData] = useState<GeminiCoachOut | null>(null);
@@ -114,7 +114,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     const questionId = currentQuestion.id;
     const currentAnswers = answers[questionId] || [];
 
-    urulaRef.current?.triggerImpact();
+    metaballsRef.current?.triggerImpact();
 
     let newAnswers: Record<string, string[]>;
     if (currentQuestion.multiSelect) {
@@ -167,7 +167,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   };
 
   const handleNext = () => {
-    urulaRef.current?.changePalette();
+    metaballsRef.current?.changePalette();
 
     if (currentStep < createQuestions.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -298,8 +298,8 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
       console.log('[MobileCreatePage] Composed prompt:', prompt);
 
-      // Generate image
-      const genRes = await fetch(`${apiUrl}/api/nano/generate`, {
+      // Generate image using existing working endpoint
+      const genRes = await fetch(`${apiUrl}/api/nano-generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -309,8 +309,6 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           prompt,
           negative: negatives,
           aspectRatio: '3:4',
-          answers: answersData,
-          dna,
         }),
       });
 
@@ -319,15 +317,27 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         throw new Error(error.error || 'Generation failed');
       }
 
-      const { id, url, key } = await genRes.json();
+      const { imageData, mimeType, key } = await genRes.json();
 
-      console.log('[MobileCreatePage] Generated:', { id, url, key });
+      console.log('[MobileCreatePage] Generated:', { key, mimeType });
 
-      // For reveal, we need blob URL for immediate display
-      // Fetch the image as blob
-      const imgRes = await fetch(url);
-      const imgBlob = await imgRes.blob();
+      // Convert base64 to blob for immediate display
+      const imgBlob = base64ToBlob(imageData, mimeType);
       const blobUrl = URL.createObjectURL(imgBlob);
+
+      // Upload to R2 in background
+      const presignRes = await fetch(`${apiUrl}/api/r2-presign?key=${key}&contentType=${mimeType}`);
+      if (!presignRes.ok) throw new Error('Failed to get presigned URL');
+
+      const { url: uploadUrl } = await presignRes.json();
+
+      await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': mimeType },
+        body: imgBlob,
+      });
+
+      const finalUrl = `${import.meta.env.VITE_R2_PUBLIC_URL || 'https://pub-8c9f4a8e5e7d4b6fa1e3c2d5b4a6e7f8.r2.dev'}/${key}`;
 
       setGeneratedAsset({
         key,
@@ -432,7 +442,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <UrulaMetaballs ref={urulaRef} dna={dna} animated={true} />
+                <MetaballsSoft ref={metaballsRef} animated={true} />
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">CREATE</h1>
@@ -490,7 +500,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <UrulaMetaballs ref={urulaRef} dna={dna} animated={true} />
+                <MetaballsSoft ref={metaballsRef} animated={true} />
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">DNA注入</h1>
@@ -602,7 +612,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <UrulaMetaballs ref={urulaRef} dna={dna} animated={true} />
+                <MetaballsSoft ref={metaballsRef} animated={true} />
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">PREVIEW</h1>
@@ -640,7 +650,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <UrulaMetaballs dna={dna} animated={true} />
+                <MetaballsSoft animated={true} />
               </div>
             </div>
 
