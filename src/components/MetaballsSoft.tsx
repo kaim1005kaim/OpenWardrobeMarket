@@ -107,6 +107,10 @@ function AnimatedCubes({
     const t = clock.getElapsedTime() * 0.4;
     const a = animated ? 1 : 0;
 
+    // 呼吸するような脈動エフェクト
+    const breathingCycle = clock.getElapsedTime() * 0.3; // ゆっくりとした呼吸サイクル
+    const breathingScale = 1 + Math.sin(breathingCycle) * 0.12; // 脈動の大きさ
+
     // 衝撃からの経過時間（ミリ秒）
     const timeSinceImpact = performance.now() - impactTimeRef.current;
     const impactDuration = 1000; // 1000msに延長してゆっくりに
@@ -118,6 +122,11 @@ function AnimatedCubes({
       const baseX = b.base[0] + a * (Math.sin(t * 1.2 + b.phase) * 0.30 + Math.sin(t * 0.35 + i) * 0.05);
       const baseY = b.base[1] + a * (Math.cos(t * 0.9 + b.phase + 1.0) * 0.28 + Math.cos(t * 0.31 + i * 1.7) * 0.05);
       const baseZ = b.base[2] + a * (Math.sin(t * 0.7 + b.phase + 2.0) * 0.22 + Math.sin(t * 0.27 + i * 0.7) * 0.04);
+
+      // 呼吸エフェクトを基本位置に適用
+      const breathX = baseX * breathingScale;
+      const breathY = baseY * breathingScale;
+      const breathZ = baseZ * breathingScale;
 
       let offsetX = 0, offsetY = 0, offsetZ = 0;
 
@@ -283,10 +292,10 @@ function AnimatedCubes({
         }
       }
 
-      // 全軸を安全な範囲に制限して画面外に出ないように
-      const finalX = Math.max(-0.6, Math.min(0.6, baseX + offsetX));
-      const finalY = Math.max(-0.6, Math.min(0.6, baseY + offsetY));
-      const finalZ = Math.max(-0.4, Math.min(0.4, baseZ + offsetZ));
+      // 呼吸エフェクトとオフセットを組み合わせて最終位置を計算
+      const finalX = Math.max(-0.6, Math.min(0.6, breathX + offsetX));
+      const finalY = Math.max(-0.6, Math.min(0.6, breathY + offsetY));
+      const finalZ = Math.max(-0.4, Math.min(0.4, breathZ + offsetZ));
 
       return [finalX, finalY, finalZ] as [number, number, number];
     });
@@ -323,7 +332,7 @@ function AnimatedCubes({
 }
 
 export interface MetaballsSoftHandle {
-  triggerImpact: () => void;
+  triggerImpact: (color?: string) => void;
   changePalette: () => void;
 }
 
@@ -338,6 +347,7 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
   ({ animated = true, onInteract }, ref) => {
     const [impactTrigger, setImpactTrigger] = useState(0);
     const [paletteIndex, setPaletteIndex] = useState(0);
+    const [customColor, setCustomColor] = useState<string | null>(null);
 
     // 複数のカラーパレット
     const palettes = useMemo(
@@ -351,15 +361,55 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
       []
     );
 
-    const currentPalette = palettes[paletteIndex % palettes.length];
+    // 色からグラデーションパレットを生成する関数
+    const generateGradientPalette = (baseColor: string): string[] => {
+      const hex = baseColor.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+
+      const palette: string[] = [];
+
+      // 乳白色ベース (#F5F5F0)
+      const milkyWhite = { r: 245, g: 245, b: 240 };
+
+      for (let i = 0; i < 7; i++) {
+        // 各ボールで異なる混合比率を使用（色の割合を増やす）
+        const ratios = [0.35, 0.45, 0.55, 0.65, 0.5, 0.4, 0.6];
+        const ratio = ratios[i];
+
+        // 乳白色とベースカラーをブレンド
+        const blendedR = Math.round(milkyWhite.r * (1 - ratio) + r * ratio);
+        const blendedG = Math.round(milkyWhite.g * (1 - ratio) + g * ratio);
+        const blendedB = Math.round(milkyWhite.b * (1 - ratio) + b * ratio);
+
+        palette.push(
+          `#${blendedR.toString(16).padStart(2, '0')}${blendedG.toString(16).padStart(2, '0')}${blendedB.toString(16).padStart(2, '0')}`
+        );
+      }
+
+      return palette;
+    };
+
+    const currentPalette = useMemo(() => {
+      if (customColor) {
+        // カスタムカラーが指定された場合、乳白色ベースで美しくブレンドしたパレットを生成
+        return generateGradientPalette(customColor);
+      }
+      return palettes[paletteIndex % palettes.length];
+    }, [customColor, palettes, paletteIndex]);
 
     // 外部から呼び出せるメソッドを公開
     useImperativeHandle(ref, () => ({
-      triggerImpact: () => {
+      triggerImpact: (color?: string) => {
+        if (color) {
+          setCustomColor(color);
+        }
         setImpactTrigger((prev) => prev + 1);
         onInteract?.();
       },
       changePalette: () => {
+        setCustomColor(null);
         setPaletteIndex((prev) => prev + 1);
         setImpactTrigger((prev) => prev + 1);
         onInteract?.();

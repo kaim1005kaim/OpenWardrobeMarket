@@ -62,6 +62,10 @@
   line-height: 1;
 }
 
+.create-title.smaller {
+  font-size: 40px;
+}
+
 .create-hero {
   position: relative;
   width: 100%;
@@ -226,6 +230,52 @@
   color: #FFFFFF;
 }
 
+/* Color palette grid styles */
+.color-palette-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 20px;
+  margin-bottom: 24px;
+  align-items: center;
+}
+
+.color-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.color-square {
+  width: 48px;
+  height: 48px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-square:hover {
+  border-color: #999999;
+  transform: scale(1.05);
+}
+
+.color-square.selected {
+  border: 2px solid #000000;
+}
+
+.color-check {
+  color: #FFFFFF;
+  font-size: 20px;
+  font-weight: bold;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+}
+
 /* Navigation buttons */
 .nav-buttons {
   display: flex;
@@ -239,7 +289,7 @@
   flex: 1;
   padding: 16px;
   border: none;
-  border-radius: 12px;
+  border-radius: 0;
   font-family: 'Noto Sans CJK JP', sans-serif;
   font-size: 16px;
   font-weight: 700;
@@ -298,6 +348,81 @@
 
 .nav-btn.secondary:active {
   background: #F5F5F5;
+}
+
+/* Coaching */
+.coaching-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.coaching-container .question-text {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.coaching-textarea {
+  width: 100%;
+  max-width: 600px;
+  min-height: 60px;
+  padding: 18px 16px 4px;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  border: 1px solid #E5E5E5;
+  border-radius: 12px;
+  background: #FFFFFF;
+  margin: 0 0 16px 0;
+  resize: vertical;
+  text-align: center;
+}
+
+.coaching-textarea:focus {
+  outline: none;
+  border-color: #000000;
+}
+
+.coaching-button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 600px;
+  align-items: center;
+}
+
+.coach-btn,
+.preview-btn {
+  width: 100%;
+  max-width: 360px;
+  height: 56px;
+  background: transparent;
+  border: 1px solid #000000;
+  border-radius: 0;
+  font-family: 'Noto Sans CJK JP', 'Noto Sans JP', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.coach-btn:hover,
+.preview-btn:hover {
+  background: #000000;
+  color: #FFFFFF;
+}
+
+.coach-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coach-btn:disabled:hover {
+  background: transparent;
+  color: #000000;
 }
 
 /* Generating */

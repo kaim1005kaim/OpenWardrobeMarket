@@ -35,17 +35,17 @@ const createQuestions: Question[] = [
   {
     id: 'vibe',
     question: COPY.questions.vibe,
-    options: ['ミニマル', 'ストリート', 'ラグジュアリー', 'アウトドア', 'ワークウェア', 'アスレジャー'],
+    options: ['ミニマル', 'ストリート', 'ラグジュアリー', 'アウトドア', 'ワークウェア', 'Y2K'],
   },
   {
     id: 'silhouette',
     question: COPY.questions.silhouette,
-    options: ['オーバーサイズ', 'フィット', 'ルーズ', 'テーラード', 'リラックス', 'スリム'],
+    options: ['オーバーサイズ', 'ルーズ', 'テーラード', 'タイト', 'Aライン', 'コクーン'],
   },
   {
     id: 'color',
     question: COPY.questions.color,
-    options: ['ブラック', 'ホワイト', 'ネイビー', 'アースカラー', 'パステル', 'ネオン', 'モノトーン', 'ビビッド'],
+    options: ['palette'], // Single palette option
     multiSelect: true,
   },
   {
@@ -56,11 +56,23 @@ const createQuestions: Question[] = [
   {
     id: 'season',
     question: COPY.questions.season,
-    options: ['春夏', '秋冬', 'リゾート', 'オールシーズン'],
+    options: ['春', '夏', '秋', '冬'],
   },
 ];
 
 type Stage = 'answering' | 'coaching' | 'preview' | 'generating' | 'revealing' | 'done';
+
+// Color palette grid - 4 rows x 7 columns like reference image
+const colorPaletteGrid = [
+  // Row 1: Black to white grayscale
+  ['#000000', '#404040', '#707070', '#959595', '#B8B8B8', '#D9D9D9', '#FFFFFF'],
+  // Row 2: Reds, pinks, purples, blues
+  ['#E74C3C', '#FF6B6B', '#FF69B4', '#DA70D6', '#BA55D3', '#9370DB', '#0000FF'],
+  // Row 3: Teals, cyans, light blues, mid blues, royal blues, navy blues
+  ['#2C7A7B', '#17A2B8', '#00CED1', '#5DADE2', '#3498DB', '#2874A6', '#003366'],
+  // Row 4: Greens, lime, yellow, orange shades
+  ['#27AE60', '#52C41A', '#A8E6CF', '#F4D03F', '#F39C12', '#E67E22', '#FF8C42'],
+];
 
 export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const [stage, setStage] = useState<Stage>('answering');
@@ -68,6 +80,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [freeText, setFreeText] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [selectedBlendedColor, setSelectedBlendedColor] = useState<string | null>(null);
 
   // DNA management
   const sessionKey = useRef(`mobile-create-${Date.now()}`).current;
@@ -113,11 +126,20 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     updateContext({ answers: answersData, freeText });
   }, [answers, freeText, updateContext]);
 
-  const handleSelect = (option: string) => {
+  // ステージが変更されたときにカラーを維持
+  useEffect(() => {
+    if (selectedBlendedColor && (stage === 'coaching' || stage === 'preview')) {
+      // 少し遅延させてからカラーを適用（レンダリング完了後）
+      const timer = setTimeout(() => {
+        metaballsRef.current?.triggerImpact(selectedBlendedColor);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [stage, selectedBlendedColor]);
+
+  const handleSelect = (option: string, color?: string) => {
     const questionId = currentQuestion.id;
     const currentAnswers = answers[questionId] || [];
-
-    metaballsRef.current?.triggerImpact();
 
     let newAnswers: Record<string, string[]>;
     if (currentQuestion.multiSelect) {
@@ -129,10 +151,61 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     } else {
       newAnswers = { ...answers, [questionId]: [option] };
     }
+
+    // カラー選択の場合のみ、選択されている全色を取得してブレンド
+    if (questionId === 'color' && color) {
+      const selectedColors: string[] = [];
+
+      // 新しい選択状態で選択されているカラーを収集
+      colorPaletteGrid.forEach((row, rowIdx) => {
+        row.forEach((gridColor, colIdx) => {
+          const colorId = `color-${rowIdx}-${colIdx}`;
+          if (newAnswers[questionId]?.includes(colorId)) {
+            selectedColors.push(gridColor);
+          }
+        });
+      });
+
+      // 選択色に応じてエフェクトを更新
+      if (selectedColors.length > 0) {
+        const blendedColor = blendColors(selectedColors);
+        setSelectedBlendedColor(blendedColor);
+        metaballsRef.current?.triggerImpact(blendedColor);
+      } else {
+        // 選択が全て解除された場合、デフォルトカラーに戻す
+        setSelectedBlendedColor(null);
+        metaballsRef.current?.changePalette();
+      }
+    } else {
+      // カラー選択以外のクリックではアニメーションのみ（色は変えない）
+      metaballsRef.current?.triggerImpact();
+    }
+
     setAnswers(newAnswers);
 
     // Apply simple DNA delta based on selection
     applyAnswerDNA(questionId, option);
+  };
+
+  // 複数の色をブレンドする関数
+  const blendColors = (colors: string[]): string => {
+    if (colors.length === 0) return '#7FEFBD';
+    if (colors.length === 1) return colors[0];
+
+    let r = 0, g = 0, b = 0;
+
+    colors.forEach(color => {
+      const hex = color.replace('#', '');
+      r += parseInt(hex.substring(0, 2), 16);
+      g += parseInt(hex.substring(2, 4), 16);
+      b += parseInt(hex.substring(4, 6), 16);
+    });
+
+    r = Math.round(r / colors.length);
+    g = Math.round(g / colors.length);
+    b = Math.round(b / colors.length);
+
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
   };
 
   const applyAnswerDNA = (questionId: string, option: string) => {
@@ -170,7 +243,10 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   };
 
   const handleNext = () => {
-    metaballsRef.current?.changePalette();
+    // カラーが選択されている場合のみ色を維持（それ以外はデフォルトカラーを維持）
+    if (selectedBlendedColor) {
+      metaballsRef.current?.triggerImpact(selectedBlendedColor);
+    }
 
     if (currentStep < createQuestions.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -183,6 +259,11 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+
+      // カラーが選択されている場合は常に維持
+      if (selectedBlendedColor) {
+        metaballsRef.current?.triggerImpact(selectedBlendedColor);
+      }
     }
   };
 
@@ -191,7 +272,9 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     setAnswers({});
     setFreeText('');
     setStage('answering');
+    setSelectedBlendedColor(null);
     updateDNA(DEFAULT_DNA);
+    metaballsRef.current?.changePalette();
   };
 
   // Coaching: Fetch chips/ask from Gemini
@@ -257,12 +340,20 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
 
   const handlePreview = () => {
     setStage('preview');
+    // カラーが選択されている場合は維持
+    if (selectedBlendedColor) {
+      metaballsRef.current?.triggerImpact(selectedBlendedColor);
+    }
   };
 
   const handleGenerate = async () => {
     await syncNow(); // Sync DNA before generation
 
     setStage('generating');
+    // カラーが選択されている場合は維持
+    if (selectedBlendedColor) {
+      metaballsRef.current?.triggerImpact(selectedBlendedColor);
+    }
 
     try {
       const answersData: Answers = {
@@ -564,18 +655,43 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               {currentQuestion.multiSelect && <p className="hint-text">{COPY.flow.multiSelectHint}</p>}
             </div>
 
-            <div className="options-container">
-              {currentQuestion.options.map((option) => (
-                <button
-                  key={option}
-                  className={`option-btn ${isSelected(option) ? 'selected' : ''}`}
-                  onClick={() => handleSelect(option)}
-                >
-                  <span className="option-check">{isSelected(option) && '✓'}</span>
-                  <span className="option-label">{option}</span>
-                </button>
-              ))}
-            </div>
+            {currentQuestion.id === 'color' ? (
+              <div className="color-palette-grid">
+                {colorPaletteGrid.map((row, rowIdx) => (
+                  <div key={rowIdx} className="color-row">
+                    {row.map((color, colIdx) => {
+                      const colorId = `color-${rowIdx}-${colIdx}`;
+                      return (
+                        <button
+                          key={colorId}
+                          className={`color-square ${isSelected(colorId) ? 'selected' : ''}`}
+                          style={{ backgroundColor: color }}
+                          onClick={() => handleSelect(colorId, color)}
+                          aria-label={`Color ${rowIdx + 1}-${colIdx + 1}`}
+                        >
+                          {isSelected(colorId) && (
+                            <span className="color-check">✓</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="options-container">
+                {currentQuestion.options.map((option) => (
+                  <button
+                    key={option}
+                    className={`option-btn ${isSelected(option) ? 'selected' : ''}`}
+                    onClick={() => handleSelect(option)}
+                  >
+                    <span className="option-check">{isSelected(option) && '✓'}</span>
+                    <span className="option-label">{option}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="progress-container">
               <div className="progress-bar">
@@ -613,37 +729,30 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                 <MetaballsSoft ref={metaballsRef} animated={true} />
               </div>
               <div className="create-hero__title">
-                <h1 className="create-title">{COPY.flow.guidance}</h1>
+                <h1 className="create-title smaller">{COPY.flow.guidance}</h1>
               </div>
             </div>
 
             <div className="coaching-container">
               <h2 className="question-text">{COPY.flow.guidanceTooltip}</h2>
               <textarea
+                className="coaching-textarea"
                 value={freeText}
                 onChange={(e) => setFreeText(e.target.value)}
                 placeholder={COPY.flow.placeholder}
-                style={{
-                  width: '100%',
-                  minHeight: '80px',
-                  padding: '12px',
-                  fontSize: '14px',
-                  borderRadius: '8px',
-                  border: '1px solid #ddd',
-                  marginBottom: '16px',
-                }}
               />
 
-              {!coachData && (
-                <button
-                  className="nav-btn primary"
-                  onClick={handleCoach}
-                  disabled={isCoaching}
-                  style={{ marginBottom: '16px' }}
-                >
-                  {isCoaching ? COPY.flow.coachButtonLoading : COPY.flow.coachButton}
-                </button>
-              )}
+              <div className="coaching-button-group">
+                {!coachData && (
+                  <button
+                    className="nav-btn primary"
+                    onClick={handleCoach}
+                    disabled={isCoaching}
+                    style={{ width: '100%', maxWidth: '360px' }}
+                  >
+                    {isCoaching ? COPY.flow.coachButtonLoading : COPY.flow.coachButton}
+                  </button>
+                )}
 
               {coachData && (
                 <>
@@ -698,21 +807,33 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                     </>
                   )}
 
-                  <button className="nav-btn primary" onClick={handlePreview}>
+                  <button className="preview-btn" onClick={handlePreview}>
                     {COPY.flow.toPreview}
                   </button>
                 </>
               )}
 
-              {!coachData && (
-                <button
-                  className="nav-btn secondary"
-                  onClick={handlePreview}
-                  style={{ marginTop: '8px' }}
-                >
-                  {COPY.flow.skip}
-                </button>
-              )}
+              <button
+                className="preview-btn"
+                onClick={handlePreview}
+              >
+                スキップ
+              </button>
+
+              <button
+                className="preview-btn"
+                onClick={() => setStage('answering')}
+              >
+                直前の行程に戻る
+              </button>
+
+              <button
+                className="preview-btn"
+                onClick={handleReset}
+              >
+                最初から始める
+              </button>
+              </div>
             </div>
           </>
         )}
@@ -740,16 +861,15 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               {COPY.flow.reflected}
             </p>
 
-            <div className="nav-buttons">
-              <button className="nav-btn primary" onClick={handleGenerate}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', padding: '0 20px' }}>
+              <button className="nav-btn primary" onClick={handleGenerate} style={{ width: '100%', maxWidth: '360px' }}>
                 {COPY.cta.generate}
               </button>
               <button
-                className="nav-btn secondary"
+                className="preview-btn"
                 onClick={() => setStage('coaching')}
-                style={{ marginTop: '8px' }}
               >
-                {COPY.flow.back}
+                直前の行程に戻る
               </button>
             </div>
           </>

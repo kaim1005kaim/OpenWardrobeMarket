@@ -16,7 +16,17 @@ export interface PosterTemplate {
   };
 }
 
-export const posterTemplates: PosterTemplate[] = [
+// Fisher-Yates shuffle algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+const posterTemplatesBase: PosterTemplate[] = [
   {
     id: 'poster-a',
     framePath: '/poster/BG/poster_BG/a.png',
@@ -137,6 +147,9 @@ export const posterTemplates: PosterTemplate[] = [
     imageArea: { x: 120, y: 230, width: 565, height: 710 },
   },
 ];
+
+// Shuffle the templates array once on module load
+export const posterTemplates: PosterTemplate[] = shuffleArray(posterTemplatesBase);
 
 // ランダムにテンプレートを選択
 export function getRandomTemplate(): PosterTemplate {
