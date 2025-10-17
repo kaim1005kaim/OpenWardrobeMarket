@@ -46,10 +46,10 @@ export function MenuOverlay({ isOpen, onClose, onNavigate }: MenuOverlayProps) {
         </button>
 
         <nav className="menu-nav-main">
-          <button onClick={() => handleNavigate('home')}>{COPY.nav.STUDIO}</button>
-          <button onClick={() => handleNavigate('gallery')}>{COPY.nav.SHOWCASE}</button>
+          <button onClick={() => handleNavigate('studio')}>{COPY.nav.STUDIO}</button>
+          <button onClick={() => handleNavigate('showcase')}>{COPY.nav.SHOWCASE}</button>
           <button onClick={() => handleNavigate('create')}>{COPY.nav.CREATE}</button>
-          <button onClick={() => handleNavigate('mypage')}>{COPY.nav.ARCHIVE}</button>
+          <button onClick={() => handleNavigate('archive')}>{COPY.nav.ARCHIVE}</button>
         </nav>
 
         <div className="menu-nav-secondary">

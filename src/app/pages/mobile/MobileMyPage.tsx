@@ -323,7 +323,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
               </svg>
             </button>
             <div className="header-actions">
-              <button className="header-text-btn" onClick={() => onNavigate?.('home')}>OWM</button>
+              <button className="header-text-btn" onClick={() => onNavigate?.('studio')}>OWM</button>
             </div>
           </div>
 

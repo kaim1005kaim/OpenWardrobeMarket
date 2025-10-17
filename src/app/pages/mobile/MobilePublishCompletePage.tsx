@@ -29,7 +29,7 @@ export function MobilePublishCompletePage({ onNavigate, imageUrl }: MobilePublis
             <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </button>
-        <button className="logo-btn" onClick={() => onNavigate?.('home')}>OWM</button>
+        <button className="logo-btn" onClick={() => onNavigate?.('studio')}>OWM</button>
       </header>
 
       <div className="complete-content">
@@ -47,7 +47,7 @@ export function MobilePublishCompletePage({ onNavigate, imageUrl }: MobilePublis
         <div className="complete-buttons">
           <button
             className="view-gallery-btn"
-            onClick={() => onNavigate?.('gallery')}
+            onClick={() => onNavigate?.('showcase')}
           >
             公開ページを見る
           </button>

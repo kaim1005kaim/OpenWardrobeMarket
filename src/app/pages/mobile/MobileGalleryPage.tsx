@@ -134,7 +134,7 @@ export function MobileGalleryPage({ onNavigate }: MobileGalleryPageProps) {
 
   const handleTitleClick = () => {
     if (onNavigate) {
-      onNavigate('home');
+      onNavigate('studio');
     }
   };
 

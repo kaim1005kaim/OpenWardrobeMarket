@@ -653,7 +653,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
             />
           </svg>
         </button>
-        <button className="create-logo-btn" onClick={() => onNavigate?.('home')}>
+        <button className="create-logo-btn" onClick={() => onNavigate?.('studio')}>
           OWM
         </button>
       </header>

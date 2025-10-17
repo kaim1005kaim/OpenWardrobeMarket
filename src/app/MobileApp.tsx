@@ -12,11 +12,11 @@ import { WebViewWarning } from './components/mobile/WebViewWarning';
 import { isWebView } from './lib/utils/detectWebView';
 import './MobileApp.css';
 
-type MobilePage = 'login' | 'home' | 'gallery' | 'create' | 'createQuestions' | 'publishForm' | 'publishComplete' | 'mypage' | 'faq' | 'contact' | 'privacy';
+type MobilePage = 'login' | 'studio' | 'showcase' | 'create' | 'createQuestions' | 'publishForm' | 'publishComplete' | 'archive' | 'faq' | 'contact' | 'privacy';
 
 function MobileAppContent() {
   const { user, loading } = useAuth();
-  const [currentPage, setCurrentPage] = useState<MobilePage>('home');
+  const [currentPage, setCurrentPage] = useState<MobilePage>('studio');
   const [showWebViewWarning, setShowWebViewWarning] = useState(false);
 
   // 公開フロー用のstate
@@ -62,10 +62,10 @@ function MobileAppContent() {
       case 'login':
         return <LoginPage />;
 
-      case 'home':
+      case 'studio':
         return <MobileHomePage onNavigate={handleNavigate} />;
 
-      case 'gallery':
+      case 'showcase':
         return <MobileGalleryPage onNavigate={handleNavigate} />;
 
       case 'create':
@@ -96,7 +96,7 @@ function MobileAppContent() {
           onNavigate={handleNavigate}
         />;
 
-      case 'mypage':
+      case 'archive':
         return <MobileMyPage onNavigate={handleNavigate} />;
 
       case 'faq':
@@ -111,7 +111,7 @@ function MobileAppContent() {
             <h2>{currentPage.toUpperCase()} ページ</h2>
             <p style={{ color: '#666', marginTop: '16px' }}>準備中...</p>
             <button
-              onClick={() => setCurrentPage('home')}
+              onClick={() => setCurrentPage('studio')}
               style={{
                 marginTop: '24px',
                 padding: '12px 24px',

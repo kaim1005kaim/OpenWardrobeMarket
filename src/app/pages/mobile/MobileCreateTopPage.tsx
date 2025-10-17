@@ -36,7 +36,7 @@ export function MobileCreateTopPage({ onNavigate, onStartCreate }: MobileCreateT
             <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </button>
-        <button className="create-logo-btn" onClick={() => onNavigate?.('home')}>OWM</button>
+        <button className="create-logo-btn" onClick={() => onNavigate?.('studio')}>OWM</button>
       </header>
 
       <div className="create-top-content">

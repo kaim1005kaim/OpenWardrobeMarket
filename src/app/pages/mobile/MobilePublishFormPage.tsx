@@ -179,7 +179,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
   const handleSaveDraft = () => {
     // ドラフト保存処理
     console.log('[MobilePublishFormPage] Save draft');
-    onNavigate?.('mypage');
+    onNavigate?.('archive');
   };
 
   return (
@@ -195,7 +195,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
             <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </button>
-        <button className="logo-btn" onClick={() => onNavigate?.('home')}>OWM</button>
+        <button className="logo-btn" onClick={() => onNavigate?.('studio')}>OWM</button>
       </header>
 
       <div className="publish-form-content">
