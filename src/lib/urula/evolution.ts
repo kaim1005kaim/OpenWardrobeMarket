@@ -6,19 +6,36 @@
 import type { UserUrulaProfile, EvolutionInput, MaterialWeights, Tint } from '../../types/urula';
 
 // Material learning rules: tag → material weight deltas
+// Stronger deltas for clear visual identity (80/20 principle)
 const MAT_RULES: Record<string, Partial<MaterialWeights>> = {
-  leather: { leather: 0.08 },
-  denim: { denim: 0.08 },
-  pinstripe: { pinstripe: 0.08 },
-  canvas: { canvas: 0.06 },
-  // Fallback mappings
-  tailored: { pinstripe: 0.04 },
-  workwear: { canvas: 0.04, denim: 0.04 },
-  street: { denim: 0.06 },
-  luxury: { leather: 0.06, pinstripe: 0.02 },
-  luxe: { leather: 0.06 },
-  classic: { pinstripe: 0.04 },
-  work: { canvas: 0.03, denim: 0.03 },
+  // Direct material mappings (strong)
+  leather: { leather: 0.15 },
+  denim: { denim: 0.15 },
+  pinstripe: { pinstripe: 0.15 },
+  canvas: { canvas: 0.12 },
+
+  // Style mappings (medium-strong)
+  luxury: { leather: 0.12 },
+  luxe: { leather: 0.12 },
+  formal: { pinstripe: 0.10 },
+  tailored: { pinstripe: 0.10 },
+  classic: { pinstripe: 0.08 },
+  elegant: { pinstripe: 0.06, leather: 0.06 },
+
+  street: { denim: 0.12 },
+  casual: { denim: 0.10 },
+  urban: { denim: 0.08 },
+
+  workwear: { canvas: 0.10 },
+  work: { canvas: 0.08 },
+  utility: { canvas: 0.08 },
+  outdoor: { canvas: 0.06 },
+
+  // Seasonal/occasion (subtle)
+  summer: { canvas: 0.04 },
+  winter: { leather: 0.04 },
+  business: { pinstripe: 0.06 },
+  party: { leather: 0.04 },
 };
 
 /**
@@ -48,9 +65,33 @@ function applyTagDeltas(
 }
 
 /**
- * Normalize material weights to sum to 1.0 (L1 normalization)
+ * Normalize material weights with dominant material emphasis (80/20 rule)
+ * The strongest material gets amplified to maintain visual clarity
  */
 function normalizeWeights(weights: MaterialWeights): MaterialWeights {
+  // Sort materials by weight
+  const sorted = Object.entries(weights)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+
+  // If there's a clear dominant material (>40%), emphasize it
+  const dominant = sorted[0];
+  const second = sorted[1];
+
+  if (dominant.value > 0.4) {
+    // Apply 80/20 rule: dominant gets at least 60%, second gets remainder
+    const dominantRatio = Math.max(0.6, Math.min(0.9, dominant.value / (dominant.value + second.value)));
+    const secondRatio = 1 - dominantRatio;
+
+    return {
+      [dominant.name]: dominantRatio,
+      [second.name]: secondRatio,
+      [sorted[2].name]: 0,
+      [sorted[3].name]: 0,
+    } as MaterialWeights;
+  }
+
+  // Otherwise use standard normalization
   const sum = Object.values(weights).reduce((a, b) => a + b, 0);
   if (sum === 0) return weights;
 

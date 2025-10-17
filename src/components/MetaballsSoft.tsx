@@ -649,7 +649,7 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
               enableUvs={true}
               enableColors={false}
             >
-              {textures && profile ? (
+              {textures && profile && profile.history.generations > 0 ? (
                 <BlendedMaterial
                   textures={textures}
                   profile={profile}
@@ -660,7 +660,13 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
                   )}
                 />
               ) : (
-                <meshStandardMaterial roughness={0} metalness={0} color="#7FEFBD" />
+                <meshStandardMaterial
+                  roughness={0.3}
+                  metalness={0.1}
+                  color="#F5F5F0"
+                  opacity={0.95}
+                  transparent={true}
+                />
               )}
               <AnimatedCubes
                 animated={animated}
