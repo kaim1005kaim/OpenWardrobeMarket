@@ -16,12 +16,36 @@ type MobilePage = 'login' | 'studio' | 'showcase' | 'create' | 'createQuestions'
 
 function MobileAppContent() {
   const { user, loading } = useAuth();
-  const [currentPage, setCurrentPage] = useState<MobilePage>('studio');
+  const [currentPage, setCurrentPage] = useState<MobilePage>(() => {
+    // Initialize from URL path
+    const path = window.location.pathname.slice(1) || 'studio';
+    const validPages: MobilePage[] = ['login', 'studio', 'showcase', 'create', 'createQuestions', 'publishForm', 'publishComplete', 'archive', 'faq', 'contact', 'privacy'];
+    return validPages.includes(path as MobilePage) ? (path as MobilePage) : 'studio';
+  });
   const [showWebViewWarning, setShowWebViewWarning] = useState(false);
 
   // 公開フロー用のstate
   const [publishImageUrl, setPublishImageUrl] = useState<string | null>(null);
   const [publishGenerationData, setPublishGenerationData] = useState<any>(null);
+
+  // Initialize URL on first load
+  useEffect(() => {
+    // Set initial history state if not already set
+    if (!window.history.state?.page) {
+      window.history.replaceState({ page: currentPage }, '', `/${currentPage}`);
+    }
+  }, []);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const page = event.state?.page || 'studio';
+      setCurrentPage(page as MobilePage);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     // WebView検出（未認証時のみ）
@@ -31,7 +55,12 @@ function MobileAppContent() {
   }, [user]);
 
   const handleNavigate = (page: string) => {
-    setCurrentPage(page as MobilePage);
+    const newPage = page as MobilePage;
+    setCurrentPage(newPage);
+
+    // Update URL and browser history
+    const url = `/${page}`;
+    window.history.pushState({ page: newPage }, '', url);
   };
 
   // Show loading state

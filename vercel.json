@@ -1,5 +1,11 @@
 {
   "framework": "nextjs",
+  "rewrites": [
+    {
+      "source": "/(studio|showcase|create|createQuestions|archive|publishForm|publishComplete|faq|contact|privacy)",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
