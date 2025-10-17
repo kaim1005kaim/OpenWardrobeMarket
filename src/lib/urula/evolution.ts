@@ -88,7 +88,7 @@ function normalizeWeights(weights: MaterialWeights): MaterialWeights {
       [second.name]: secondRatio,
       [sorted[2].name]: 0,
       [sorted[3].name]: 0,
-    } as MaterialWeights;
+    } as unknown as MaterialWeights;
   }
 
   // Otherwise use standard normalization
