@@ -16,21 +16,37 @@ interface BlendedMaterialProps {
 function BlendedMaterial({ textures, profile, tintColor }: BlendedMaterialProps) {
   const shaderRef = useRef<THREE.ShaderMaterial>(null);
 
+  // トップ2素材を計算
+  const topMats = useMemo(() => {
+    return profile && textures ? getTopMaterials(profile.mat_weights) : ['canvas', 'denim'];
+  }, [profile, textures]);
+
   const uniforms = useMemo(() => {
-    const topMats = profile && textures ? getTopMaterials(profile.mat_weights) : ['canvas', 'denim'];
     const mat1 = textures?.[topMats[0] as keyof TextureSet];
     const mat2 = textures?.[topMats[1] as keyof TextureSet];
+
+    // ブレンド係数を計算（重みの比率）
+    let blendFactor = 0.5;
+    if (profile && textures) {
+      const weights = profile.mat_weights;
+      const weight1 = weights[topMats[0] as keyof typeof weights] || 0;
+      const weight2 = weights[topMats[1] as keyof typeof weights] || 0;
+      const total = weight1 + weight2;
+      if (total > 0) {
+        blendFactor = weight2 / total; // 0.0 = 完全にmat1, 1.0 = 完全にmat2
+      }
+    }
 
     return {
       uAlbedo1: { value: mat1?.albedo || null },
       uNormal1: { value: mat1?.normal || null },
       uAlbedo2: { value: mat2?.albedo || null },
       uNormal2: { value: mat2?.normal || null },
-      uBlendFactor: { value: 0.5 },
+      uBlendFactor: { value: blendFactor },
       uTintColor: { value: tintColor },
       uTime: { value: 0 },
     };
-  }, [textures, profile, tintColor]);
+  }, [textures, profile, tintColor, topMats]);
 
   const vertexShader = `
     varying vec2 vUv;
@@ -459,15 +475,21 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
       });
     }, []);
 
-    // 慣性付き回転アニメーション
+    // 慣性付き回転アニメーション（requestAnimationFrame使用）
     useEffect(() => {
-      const interval = setInterval(() => {
+      let animationId: number;
+      const animate = () => {
         setRotation((prev) => {
           const diff = targetRotation - prev;
+          if (Math.abs(diff) < 0.001) {
+            return targetRotation; // 目標に到達
+          }
           return prev + diff * 0.1; // スムーズな減速
         });
-      }, 16);
-      return () => clearInterval(interval);
+        animationId = requestAnimationFrame(animate);
+      };
+      animationId = requestAnimationFrame(animate);
+      return () => cancelAnimationFrame(animationId);
     }, [targetRotation]);
 
     // タッチ/マウスイベントハンドラー
@@ -482,8 +504,10 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
       const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const deltaX = x - touchStartRef.current.x;
 
-      // スワイプでY軸回転
-      setTargetRotation(rotation + deltaX * 0.01);
+      // スワイプでY軸回転（現在の回転値から相対的に更新）
+      setTargetRotation((prev) => prev + deltaX * 0.005);
+      // 開始位置を更新して、連続した回転を実現
+      touchStartRef.current.x = x;
     };
 
     const handleTouchEnd = (e: React.TouchEvent | React.MouseEvent) => {

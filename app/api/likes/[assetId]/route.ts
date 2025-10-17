@@ -3,6 +3,7 @@ export const revalidate = 0;
 
 import { getAuthUser, getServiceSupabase } from '../../_shared/assets';
 import { evolveProfile } from '../../../../src/lib/urula/evolution';
+import { convertColorNamesToHSL } from '../../../../src/lib/urula/colorMapping';
 import type { UserUrulaProfile, EvolutionInput } from '../../../../src/types/urula';
 
 type RouteParams = { assetId: string };
@@ -59,22 +60,7 @@ export async function POST(
       if (profileData) {
         // 4. Prepare evolution input from image metadata
         const styleTags = imageData.tags || [];
-        const colors = (imageData.colors || []).map((colorName: string) => {
-          // Simple color name to HSL mapping (you can enhance this)
-          const hslMap: Record<string, { h: number; s: number; l: number }> = {
-            'black': { h: 0, s: 0, l: 0 },
-            'white': { h: 0, s: 0, l: 1 },
-            'red': { h: 0, s: 0.8, l: 0.5 },
-            'blue': { h: 240, s: 0.8, l: 0.5 },
-            'green': { h: 120, s: 0.8, l: 0.4 },
-            'yellow': { h: 60, s: 0.9, l: 0.5 },
-            'orange': { h: 30, s: 0.9, l: 0.5 },
-            'purple': { h: 280, s: 0.7, l: 0.5 },
-            'pink': { h: 330, s: 0.7, l: 0.7 },
-            'gray': { h: 0, s: 0, l: 0.5 },
-          };
-          return { name: colorName, ...(hslMap[colorName.toLowerCase()] || { h: 160, s: 0.25, l: 0.75 }) };
-        });
+        const colors = convertColorNamesToHSL(imageData.colors || []);
 
         const evolutionInput: EvolutionInput = {
           styleTags,
