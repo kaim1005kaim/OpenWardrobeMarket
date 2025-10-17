@@ -1,10 +1,102 @@
 // MetaballsSoft.tsx
 import { useMemo, useState, useRef, useEffect, useImperativeHandle, forwardRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { MarchingCubes, MarchingCube, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import type { UserUrulaProfile } from "../types/urula";
 import { loadUrulaTextures, getTopMaterials, type TextureSet } from "../lib/urula/loadTextures";
+
+// カスタムシェーダーマテリアル
+interface BlendedMaterialProps {
+  textures: TextureSet | null;
+  profile: UserUrulaProfile | null;
+  tintColor: THREE.Color;
+}
+
+function BlendedMaterial({ textures, profile, tintColor }: BlendedMaterialProps) {
+  const shaderRef = useRef<THREE.ShaderMaterial>(null);
+
+  const uniforms = useMemo(() => {
+    const topMats = profile && textures ? getTopMaterials(profile.mat_weights) : ['canvas', 'denim'];
+    const mat1 = textures?.[topMats[0] as keyof TextureSet];
+    const mat2 = textures?.[topMats[1] as keyof TextureSet];
+
+    return {
+      uAlbedo1: { value: mat1?.albedo || null },
+      uNormal1: { value: mat1?.normal || null },
+      uAlbedo2: { value: mat2?.albedo || null },
+      uNormal2: { value: mat2?.normal || null },
+      uBlendFactor: { value: 0.5 },
+      uTintColor: { value: tintColor },
+      uTime: { value: 0 },
+    };
+  }, [textures, profile, tintColor]);
+
+  const vertexShader = `
+    varying vec2 vUv;
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+
+    void main() {
+      vUv = uv;
+      vNormal = normalize(normalMatrix * normal);
+      vPosition = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+
+  const fragmentShader = `
+    uniform sampler2D uAlbedo1;
+    uniform sampler2D uNormal1;
+    uniform sampler2D uAlbedo2;
+    uniform sampler2D uNormal2;
+    uniform float uBlendFactor;
+    uniform vec3 uTintColor;
+    uniform float uTime;
+
+    varying vec2 vUv;
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+
+    void main() {
+      // UVスケーリング
+      vec2 scaledUv = vUv * 2.0;
+
+      // テクスチャサンプリング
+      vec4 albedo1 = texture2D(uAlbedo1, scaledUv);
+      vec4 albedo2 = texture2D(uAlbedo2, scaledUv);
+
+      // ブレンド
+      vec4 blendedAlbedo = mix(albedo1, albedo2, uBlendFactor);
+
+      // ティントカラー適用
+      vec3 tinted = blendedAlbedo.rgb * uTintColor;
+
+      // 簡易ライティング
+      vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
+      float diffuse = max(dot(vNormal, lightDir), 0.3);
+
+      vec3 finalColor = tinted * diffuse;
+
+      gl_FragColor = vec4(finalColor, 1.0);
+    }
+  `;
+
+  useFrame((state) => {
+    if (shaderRef.current) {
+      shaderRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+    }
+  });
+
+  return (
+    <shaderMaterial
+      ref={shaderRef}
+      vertexShader={vertexShader}
+      fragmentShader={fragmentShader}
+      uniforms={uniforms}
+    />
+  );
+}
 
 type Ball = { base: [number, number, number]; phase: number };
 
@@ -45,6 +137,8 @@ function AnimatedCubes({
   palette,
   impactTrigger,
   chaos = 0.35,
+  profile,
+  textures,
 }: AnimatedCubesProps) {
   const balls = useMemo<Ball[]>(
     () =>
@@ -352,12 +446,65 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
     const [customColor, setCustomColor] = useState<string | null>(null);
     const [textures, setTextures] = useState<TextureSet | null>(null);
 
+    // タッチインタラクション用のステート
+    const [rotation, setRotation] = useState(0);
+    const [targetRotation, setTargetRotation] = useState(0);
+    const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+    const canvasRef = useRef<HTMLDivElement>(null);
+
     // Load textures on mount
     useEffect(() => {
       loadUrulaTextures().then(setTextures).catch(err => {
         console.error('[MetaballsSoft] Failed to load textures:', err);
       });
     }, []);
+
+    // 慣性付き回転アニメーション
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setRotation((prev) => {
+          const diff = targetRotation - prev;
+          return prev + diff * 0.1; // スムーズな減速
+        });
+      }, 16);
+      return () => clearInterval(interval);
+    }, [targetRotation]);
+
+    // タッチ/マウスイベントハンドラー
+    const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+      const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const y = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      touchStartRef.current = { x, y, time: Date.now() };
+    };
+
+    const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
+      if (!touchStartRef.current) return;
+      const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const deltaX = x - touchStartRef.current.x;
+
+      // スワイプでY軸回転
+      setTargetRotation(rotation + deltaX * 0.01);
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent | React.MouseEvent) => {
+      if (!touchStartRef.current) return;
+
+      const endTime = Date.now();
+      const duration = endTime - touchStartRef.current.time;
+      const x = 'changedTouches' in e ? e.changedTouches[0].clientX : (e as React.MouseEvent).clientX;
+      const y = 'changedTouches' in e ? e.changedTouches[0].clientY : (e as React.MouseEvent).clientY;
+      const deltaX = Math.abs(x - touchStartRef.current.x);
+      const deltaY = Math.abs(y - touchStartRef.current.y);
+
+      // タップ判定（移動が少なく、短時間）
+      if (deltaX < 10 && deltaY < 10 && duration < 300) {
+        // リップルエフェクト（衝撃トリガー）
+        setImpactTrigger((prev) => prev + 1);
+        onInteract?.();
+      }
+
+      touchStartRef.current = null;
+    };
 
     // 複数のカラーパレット
     const palettes = useMemo(
@@ -445,7 +592,16 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
     }));
 
     return (
-      <div style={{ width: "100%", height: "100%", position: "relative", pointerEvents: 'none' }}>
+      <div
+        ref={canvasRef}
+        style={{ width: "100%", height: "100%", position: "relative", pointerEvents: 'auto' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleTouchStart}
+        onMouseMove={handleTouchMove}
+        onMouseUp={handleTouchEnd}
+      >
         <Canvas
           gl={{ alpha: true, premultipliedAlpha: false, antialias: true }}
           onCreated={({ gl }) => {
@@ -462,22 +618,36 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
             background={false}
           />
 
-          <MarchingCubes
-            resolution={80}
-            maxPolyCount={60000}
-            enableUvs={false}
-            enableColors
-          >
-            <meshStandardMaterial vertexColors roughness={0} metalness={0} />
-            <AnimatedCubes
-              animated={animated}
-              palette={currentPalette}
-              impactTrigger={impactTrigger}
-              chaos={profile?.chaos}
-              profile={profile}
-              textures={textures}
-            />
-          </MarchingCubes>
+          <group rotation={[0, rotation, 0]}>
+            <MarchingCubes
+              resolution={80}
+              maxPolyCount={60000}
+              enableUvs={true}
+              enableColors={false}
+            >
+              {textures && profile ? (
+                <BlendedMaterial
+                  textures={textures}
+                  profile={profile}
+                  tintColor={new THREE.Color().setHSL(
+                    profile.tint.h / 360,
+                    profile.tint.s,
+                    profile.tint.l
+                  )}
+                />
+              ) : (
+                <meshStandardMaterial roughness={0} metalness={0} color="#7FEFBD" />
+              )}
+              <AnimatedCubes
+                animated={animated}
+                palette={currentPalette}
+                impactTrigger={impactTrigger}
+                chaos={profile?.chaos}
+                profile={profile}
+                textures={textures}
+              />
+            </MarchingCubes>
+          </group>
         </Canvas>
       </div>
     );
