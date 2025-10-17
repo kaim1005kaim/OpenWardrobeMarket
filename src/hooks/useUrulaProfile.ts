@@ -22,7 +22,11 @@ interface UseUrulaProfileReturn {
  */
 export function useUrulaProfile(): UseUrulaProfileReturn {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<UserUrulaProfile>(DEFAULT_URULA_PROFILE);
+  const [profile, setProfile] = useState<UserUrulaProfile>({
+    ...DEFAULT_URULA_PROFILE,
+    user_id: '',
+    updated_at: new Date().toISOString(),
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -176,7 +180,11 @@ export function useUrulaProfile(): UseUrulaProfileReturn {
     if (user) {
       reload();
     } else {
-      setProfile(DEFAULT_URULA_PROFILE);
+      setProfile({
+        ...DEFAULT_URULA_PROFILE,
+        user_id: '',
+        updated_at: new Date().toISOString(),
+      });
       setLoading(false);
     }
   }, [user, reload]);

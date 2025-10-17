@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { MaterialWeights } from '../../types/urula';
 
 export interface MaterialTextures {
   albedo: THREE.Texture;
@@ -67,7 +68,7 @@ export async function loadUrulaTextures(): Promise<TextureSet> {
 
   const results = await Promise.all(loadPromises);
 
-  cachedTextures = Object.fromEntries(results) as TextureSet;
+  cachedTextures = Object.fromEntries(results) as unknown as TextureSet;
 
   return cachedTextures;
 }
@@ -75,9 +76,9 @@ export async function loadUrulaTextures(): Promise<TextureSet> {
 /**
  * Get top 2 materials by weight
  */
-export function getTopMaterials(weights: Record<string, number>): [string, number][] {
-  const sorted = Object.entries(weights)
+export function getTopMaterials(weights: MaterialWeights | Record<string, number>): string[] {
+  const sorted = Object.entries(weights as Record<string, number>)
     .sort(([, a], [, b]) => b - a);
 
-  return sorted.slice(0, 2) as [string, number][];
+  return sorted.slice(0, 2).map(([name]) => name);
 }
