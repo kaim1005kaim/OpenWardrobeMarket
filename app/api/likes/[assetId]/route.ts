@@ -28,9 +28,9 @@ export async function POST(
       .upsert(
         {
           user_id: user.id,
-          asset_id: assetId
+          image_id: assetId
         },
-        { onConflict: 'user_id,asset_id' }
+        { onConflict: 'user_id,image_id' }
       );
 
     if (error) {
@@ -68,7 +68,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('likes')
       .delete()
-      .match({ user_id: user.id, asset_id: assetId });
+      .match({ user_id: user.id, image_id: assetId });
 
     if (error) {
       console.error('[api/likes] delete error:', error.message);
