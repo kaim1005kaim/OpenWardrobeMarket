@@ -3,6 +3,8 @@ export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { evolveProfile } from '../../../src/lib/urula/evolution';
+import type { UserUrulaProfile, EvolutionInput } from '../../../src/types/urula';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -206,6 +208,63 @@ export async function POST(req: NextRequest) {
         console.warn('[publish] Failed to save generation history:', historyError.message);
         // Continue anyway - this is optional
       }
+    }
+
+    // Evolve Urula profile after publish (strong signal)
+    try {
+      const { data: profileData } = await supabase
+        .from('user_urula_profile')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileData) {
+        const styleTags = tags || [];
+        const colorList = colors || [];
+        const colorHSL = colorList.map((colorName: string) => {
+          const hslMap: Record<string, { h: number; s: number; l: number }> = {
+            'black': { h: 0, s: 0, l: 0 },
+            'white': { h: 0, s: 0, l: 1 },
+            'red': { h: 0, s: 0.8, l: 0.5 },
+            'blue': { h: 240, s: 0.8, l: 0.5 },
+            'green': { h: 120, s: 0.8, l: 0.4 },
+            'yellow': { h: 60, s: 0.9, l: 0.5 },
+            'orange': { h: 30, s: 0.9, l: 0.5 },
+            'purple': { h: 280, s: 0.7, l: 0.5 },
+            'pink': { h: 330, s: 0.7, l: 0.7 },
+            'gray': { h: 0, s: 0, l: 0.5 },
+          };
+          return { name: colorName, ...(hslMap[colorName.toLowerCase()] || { h: 160, s: 0.25, l: 0.75 }) };
+        });
+
+        const evolutionInput: EvolutionInput = {
+          styleTags,
+          colors: colorHSL,
+          signals: {
+            published: true, // Very strong signal (2x multiplier)
+          },
+        };
+
+        const evolvedProfile = evolveProfile(profileData as UserUrulaProfile, evolutionInput);
+
+        await supabase
+          .from('user_urula_profile')
+          .update({
+            mat_weights: evolvedProfile.mat_weights,
+            glass_gene: evolvedProfile.glass_gene,
+            chaos: evolvedProfile.chaos,
+            tint: evolvedProfile.tint,
+            palette: evolvedProfile.palette,
+            history: evolvedProfile.history,
+            updated_at: evolvedProfile.updated_at,
+          })
+          .eq('user_id', user.id);
+
+        console.log('[publish] Profile evolved after publish:', evolvedProfile.mat_weights);
+      }
+    } catch (evolutionError) {
+      console.warn('[publish] Failed to evolve profile:', evolutionError);
+      // Continue anyway - this is optional
     }
 
     return NextResponse.json({

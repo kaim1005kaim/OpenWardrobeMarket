@@ -3,6 +3,8 @@ import { useMemo, useState, useRef, useEffect, useImperativeHandle, forwardRef }
 import { Canvas, useFrame } from "@react-three/fiber";
 import { MarchingCubes, MarchingCube, Environment } from "@react-three/drei";
 import * as THREE from "three";
+import type { UserUrulaProfile } from "../types/urula";
+import { loadUrulaTextures, getTopMaterials, type TextureSet } from "../lib/urula/loadTextures";
 
 type Ball = { base: [number, number, number]; phase: number };
 
@@ -10,6 +12,9 @@ interface AnimatedCubesProps {
   animated: boolean;
   palette: string[];
   impactTrigger: number;
+  chaos?: number;
+  profile?: UserUrulaProfile | null;
+  textures?: TextureSet | null;
 }
 
 // 20種類のアニメーションパターン
@@ -39,6 +44,7 @@ function AnimatedCubes({
   animated,
   palette,
   impactTrigger,
+  chaos = 0.35,
 }: AnimatedCubesProps) {
   const balls = useMemo<Ball[]>(
     () =>
@@ -107,21 +113,22 @@ function AnimatedCubes({
     const t = clock.getElapsedTime() * 0.4;
     const a = animated ? 1 : 0;
 
-    // 呼吸するような脈動エフェクト
-    const breathingCycle = clock.getElapsedTime() * 0.3; // ゆっくりとした呼吸サイクル
-    const breathingScale = 1 + Math.sin(breathingCycle) * 0.12; // 脈動の大きさ
+    // 呼吸するような脈動エフェクト (chaos によって波動の激しさが変わる)
+    const breathingCycle = clock.getElapsedTime() * 0.3;
+    const breathingScale = 1 + Math.sin(breathingCycle) * (0.08 + chaos * 0.08);
 
     // 衝撃からの経過時間（ミリ秒）
     const timeSinceImpact = performance.now() - impactTimeRef.current;
-    const impactDuration = 1000; // 1000msに延長してゆっくりに
+    const impactDuration = 1000;
     const linearProgress = Math.max(0, 1 - timeSinceImpact / impactDuration);
-    // 滑らかなイージング（バネなし）
     const impactStrength = linearProgress > 0 ? easeInOutCubic(1 - linearProgress) * linearProgress : 0;
 
     const targetPositions = balls.map((b, i) => {
-      const baseX = b.base[0] + a * (Math.sin(t * 1.2 + b.phase) * 0.30 + Math.sin(t * 0.35 + i) * 0.05);
-      const baseY = b.base[1] + a * (Math.cos(t * 0.9 + b.phase + 1.0) * 0.28 + Math.cos(t * 0.31 + i * 1.7) * 0.05);
-      const baseZ = b.base[2] + a * (Math.sin(t * 0.7 + b.phase + 2.0) * 0.22 + Math.sin(t * 0.27 + i * 0.7) * 0.04);
+      // chaos パラメータで波動の激しさを調整
+      const waveScale = 0.2 + chaos * 0.3;
+      const baseX = b.base[0] + a * (Math.sin(t * 1.2 + b.phase) * waveScale + Math.sin(t * 0.35 + i) * 0.05);
+      const baseY = b.base[1] + a * (Math.cos(t * 0.9 + b.phase + 1.0) * waveScale + Math.cos(t * 0.31 + i * 1.7) * 0.05);
+      const baseZ = b.base[2] + a * (Math.sin(t * 0.7 + b.phase + 2.0) * (waveScale * 0.7) + Math.sin(t * 0.27 + i * 0.7) * 0.04);
 
       // 呼吸エフェクトを基本位置に適用
       const breathX = baseX * breathingScale;
@@ -135,7 +142,6 @@ function AnimatedCubes({
 
         switch (animationTypeRef.current) {
           case 'explosion': {
-            // 中心から外側へ爆発
             const direction = new THREE.Vector3(baseX, baseY, baseZ).normalize();
             offsetX = direction.x * impactStrength * 0.5;
             offsetY = direction.y * impactStrength * 0.5;
@@ -143,7 +149,6 @@ function AnimatedCubes({
             break;
           }
           case 'wave': {
-            // 波紋のように順番に膨張
             const delay = i * 0.15;
             const waveStrength = Math.max(0, impactStrength - delay);
             offsetY = Math.sin(waveStrength * Math.PI) * 0.45;
@@ -152,7 +157,6 @@ function AnimatedCubes({
             break;
           }
           case 'spiral': {
-            // らせん状に回転しながら膨張
             const spiralAngle = angle + impactStrength * Math.PI * 2;
             offsetX = Math.cos(spiralAngle) * impactStrength * 0.5;
             offsetZ = Math.sin(spiralAngle) * impactStrength * 0.2;
@@ -160,7 +164,6 @@ function AnimatedCubes({
             break;
           }
           case 'pulse': {
-            // 脈動（全体が大きくなって小さくなる）
             const pulseScale = 1 + Math.sin(impactStrength * Math.PI) * 0.45;
             offsetX = baseX * (pulseScale - 1);
             offsetY = baseY * (pulseScale - 1);
@@ -168,7 +171,6 @@ function AnimatedCubes({
             break;
           }
           case 'scatter': {
-            // ランダムな方向に飛び散る
             const scatterX = Math.sin(b.phase + i * 0.7);
             const scatterY = Math.cos(b.phase + i * 1.3);
             const scatterZ = Math.sin(b.phase + i * 2.1);
@@ -292,14 +294,13 @@ function AnimatedCubes({
         }
       }
 
-      // 呼吸エフェクトとオフセットを組み合わせて最終位置を計算
       const finalX = Math.max(-0.6, Math.min(0.6, breathX + offsetX));
       const finalY = Math.max(-0.6, Math.min(0.6, breathY + offsetY));
       const finalZ = Math.max(-0.4, Math.min(0.4, breathZ + offsetZ));
 
       return [finalX, finalY, finalZ] as [number, number, number];
     });
-    
+
     setPositions((prev) => {
       if (!prev.length) {
         return targetPositions;
@@ -341,22 +342,31 @@ interface MetaballsSoftProps {
   height?: number;
   animated?: boolean;
   onInteract?: () => void;
+  profile?: UserUrulaProfile | null;
 }
 
 const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
-  ({ animated = true, onInteract }, ref) => {
+  ({ animated = true, onInteract, profile }, ref) => {
     const [impactTrigger, setImpactTrigger] = useState(0);
     const [paletteIndex, setPaletteIndex] = useState(0);
     const [customColor, setCustomColor] = useState<string | null>(null);
+    const [textures, setTextures] = useState<TextureSet | null>(null);
+
+    // Load textures on mount
+    useEffect(() => {
+      loadUrulaTextures().then(setTextures).catch(err => {
+        console.error('[MetaballsSoft] Failed to load textures:', err);
+      });
+    }, []);
 
     // 複数のカラーパレット
     const palettes = useMemo(
       () => [
-        ["#7FEFBD", "#FFB3D9", "#FFD4A3", "#FFF4B8", "#8FFFCC", "#FFB8E6", "#FFD9A8"], // 元の色
-        ["#FF6B9D", "#C44569", "#FFC312", "#EE5A6F", "#FDA7DF", "#F8B500", "#FFB6C1"], // ピンク/赤系
-        ["#4ECDC4", "#44A08D", "#556270", "#46C2CB", "#5EAAA8", "#95E1D3", "#71C9CE"], // 青緑系
-        ["#A8E6CF", "#FFDAC1", "#FFB7B2", "#C7CEEA", "#B5EAD7", "#E2F0CB", "#FF9AA2"], // パステル系
-        ["#9B59B6", "#3498DB", "#E74C3C", "#F39C12", "#1ABC9C", "#E67E22", "#2ECC71"], // ビビッド系
+        ["#7FEFBD", "#FFB3D9", "#FFD4A3", "#FFF4B8", "#8FFFCC", "#FFB8E6", "#FFD9A8"],
+        ["#FF6B9D", "#C44569", "#FFC312", "#EE5A6F", "#FDA7DF", "#F8B500", "#FFB6C1"],
+        ["#4ECDC4", "#44A08D", "#556270", "#46C2CB", "#5EAAA8", "#95E1D3", "#71C9CE"],
+        ["#A8E6CF", "#FFDAC1", "#FFB7B2", "#C7CEEA", "#B5EAD7", "#E2F0CB", "#FF9AA2"],
+        ["#9B59B6", "#3498DB", "#E74C3C", "#F39C12", "#1ABC9C", "#E67E22", "#2ECC71"],
       ],
       []
     );
@@ -374,11 +384,9 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
       const milkyWhite = { r: 245, g: 245, b: 240 };
 
       for (let i = 0; i < 7; i++) {
-        // 各ボールで異なる混合比率を使用（色の割合を増やす）
         const ratios = [0.35, 0.45, 0.55, 0.65, 0.5, 0.4, 0.6];
         const ratio = ratios[i];
 
-        // 乳白色とベースカラーをブレンド
         const blendedR = Math.round(milkyWhite.r * (1 - ratio) + r * ratio);
         const blendedG = Math.round(milkyWhite.g * (1 - ratio) + g * ratio);
         const blendedB = Math.round(milkyWhite.b * (1 - ratio) + b * ratio);
@@ -391,13 +399,33 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
       return palette;
     };
 
+    // Apply profile tint if available
     const currentPalette = useMemo(() => {
       if (customColor) {
-        // カスタムカラーが指定された場合、乳白色ベースで美しくブレンドしたパレットを生成
         return generateGradientPalette(customColor);
       }
+
+      // Use profile tint if available
+      if (profile?.tint) {
+        const { h, s, l } = profile.tint;
+        const hslColor = `hsl(${h}, ${s * 100}%, ${l * 100}%)`;
+        // Convert HSL to hex for gradient generation
+        const tempDiv = document.createElement('div');
+        tempDiv.style.color = hslColor;
+        document.body.appendChild(tempDiv);
+        const rgb = window.getComputedStyle(tempDiv).color;
+        document.body.removeChild(tempDiv);
+
+        const match = rgb.match(/\d+/g);
+        if (match) {
+          const [r, g, b] = match.map(Number);
+          const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+          return generateGradientPalette(hex);
+        }
+      }
+
       return palettes[paletteIndex % palettes.length];
-    }, [customColor, palettes, paletteIndex]);
+    }, [customColor, profile, palettes, paletteIndex]);
 
     // 外部から呼び出せるメソッドを公開
     useImperativeHandle(ref, () => ({
@@ -441,7 +469,14 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
             enableColors
           >
             <meshStandardMaterial vertexColors roughness={0} metalness={0} />
-            <AnimatedCubes animated={animated} palette={currentPalette} impactTrigger={impactTrigger} />
+            <AnimatedCubes
+              animated={animated}
+              palette={currentPalette}
+              impactTrigger={impactTrigger}
+              chaos={profile?.chaos}
+              profile={profile}
+              textures={textures}
+            />
           </MarchingCubes>
         </Canvas>
       </div>

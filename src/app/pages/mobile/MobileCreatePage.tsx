@@ -5,6 +5,7 @@ import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/Metaball
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import { useDNA } from '../../../hooks/useDNA';
+import { useUrulaProfile } from '../../../hooks/useUrulaProfile';
 import { DEFAULT_DNA, type DNA, type Answers, type GeminiCoachOut } from '../../../types/dna';
 import { COPY } from '../../../constants/copy';
 import './MobileCreatePage.css';
@@ -95,6 +96,31 @@ const convertColorIdsToNames = (colorIds: string[]): string[] => {
   return colorIds.map(id => colorIdToName[id] || id).filter(Boolean);
 };
 
+// Hex to HSL conversion helper
+function hexToHSL(hex: string): { h: number; s: number; l: number } {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+
+  return { h: Math.round(h * 360), s, l };
+}
+
 export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const [stage, setStage] = useState<Stage>('answering');
   const [currentStep, setCurrentStep] = useState(0);
@@ -107,6 +133,9 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const sessionKey = useRef(`mobile-create-${Date.now()}`).current;
   const { dna, updateDNA, syncNow, updateContext } = useDNA(sessionKey, DEFAULT_DNA);
   const metaballsRef = useRef<MetaballsSoftHandle>(null);
+
+  // Urula profile management
+  const { profile, applyLocal, evolve } = useUrulaProfile();
 
   // Coaching state
   const [coachData, setCoachData] = useState<GeminiCoachOut | null>(null);
@@ -192,6 +221,12 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
         const blendedColor = blendColors(selectedColors);
         setSelectedBlendedColor(blendedColor);
         metaballsRef.current?.triggerImpact(blendedColor);
+
+        // Update Urula profile tint with selected color
+        const { h, s, l } = hexToHSL(blendedColor);
+        applyLocal({
+          tint: { h, s, l }
+        });
       } else {
         // 選択が全て解除された場合、デフォルトカラーに戻す
         setSelectedBlendedColor(null);
@@ -460,9 +495,43 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
     }
   };
 
-  const handleRevealDone = () => {
+  const handleRevealDone = async () => {
     setShowButtons(true);
     setStage('done');
+
+    // Evolve Urula profile based on generation
+    if (generatedAsset) {
+      const colorNames = convertColorIdsToNames(answers.color || []);
+      const colorsWithHSL = colorNames.map(name => {
+        // Find hex color from grid
+        let hexColor = '#7FEFBD';
+        colorPaletteGrid.forEach((row, rowIdx) => {
+          row.forEach((gridColor, colIdx) => {
+            const colorId = `color-${rowIdx}-${colIdx}`;
+            if (colorIdToName[colorId] === name) {
+              hexColor = gridColor;
+            }
+          });
+        });
+        const { h, s, l } = hexToHSL(hexColor);
+        return { name, h, s, l };
+      });
+
+      const styleTags = [
+        ...(answers.vibe || []),
+        ...(answers.silhouette || []),
+        ...(answers.occasion || []),
+        ...(answers.season || []),
+      ];
+
+      await evolve({
+        styleTags,
+        colors: colorsWithHSL,
+        signals: {
+          keep: true, // User saw the result
+        }
+      });
+    }
   };
 
   const handlePublish = async () => {
@@ -664,7 +733,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <MetaballsSoft ref={metaballsRef} animated={true} />
+                <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">CREATE</h1>
@@ -747,7 +816,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <MetaballsSoft ref={metaballsRef} animated={true} />
+                <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title smaller">{COPY.flow.guidance}</h1>
@@ -833,6 +902,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   </button>
                 </>
               )}
+              </div>
 
               <button
                 className="preview-btn"
@@ -854,7 +924,6 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
               >
                 最初から始める
               </button>
-              </div>
             </div>
           </>
         )}
@@ -864,7 +933,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <MetaballsSoft ref={metaballsRef} animated={true} />
+                <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">{COPY.pages.REVIEW}</h1>
@@ -901,7 +970,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <MetaballsSoft animated={true} />
+                <MetaballsSoft animated={true} profile={profile} />
               </div>
             </div>
 
