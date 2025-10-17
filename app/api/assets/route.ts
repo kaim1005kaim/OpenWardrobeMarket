@@ -350,6 +350,7 @@ export async function GET(request: Request) {
           return Response.json({ assets: [], cursor: null });
         }
 
+        // Fetch from assets table
         const { data: likedAssets, error: likedAssetsError } = await supabase
           .from('assets')
           .select('*')
@@ -357,19 +358,93 @@ export async function GET(request: Request) {
           .order('created_at', { ascending: false })
           .limit(limitValue);
 
-        if (likedAssetsError) {
-          console.error('[api/assets] Failed to fetch liked assets:', likedAssetsError.message);
-          if ((likedAssetsError as any).code === '42P01') {
+        // Fetch from published_items table
+        const { data: likedPublished, error: likedPublishedError } = await supabase
+          .from('published_items')
+          .select(`
+            *,
+            images (
+              id,
+              r2_url,
+              r2_key,
+              width,
+              height,
+              mime_type
+            )
+          `)
+          .in('id', likedArray)
+          .order('created_at', { ascending: false })
+          .limit(limitValue);
+
+        // Fetch from generation_history table
+        const { data: likedGeneration, error: likedGenerationError } = await supabase
+          .from('generation_history')
+          .select('*')
+          .in('id', likedArray)
+          .order('created_at', { ascending: false })
+          .limit(limitValue);
+
+        if (likedAssetsError || likedPublishedError || likedGenerationError) {
+          console.error('[api/assets] Failed to fetch liked assets:',
+            likedAssetsError?.message || likedPublishedError?.message || likedGenerationError?.message);
+          if ((likedAssetsError as any)?.code === '42P01') {
             return Response.json({ assets: [], cursor: null });
           }
           return Response.json({ error: 'Failed to fetch liked assets' }, { status: 500 });
         }
 
-        const filteredLiked = (likedAssets || []).filter(assetIsAllowed);
+        // Convert published_items to asset format
+        const publishedAsAssets = (likedPublished || []).map((item: any) => ({
+          id: item.id,
+          user_id: item.user_id,
+          title: item.title,
+          description: item.description,
+          status: 'public',
+          tags: item.tags || [],
+          price: item.price,
+          likes: item.likes || 0,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          final_key: item.images?.r2_key || item.original_url,
+          final_url: item.original_url,
+          raw_key: null,
+          raw_url: null,
+          metadata: {
+            width: item.images?.width || 1024,
+            height: item.images?.height || 1024,
+            mime_type: item.images?.mime_type || 'image/png'
+          }
+        }));
+
+        // Convert generation_history to asset format
+        const generationAsAssets = (likedGeneration || []).map((item: any) => ({
+          id: item.id,
+          user_id: item.user_id,
+          title: 'Generated Design',
+          description: '',
+          status: item.status || 'private',
+          tags: [],
+          price: 0,
+          likes: 0,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          final_key: item.final_r2_key,
+          final_url: item.final_r2_url,
+          raw_key: item.raw_r2_key,
+          raw_url: item.raw_r2_url,
+          metadata: item.metadata || {}
+        }));
+
+        // Combine all sources
+        const allLiked = [...(likedAssets || []), ...publishedAsAssets, ...generationAsAssets];
+        const filteredLiked = allLiked.filter(assetIsAllowed);
 
         if (filteredLiked.length === 0) {
           return Response.json({ assets: [], cursor: null });
         }
+
+        // Sort by created_at
+        filteredLiked.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         const serializedLiked = await Promise.all(
           filteredLiked.map((row) =>
