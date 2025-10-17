@@ -21,7 +21,7 @@ interface UseUrulaProfileReturn {
  * and debounced server persistence
  */
 export function useUrulaProfile(): UseUrulaProfileReturn {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [profile, setProfile] = useState<UserUrulaProfile>({
     ...DEFAULT_URULA_PROFILE,
     user_id: '',
@@ -39,7 +39,7 @@ export function useUrulaProfile(): UseUrulaProfileReturn {
    * Flush pending changes to server
    */
   const flush = useCallback(async () => {
-    if (isFlushing.current || Object.keys(patchQueue.current).length === 0 || !user) {
+    if (isFlushing.current || Object.keys(patchQueue.current).length === 0 || !user || !session) {
       return;
     }
 
@@ -53,7 +53,7 @@ export function useUrulaProfile(): UseUrulaProfileReturn {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.id}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(delta)
       });
@@ -73,7 +73,7 @@ export function useUrulaProfile(): UseUrulaProfileReturn {
     } finally {
       isFlushing.current = false;
     }
-  }, [user]);
+  }, [user, session]);
 
   /**
    * Apply local changes immediately and schedule server sync
@@ -107,14 +107,14 @@ export function useUrulaProfile(): UseUrulaProfileReturn {
    * Evolve profile based on generation result
    */
   const evolve = useCallback(async (input: EvolutionInput) => {
-    if (!user) return;
+    if (!user || !session) return;
 
     try {
       const response = await fetch('/api/urula/evolve', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.id}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(input)
       });
@@ -137,19 +137,19 @@ export function useUrulaProfile(): UseUrulaProfileReturn {
       console.error('[useUrulaProfile] Evolve error:', err);
       setError(err.message);
     }
-  }, [user]);
+  }, [user, session]);
 
   /**
    * Reload profile from server
    */
   const reload = useCallback(async () => {
-    if (!user) return;
+    if (!user || !session) return;
 
     setLoading(true);
     try {
       const response = await fetch('/api/urula/profile', {
         headers: {
-          'Authorization': `Bearer ${user.id}`
+          'Authorization': `Bearer ${session.access_token}`
         }
       });
 
@@ -173,7 +173,7 @@ export function useUrulaProfile(): UseUrulaProfileReturn {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, session]);
 
   // Load profile on mount or user change
   useEffect(() => {
