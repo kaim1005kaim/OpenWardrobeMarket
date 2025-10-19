@@ -132,61 +132,6 @@ function BlendedMaterial({ textures, profile, tintColor }: BlendedMaterialProps)
       return normalize(TBN * normal);
     }
 
-    // RGB to HSL conversion
-    vec3 rgb2hsl(vec3 color) {
-      float maxC = max(max(color.r, color.g), color.b);
-      float minC = min(min(color.r, color.g), color.b);
-      float delta = maxC - minC;
-
-      float h = 0.0;
-      float s = 0.0;
-      float l = (maxC + minC) / 2.0;
-
-      if (delta > 0.0001) {
-        s = l < 0.5 ? delta / (maxC + minC) : delta / (2.0 - maxC - minC);
-
-        if (maxC == color.r) {
-          h = (color.g - color.b) / delta + (color.g < color.b ? 6.0 : 0.0);
-        } else if (maxC == color.g) {
-          h = (color.b - color.r) / delta + 2.0;
-        } else {
-          h = (color.r - color.g) / delta + 4.0;
-        }
-        h /= 6.0;
-      }
-
-      return vec3(h, s, l);
-    }
-
-    // HSL to RGB conversion
-    float hue2rgb(float p, float q, float t) {
-      if (t < 0.0) t += 1.0;
-      if (t > 1.0) t -= 1.0;
-      if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
-      if (t < 1.0/2.0) return q;
-      if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
-      return p;
-    }
-
-    vec3 hsl2rgb(vec3 hsl) {
-      float h = hsl.x;
-      float s = hsl.y;
-      float l = hsl.z;
-
-      if (s == 0.0) {
-        return vec3(l);
-      }
-
-      float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
-      float p = 2.0 * l - q;
-
-      float r = hue2rgb(p, q, h + 1.0/3.0);
-      float g = hue2rgb(p, q, h);
-      float b = hue2rgb(p, q, h - 1.0/3.0);
-
-      return vec3(r, g, b);
-    }
-
     void main() {
       // Triplanar mapping でテクスチャサンプリング（スケール調整）
       float texScale = 1.5; // テクスチャの繰り返し密度
@@ -203,18 +148,8 @@ function BlendedMaterial({ textures, profile, tintColor }: BlendedMaterialProps)
       // ノーマルマップを適用
       vec3 N = perturbNormalTriplanar(blendedNormal, vWorldNormal);
 
-      // ティントカラー適用（HSL空間で調整）
-      vec3 baseHSL = rgb2hsl(blendedAlbedo.rgb);
-      vec3 tintHSL = rgb2hsl(uTintColor);
-
-      // テクスチャの色相・彩度をtintで調整、明度はテクスチャを維持
-      vec3 adjustedHSL = vec3(
-        tintHSL.x,                    // tintの色相を使用
-        baseHSL.y * (1.0 - tintHSL.y * 0.5) + tintHSL.y * 0.5,  // 彩度を部分的にブレンド
-        baseHSL.z * tintHSL.z        // 明度を乗算
-      );
-
-      vec3 tinted = hsl2rgb(adjustedHSL);
+      // ティントカラー適用（シンプルな乗算）
+      vec3 tinted = blendedAlbedo.rgb * uTintColor;
 
       // ライティング設定
       vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
