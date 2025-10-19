@@ -6,36 +6,36 @@
 import type { UserUrulaProfile, EvolutionInput, MaterialWeights, Tint } from '../../types/urula';
 
 // Material learning rules: tag → material weight deltas
-// Stronger deltas for clear visual identity (80/20 principle)
+// Increased deltas for faster visual evolution
 const MAT_RULES: Record<string, Partial<MaterialWeights>> = {
-  // Direct material mappings (strong)
-  leather: { leather: 0.15 },
-  denim: { denim: 0.15 },
-  pinstripe: { pinstripe: 0.15 },
-  canvas: { canvas: 0.12 },
+  // Direct material mappings (very strong)
+  leather: { leather: 0.30 },
+  denim: { denim: 0.30 },
+  pinstripe: { pinstripe: 0.30 },
+  canvas: { canvas: 0.25 },
 
-  // Style mappings (medium-strong)
-  luxury: { leather: 0.12 },
-  luxe: { leather: 0.12 },
-  formal: { pinstripe: 0.10 },
-  tailored: { pinstripe: 0.10 },
-  classic: { pinstripe: 0.08 },
-  elegant: { pinstripe: 0.06, leather: 0.06 },
+  // Style mappings (strong)
+  luxury: { leather: 0.25 },
+  luxe: { leather: 0.25 },
+  formal: { pinstripe: 0.20 },
+  tailored: { pinstripe: 0.20 },
+  classic: { pinstripe: 0.15 },
+  elegant: { pinstripe: 0.12, leather: 0.12 },
 
-  street: { denim: 0.12 },
-  casual: { denim: 0.10 },
-  urban: { denim: 0.08 },
+  street: { denim: 0.25 },
+  casual: { denim: 0.20 },
+  urban: { denim: 0.15 },
 
-  workwear: { canvas: 0.10 },
-  work: { canvas: 0.08 },
-  utility: { canvas: 0.08 },
-  outdoor: { canvas: 0.06 },
+  workwear: { canvas: 0.20 },
+  work: { canvas: 0.15 },
+  utility: { canvas: 0.15 },
+  outdoor: { canvas: 0.12 },
 
-  // Seasonal/occasion (subtle)
-  summer: { canvas: 0.04 },
-  winter: { leather: 0.04 },
-  business: { pinstripe: 0.06 },
-  party: { leather: 0.04 },
+  // Seasonal/occasion (medium)
+  summer: { canvas: 0.08 },
+  winter: { leather: 0.08 },
+  business: { pinstripe: 0.12 },
+  party: { leather: 0.08 },
 };
 
 /**
@@ -193,13 +193,23 @@ export function evolveProfile(
 ): UserUrulaProfile {
   const { styleTags, colors, signals } = input;
 
-  // Calculate learning rate based on signals
-  const learnRate =
+  // Calculate base learning rate based on signals
+  let learnRate =
     1 +
     0.25 *
       (+(signals.liked ?? false) +
         2 * +(signals.published ?? false) +
         0.5 * +(signals.keep ?? false));
+
+  // Initial generation boost: 3x for first generation, gradually decreases
+  const isFirstGeneration = profile.history.generations === 0;
+  if (isFirstGeneration) {
+    learnRate *= 3.0; // 初回は3倍ブースト
+  } else if (profile.history.generations < 5) {
+    // 2-5回目は徐々に減衰（2.5x → 2.0x → 1.5x → 1.0x）
+    const decayFactor = 2.5 - (profile.history.generations - 1) * 0.5;
+    learnRate *= Math.max(1.0, decayFactor);
+  }
 
   // Apply tag deltas to material weights
   let newWeights = applyTagDeltas(profile.mat_weights, styleTags, learnRate);

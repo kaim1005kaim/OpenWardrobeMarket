@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { MobileLayout } from '../../components/mobile/MobileLayout';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
+import MetaballsSoft from '../../../components/MetaballsSoft';
 import { useAuth } from '../../lib/AuthContext';
+import { useUrulaProfile } from '../../../hooks/useUrulaProfile';
 import { supabase } from '../../lib/supabase';
 import { Asset, AssetStatus } from '../../lib/types';
 import {
@@ -22,6 +24,7 @@ type TabType = 'publish' | 'drafts' | 'collections';
 
 export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const { user } = useAuth();
+  const { profile } = useUrulaProfile();
   const [activeSection, setActiveSection] = useState<'design' | 'setting'>('design');
   const [activeTab, setActiveTab] = useState<TabType>('publish');
   const [myAssets, setMyAssets] = useState<Asset[]>([]);
@@ -331,26 +334,28 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
           <div className="title-section">
             <h1 className="page-title">{COPY.mypage.title}</h1>
             <div className="profile-avatar-circle">
-              <img
-                src={user?.user_metadata?.avatar_url || 'https://via.placeholder.com/120/EEECE6/999?text=User'}
-                alt="Profile"
-              />
+              <MetaballsSoft profile={profile} />
             </div>
           </div>
 
           {/* Profile Info */}
           <div className="profile-info">
-            <button
-              className="profile-name-btn"
-              onClick={() => setShowAccountMenu((prev) => !prev)}
-              aria-expanded={showAccountMenu}
-              ref={accountTriggerRef}
-            >
-              {user?.user_metadata?.username || user?.email?.split('@')[0] || 'JOHN DEANNA'}
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="6 9 9 12 12 9" />
-              </svg>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                <MetaballsSoft profile={profile} />
+              </div>
+              <button
+                className="profile-name-btn"
+                onClick={() => setShowAccountMenu((prev) => !prev)}
+                aria-expanded={showAccountMenu}
+                ref={accountTriggerRef}
+              >
+                {user?.user_metadata?.username || user?.email?.split('@')[0] || 'JOHN DEANNA'}
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 9 12 12 9" />
+                </svg>
+              </button>
+            </div>
             {showAccountMenu && (
               <div className="account-menu" ref={accountMenuRef}>
                 <div className="account-menu-item active">
