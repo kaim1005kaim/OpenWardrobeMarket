@@ -55,11 +55,13 @@ function BlendedMaterial({ textures, profile, tintColor }: BlendedMaterialProps)
     varying vec3 vPosition;
     varying vec3 vViewPosition;
     varying vec3 vWorldNormal;
+    varying vec3 vWorldPosition;
 
     void main() {
       vUv = uv;
       vNormal = normalize(normalMatrix * normal);
       vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+      vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
 
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       vViewPosition = -mvPosition.xyz;
@@ -83,41 +85,68 @@ function BlendedMaterial({ textures, profile, tintColor }: BlendedMaterialProps)
     varying vec3 vPosition;
     varying vec3 vViewPosition;
     varying vec3 vWorldNormal;
+    varying vec3 vWorldPosition;
 
-    // ノーマルマップをタンジェント空間からワールド空間へ変換
-    vec3 perturbNormal(vec3 normalMap, vec3 worldNormal, vec3 viewPos) {
-      // タンジェントとバイノーマルを計算
-      vec3 q1 = dFdx(viewPos);
-      vec3 q2 = dFdy(viewPos);
-      vec2 st1 = dFdx(vUv);
-      vec2 st2 = dFdy(vUv);
+    // Triplanar mapping: 3つの平面からテクスチャを投影してブレンド
+    vec4 triplanarAlbedo(sampler2D tex, vec3 worldPos, vec3 worldNormal, float scale) {
+      // 法線の絶対値でブレンドウェイト計算（シャープネス調整）
+      vec3 blending = abs(worldNormal);
+      blending = normalize(max(blending, 0.00001)); // ゼロ除算回避
+      blending = pow(blending, vec3(8.0)); // シャープネス: 高いほど境界が明確
+      blending /= dot(blending, vec3(1.0)); // 正規化
 
-      vec3 N = normalize(worldNormal);
-      vec3 T = normalize(q1 * st2.t - q2 * st1.t);
-      vec3 B = -normalize(cross(N, T));
-      mat3 TBN = mat3(T, B, N);
+      // 各平面からテクスチャをサンプリング
+      vec4 xaxis = texture2D(tex, worldPos.yz * scale);
+      vec4 yaxis = texture2D(tex, worldPos.xz * scale);
+      vec4 zaxis = texture2D(tex, worldPos.xy * scale);
 
+      // ブレンドして返す
+      return xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
+    }
+
+    vec3 triplanarNormal(sampler2D tex, vec3 worldPos, vec3 worldNormal, float scale) {
+      vec3 blending = abs(worldNormal);
+      blending = normalize(max(blending, 0.00001));
+      blending = pow(blending, vec3(8.0));
+      blending /= dot(blending, vec3(1.0));
+
+      vec3 xaxis = texture2D(tex, worldPos.yz * scale).rgb;
+      vec3 yaxis = texture2D(tex, worldPos.xz * scale).rgb;
+      vec3 zaxis = texture2D(tex, worldPos.xy * scale).rgb;
+
+      return xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
+    }
+
+    // ノーマルマップをワールド空間に変換（triplanar用）
+    vec3 perturbNormalTriplanar(vec3 normalMap, vec3 worldNormal) {
       // ノーマルマップを-1..1の範囲に変換
       vec3 normal = normalMap * 2.0 - 1.0;
+
+      // ワールド空間の接線・従法線を計算
+      vec3 N = normalize(worldNormal);
+      vec3 up = abs(N.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+      vec3 T = normalize(cross(up, N));
+      vec3 B = cross(N, T);
+      mat3 TBN = mat3(T, B, N);
+
       return normalize(TBN * normal);
     }
 
     void main() {
-      // UVスケーリング
-      vec2 scaledUv = vUv * 2.0;
+      // Triplanar mapping でテクスチャサンプリング（スケール調整）
+      float texScale = 1.5; // テクスチャの繰り返し密度
 
-      // テクスチャサンプリング
-      vec4 albedo1 = texture2D(uAlbedo1, scaledUv);
-      vec4 albedo2 = texture2D(uAlbedo2, scaledUv);
-      vec3 normal1 = texture2D(uNormal1, scaledUv).rgb;
-      vec3 normal2 = texture2D(uNormal2, scaledUv).rgb;
+      vec4 albedo1 = triplanarAlbedo(uAlbedo1, vWorldPosition, vWorldNormal, texScale);
+      vec4 albedo2 = triplanarAlbedo(uAlbedo2, vWorldPosition, vWorldNormal, texScale);
+      vec3 normal1 = triplanarNormal(uNormal1, vWorldPosition, vWorldNormal, texScale);
+      vec3 normal2 = triplanarNormal(uNormal2, vWorldPosition, vWorldNormal, texScale);
 
       // ブレンド
       vec4 blendedAlbedo = mix(albedo1, albedo2, uBlendFactor);
       vec3 blendedNormal = mix(normal1, normal2, uBlendFactor);
 
       // ノーマルマップを適用
-      vec3 N = perturbNormal(blendedNormal, vWorldNormal, vViewPosition);
+      vec3 N = perturbNormalTriplanar(blendedNormal, vWorldNormal);
 
       // ティントカラー適用
       vec3 tinted = blendedAlbedo.rgb * uTintColor;
