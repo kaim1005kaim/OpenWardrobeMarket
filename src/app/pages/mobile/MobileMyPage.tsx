@@ -341,9 +341,11 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
           {/* Profile Info */}
           <div className="profile-info">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
-                <MetaballsSoft profile={profile} />
-              </div>
+              <img
+                src={user?.user_metadata?.avatar_url || 'https://via.placeholder.com/32/EEECE6/999?text=U'}
+                alt="User"
+                style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
+              />
               <button
                 className="profile-name-btn"
                 onClick={() => setShowAccountMenu((prev) => !prev)}
