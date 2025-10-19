@@ -902,6 +902,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   </button>
                 </>
               )}
+              </div>
 
               <button
                 className="preview-btn"
