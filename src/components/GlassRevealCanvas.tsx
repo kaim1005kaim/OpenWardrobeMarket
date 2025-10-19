@@ -33,13 +33,20 @@ float hash(float x){ return fract(sin(x*43758.5453)*1e4); }
 
 void main(){
   // object-fit: cover 風のUV計算
-  vec2 canvasAspect = vec2(u_res.x / u_res.y, 1.0);
-  vec2 imageAspect = vec2(u_imgRes.x / u_imgRes.y, 1.0);
+  float canvasAspect = u_res.x / u_res.y;
+  float imageAspect = u_imgRes.x / u_imgRes.y;
 
-  vec2 ratio = canvasAspect / imageAspect;
-  vec2 scale = ratio.x < ratio.y ? vec2(ratio.y, 1.0) : vec2(1.0, ratio.x);
+  // Cover: 画像をキャンバスに完全に覆うようにスケール（はみ出た部分はクロップ）
+  vec2 scale = vec2(1.0);
+  if (canvasAspect > imageAspect) {
+    // キャンバスが横長 → 画像を横幅に合わせる（縦がはみ出す）
+    scale.y = imageAspect / canvasAspect;
+  } else {
+    // キャンバスが縦長 → 画像を縦幅に合わせる（横がはみ出す）
+    scale.x = canvasAspect / imageAspect;
+  }
 
-  vec2 coverUv = (vUv - 0.5) * scale + 0.5;
+  vec2 coverUv = (vUv - 0.5) / scale + 0.5;
 
   float idx = floor(vUv.x * u_stripes);
   float s   = idx / (u_stripes - 1.0);  // 0..1 左→右
