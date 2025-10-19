@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import MetaballsSoft from '../../../components/MetaballsSoft';
+import { useUrulaProfile } from '../../../hooks/useUrulaProfile';
 import './MobileCreateTopPage.css';
 
 interface MobileCreateTopPageProps {
@@ -10,6 +11,7 @@ interface MobileCreateTopPageProps {
 
 export function MobileCreateTopPage({ onNavigate, onStartCreate }: MobileCreateTopPageProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { profile } = useUrulaProfile();
 
   const handleMenuNavigate = (page: string) => {
     if (onNavigate) {
@@ -43,7 +45,7 @@ export function MobileCreateTopPage({ onNavigate, onStartCreate }: MobileCreateT
         {/* メタボール（設問画面と同じ構造） */}
         <div className="create-hero">
           <div className="create-hero__canvas">
-            <MetaballsSoft animated={true} />
+            <MetaballsSoft profile={profile} animated={true} />
           </div>
           <div className="create-hero__title">
             <h1 className="create-title">CREATE</h1>
