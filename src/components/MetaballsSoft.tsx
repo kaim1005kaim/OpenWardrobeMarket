@@ -594,7 +594,9 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
 
     // モーフィングアニメーション
     useEffect(() => {
-      if (!morphing || morphProgress >= 1) return;
+      if (!morphing) return;
+      if (morphProgress >= 1) return; // 完了済み
+      if (morphStartTimeRef.current === 0) return; // まだ開始していない
 
       let animationId: number;
       const duration = 2000; // 2秒かけてモーフィング
@@ -618,9 +620,14 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
 
     // 補間されたプロファイルを計算
     useEffect(() => {
-      if (!morphing || !targetProfileRef.current) {
+      if (!morphing) {
         setCurrentProfile(profile ?? null);
         return;
+      }
+
+      // targetProfileが設定されていない場合は初期状態を維持
+      if (!targetProfileRef.current) {
+        return; // 初期状態 (DEFAULT_URULA_PROFILE) を維持
       }
 
       const target = targetProfileRef.current;
