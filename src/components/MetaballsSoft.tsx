@@ -745,8 +745,8 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
                 />
               ) : (
                 <meshStandardMaterial
-                  roughness={0.3}
-                  metalness={0.1}
+                  roughness={0}
+                  metalness={0}
                   color="#F5F5F0"
                   opacity={0.95}
                   transparent={true}
