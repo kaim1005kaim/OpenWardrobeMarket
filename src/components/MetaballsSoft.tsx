@@ -543,8 +543,35 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
 
     // モーフィング用のステート
     const [morphProgress, setMorphProgress] = useState(morphing ? 0 : 1);
+
+    // モーフィング用の初期状態（完全な白）
+    const INITIAL_WHITE_PROFILE: UserUrulaProfile = useMemo(() => ({
+      user_id: '',
+      updated_at: new Date().toISOString(),
+      mat_weights: {
+        canvas: 0.25,
+        denim: 0.25,
+        leather: 0.25,
+        pinstripe: 0.25,
+      },
+      glass_gene: 0,
+      chaos: 0.2,
+      tint: { h: 0, s: 0, l: 0.96 },
+      palette: {
+        main: [0, 0, 0.96],
+        accents: [],
+      },
+      history: {
+        generations: 0,
+        likes: 0,
+        publishes: 0,
+        lastTags: [],
+        lastColors: [],
+      },
+    }), []);
+
     const [currentProfile, setCurrentProfile] = useState<UserUrulaProfile | null>(
-      morphing ? { ...DEFAULT_URULA_PROFILE, user_id: '', updated_at: new Date().toISOString() } : null
+      morphing ? INITIAL_WHITE_PROFILE : null
     );
     const morphStartTimeRef = useRef<number>(0);
     const targetProfileRef = useRef<UserUrulaProfile | null>(null);
@@ -640,13 +667,14 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
       console.log('[MetaballsSoft] Interpolating at t=', t.toFixed(3), 'target:', target);
 
       // モーフィング完了時は最終プロファイルを直接設定
-      if (t >= 1) {
+      if (t >= 0.999) {
         console.log('[MetaballsSoft] Morphing complete, setting final profile');
         setCurrentProfile(target);
         return;
       }
 
-      const defaultProfile = { ...DEFAULT_URULA_PROFILE, user_id: '', updated_at: new Date().toISOString() };
+      // モーフィング用の初期状態（完全な白）を使用
+      const defaultProfile = INITIAL_WHITE_PROFILE;
 
       const interpolated: UserUrulaProfile = {
         user_id: target.user_id,
@@ -670,7 +698,7 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
 
       console.log('[MetaballsSoft] Interpolated tint:', interpolated.tint, 'mat_weights:', interpolated.mat_weights);
       setCurrentProfile(interpolated);
-    }, [morphProgress, morphing, profile]);
+    }, [morphProgress, morphing, profile, INITIAL_WHITE_PROFILE]);
 
     // 慣性付き回転アニメーション（requestAnimationFrame使用）
     useEffect(() => {
