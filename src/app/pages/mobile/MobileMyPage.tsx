@@ -340,17 +340,18 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
 
           {/* Profile Info */}
           <div className="profile-info">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', marginBottom: '8px' }}>
               <img
                 src={user?.user_metadata?.avatar_url || 'https://via.placeholder.com/32/EEECE6/999?text=U'}
                 alt="User"
-                style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
+                style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, alignSelf: 'flex-start', marginTop: '4px' }}
               />
               <button
                 className="profile-name-btn"
                 onClick={() => setShowAccountMenu((prev) => !prev)}
                 aria-expanded={showAccountMenu}
                 ref={accountTriggerRef}
+                style={{ margin: 0 }}
               >
                 {user?.user_metadata?.username || user?.email?.split('@')[0] || 'JOHN DEANNA'}
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
