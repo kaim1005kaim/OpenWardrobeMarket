@@ -24,7 +24,7 @@ type TabType = 'publish' | 'drafts' | 'collections';
 
 export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const { user } = useAuth();
-  const { profile } = useUrulaProfile();
+  const { profile, loading: profileLoading } = useUrulaProfile();
   const [activeSection, setActiveSection] = useState<'design' | 'setting'>('design');
   const [activeTab, setActiveTab] = useState<TabType>('publish');
   const [myAssets, setMyAssets] = useState<Asset[]>([]);
@@ -334,7 +334,7 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
           <div className="title-section">
             <h1 className="page-title">{COPY.mypage.title}</h1>
             <div className="profile-avatar-circle">
-              <MetaballsSoft profile={profile} />
+              {!profileLoading && <MetaballsSoft profile={profile} />}
             </div>
           </div>
 

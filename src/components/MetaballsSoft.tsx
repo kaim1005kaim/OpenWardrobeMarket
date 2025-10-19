@@ -515,10 +515,11 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
     // モーフィング用のステート
     const [morphProgress, setMorphProgress] = useState(morphing ? 0 : 1);
     const [currentProfile, setCurrentProfile] = useState<UserUrulaProfile | null>(
-      morphing ? { ...DEFAULT_URULA_PROFILE, user_id: '', updated_at: new Date().toISOString() } : profile ?? null
+      morphing ? { ...DEFAULT_URULA_PROFILE, user_id: '', updated_at: new Date().toISOString() } : null
     );
     const morphStartTimeRef = useRef<number>(0);
-    const targetProfileRef = useRef<UserUrulaProfile | null>(profile ?? null);
+    const targetProfileRef = useRef<UserUrulaProfile | null>(null);
+    const hasStartedMorphingRef = useRef(false);
 
     // タッチインタラクション用のステート
     const [rotation, setRotation] = useState(0);
@@ -540,8 +541,10 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
         return;
       }
 
-      if (profile && profile !== targetProfileRef.current) {
+      // profileが読み込まれて、まだモーフィングを開始していない場合
+      if (profile && !hasStartedMorphingRef.current) {
         targetProfileRef.current = profile;
+        hasStartedMorphingRef.current = true;
 
         // 遅延後にモーフィング開始
         const timeoutId = setTimeout(() => {
