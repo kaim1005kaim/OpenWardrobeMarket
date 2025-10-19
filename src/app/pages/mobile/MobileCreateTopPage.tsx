@@ -45,7 +45,7 @@ export function MobileCreateTopPage({ onNavigate, onStartCreate }: MobileCreateT
         {/* メタボール（設問画面と同じ構造） */}
         <div className="create-hero">
           <div className="create-hero__canvas">
-            <MetaballsSoft profile={profile} animated={true} />
+            <MetaballsSoft profile={profile} animated={true} morphing={true} />
           </div>
           <div className="create-hero__title">
             <h1 className="create-title">CREATE</h1>

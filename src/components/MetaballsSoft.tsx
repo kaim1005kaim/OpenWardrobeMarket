@@ -4,6 +4,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { MarchingCubes, MarchingCube, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import type { UserUrulaProfile } from "../types/urula";
+import { DEFAULT_URULA_PROFILE } from "../types/urula";
 import { loadUrulaTextures, getTopMaterials, type TextureSet } from "../lib/urula/loadTextures";
 
 // カスタムシェーダーマテリアル
@@ -453,14 +454,23 @@ interface MetaballsSoftProps {
   animated?: boolean;
   onInteract?: () => void;
   profile?: UserUrulaProfile | null;
+  morphing?: boolean; // 初期状態からプロファイルへスムーズにモーフィング
 }
 
 const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
-  ({ animated = true, onInteract, profile }, ref) => {
+  ({ animated = true, onInteract, profile, morphing = false }, ref) => {
     const [impactTrigger, setImpactTrigger] = useState(0);
     const [paletteIndex, setPaletteIndex] = useState(0);
     const [customColor, setCustomColor] = useState<string | null>(null);
     const [textures, setTextures] = useState<TextureSet | null>(null);
+
+    // モーフィング用のステート
+    const [morphProgress, setMorphProgress] = useState(morphing ? 0 : 1);
+    const [currentProfile, setCurrentProfile] = useState<UserUrulaProfile | null>(
+      morphing ? { ...DEFAULT_URULA_PROFILE, user_id: '', updated_at: new Date().toISOString() } : profile ?? null
+    );
+    const morphStartTimeRef = useRef<number>(0);
+    const targetProfileRef = useRef<UserUrulaProfile | null>(profile ?? null);
 
     // タッチインタラクション用のステート
     const [rotation, setRotation] = useState(0);
@@ -474,6 +484,80 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
         console.error('[MetaballsSoft] Failed to load textures:', err);
       });
     }, []);
+
+    // モーフィング: profileが変更されたときにアニメーション開始
+    useEffect(() => {
+      if (!morphing) {
+        setCurrentProfile(profile ?? null);
+        return;
+      }
+
+      if (profile && profile !== targetProfileRef.current) {
+        targetProfileRef.current = profile;
+        morphStartTimeRef.current = performance.now();
+        setMorphProgress(0);
+        // モーフィング中に衝撃エフェクトを発火（ぼこぼこ変化）
+        setImpactTrigger((prev) => prev + 1);
+      }
+    }, [profile, morphing]);
+
+    // モーフィングアニメーション
+    useEffect(() => {
+      if (!morphing || morphProgress >= 1) return;
+
+      let animationId: number;
+      const duration = 2000; // 2秒かけてモーフィング
+
+      const animate = () => {
+        const elapsed = performance.now() - morphStartTimeRef.current;
+        const progress = Math.min(1, elapsed / duration);
+
+        // イージング (easeOutCubic)
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setMorphProgress(eased);
+
+        if (progress < 1) {
+          animationId = requestAnimationFrame(animate);
+        }
+      };
+
+      animationId = requestAnimationFrame(animate);
+      return () => cancelAnimationFrame(animationId);
+    }, [morphing, morphProgress]);
+
+    // 補間されたプロファイルを計算
+    useEffect(() => {
+      if (!morphing || !targetProfileRef.current) {
+        setCurrentProfile(profile ?? null);
+        return;
+      }
+
+      const defaultProfile = { ...DEFAULT_URULA_PROFILE, user_id: '', updated_at: new Date().toISOString() };
+      const target = targetProfileRef.current;
+      const t = morphProgress;
+
+      const interpolated: UserUrulaProfile = {
+        user_id: target.user_id,
+        updated_at: target.updated_at,
+        mat_weights: {
+          canvas: defaultProfile.mat_weights.canvas * (1 - t) + target.mat_weights.canvas * t,
+          denim: defaultProfile.mat_weights.denim * (1 - t) + target.mat_weights.denim * t,
+          leather: defaultProfile.mat_weights.leather * (1 - t) + target.mat_weights.leather * t,
+          pinstripe: defaultProfile.mat_weights.pinstripe * (1 - t) + target.mat_weights.pinstripe * t,
+        },
+        glass_gene: defaultProfile.glass_gene * (1 - t) + target.glass_gene * t,
+        chaos: defaultProfile.chaos * (1 - t) + target.chaos * t,
+        tint: {
+          h: defaultProfile.tint.h * (1 - t) + target.tint.h * t,
+          s: defaultProfile.tint.s * (1 - t) + target.tint.s * t,
+          l: defaultProfile.tint.l * (1 - t) + target.tint.l * t,
+        },
+        palette: t > 0.5 ? target.palette : defaultProfile.palette,
+        history: target.history,
+      };
+
+      setCurrentProfile(interpolated);
+    }, [morphProgress, morphing, profile]);
 
     // 慣性付き回転アニメーション（requestAnimationFrame使用）
     useEffect(() => {
@@ -577,8 +661,8 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
       }
 
       // Use profile tint if available
-      if (profile?.tint) {
-        const { h, s, l } = profile.tint;
+      if (currentProfile?.tint) {
+        const { h, s, l } = currentProfile.tint;
         const hslColor = `hsl(${h}, ${s * 100}%, ${l * 100}%)`;
         // Convert HSL to hex for gradient generation
         const tempDiv = document.createElement('div');
@@ -596,7 +680,7 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
       }
 
       return palettes[paletteIndex % palettes.length];
-    }, [customColor, profile, palettes, paletteIndex]);
+    }, [customColor, currentProfile, palettes, paletteIndex]);
 
     // 外部から呼び出せるメソッドを公開
     useImperativeHandle(ref, () => ({
@@ -649,14 +733,14 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
               enableUvs={true}
               enableColors={false}
             >
-              {textures && profile && profile.history.generations > 0 ? (
+              {textures && currentProfile && currentProfile.history.generations > 0 ? (
                 <BlendedMaterial
                   textures={textures}
-                  profile={profile}
+                  profile={currentProfile}
                   tintColor={new THREE.Color().setHSL(
-                    profile.tint.h / 360,
-                    profile.tint.s,
-                    profile.tint.l
+                    currentProfile.tint.h / 360,
+                    currentProfile.tint.s,
+                    currentProfile.tint.l
                   )}
                 />
               ) : (
@@ -672,8 +756,8 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
                 animated={animated}
                 palette={currentPalette}
                 impactTrigger={impactTrigger}
-                chaos={profile?.chaos}
-                profile={profile}
+                chaos={currentProfile?.chaos}
+                profile={currentProfile}
                 textures={textures}
               />
             </MarchingCubes>
