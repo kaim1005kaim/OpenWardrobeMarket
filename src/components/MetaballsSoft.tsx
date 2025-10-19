@@ -556,7 +556,12 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
 
         return () => clearTimeout(timeoutId);
       }
-    }, [profile, morphing, morphDelayMs]);
+
+      // モーフィング完了後、profileが更新された場合はtargetProfileRefも更新
+      if (profile && hasStartedMorphingRef.current && morphProgress >= 1) {
+        targetProfileRef.current = profile;
+      }
+    }, [profile, morphing, morphDelayMs, morphProgress]);
 
     // モーフィングアニメーション
     useEffect(() => {
@@ -589,9 +594,16 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
         return;
       }
 
-      const defaultProfile = { ...DEFAULT_URULA_PROFILE, user_id: '', updated_at: new Date().toISOString() };
       const target = targetProfileRef.current;
       const t = morphProgress;
+
+      // モーフィング完了時は最終プロファイルを直接設定
+      if (t >= 1) {
+        setCurrentProfile(target);
+        return;
+      }
+
+      const defaultProfile = { ...DEFAULT_URULA_PROFILE, user_id: '', updated_at: new Date().toISOString() };
 
       const interpolated: UserUrulaProfile = {
         user_id: target.user_id,
