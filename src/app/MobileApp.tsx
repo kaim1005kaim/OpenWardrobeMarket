@@ -10,6 +10,7 @@ import { MobileMyPage } from './pages/mobile/MobileMyPage';
 import { LoginPage } from './components/LoginPage';
 import { WebViewWarning } from './components/mobile/WebViewWarning';
 import { isWebView } from './lib/utils/detectWebView';
+import { loadUrulaTextures } from '../lib/urula/loadTextures';
 import './MobileApp.css';
 
 type MobilePage = 'login' | 'studio' | 'showcase' | 'create' | 'createQuestions' | 'publishForm' | 'publishComplete' | 'archive' | 'faq' | 'contact' | 'privacy';
@@ -53,6 +54,13 @@ function MobileAppContent() {
       setShowWebViewWarning(true);
     }
   }, [user]);
+
+  // Preload Urula textures on app mount
+  useEffect(() => {
+    loadUrulaTextures().catch(err => {
+      console.error('[MobileApp] Failed to preload textures:', err);
+    });
+  }, []);
 
   const handleNavigate = (page: string) => {
     const newPage = page as MobilePage;

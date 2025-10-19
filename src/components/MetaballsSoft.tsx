@@ -502,10 +502,11 @@ interface MetaballsSoftProps {
   onInteract?: () => void;
   profile?: UserUrulaProfile | null;
   morphing?: boolean; // 初期状態からプロファイルへスムーズにモーフィング
+  morphDelayMs?: number; // モーフィング開始の遅延時間（ミリ秒）
 }
 
 const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
-  ({ animated = true, onInteract, profile, morphing = false }, ref) => {
+  ({ animated = true, onInteract, profile, morphing = false, morphDelayMs = 0 }, ref) => {
     const [impactTrigger, setImpactTrigger] = useState(0);
     const [paletteIndex, setPaletteIndex] = useState(0);
     const [customColor, setCustomColor] = useState<string | null>(null);
@@ -541,12 +542,18 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
 
       if (profile && profile !== targetProfileRef.current) {
         targetProfileRef.current = profile;
-        morphStartTimeRef.current = performance.now();
-        setMorphProgress(0);
-        // モーフィング中に衝撃エフェクトを発火（ぼこぼこ変化）
-        setImpactTrigger((prev) => prev + 1);
+
+        // 遅延後にモーフィング開始
+        const timeoutId = setTimeout(() => {
+          morphStartTimeRef.current = performance.now();
+          setMorphProgress(0);
+          // モーフィング中に衝撃エフェクトを発火（ぼこぼこ変化）
+          setImpactTrigger((prev) => prev + 1);
+        }, morphDelayMs);
+
+        return () => clearTimeout(timeoutId);
       }
-    }, [profile, morphing]);
+    }, [profile, morphing, morphDelayMs]);
 
     // モーフィングアニメーション
     useEffect(() => {
@@ -780,7 +787,7 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
               enableUvs={true}
               enableColors={false}
             >
-              {textures && currentProfile && currentProfile.history.generations > 0 ? (
+              {textures && currentProfile && (currentProfile.history.generations > 0 || (morphing && profile && profile.history.generations > 0)) ? (
                 <BlendedMaterial
                   textures={textures}
                   profile={currentProfile}
