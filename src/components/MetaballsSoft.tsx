@@ -575,10 +575,13 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
         targetProfileRef.current = profile;
         hasStartedMorphingRef.current = true;
 
+        console.log('[MetaballsSoft] Starting morphing with delay:', morphDelayMs, 'ms');
+
         // 遅延後にモーフィング開始
         const timeoutId = setTimeout(() => {
+          console.log('[MetaballsSoft] Morphing delay complete, starting animation');
           morphStartTimeRef.current = performance.now();
-          setMorphProgress(0);
+          setMorphProgress(0.001); // 0.001から開始（0だとuseEffectが発火しない可能性）
           // モーフィング中に衝撃エフェクトを発火（ぼこぼこ変化）
           setImpactTrigger((prev) => prev + 1);
         }, morphDelayMs);
@@ -627,14 +630,18 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
 
       // targetProfileが設定されていない場合は初期状態を維持
       if (!targetProfileRef.current) {
+        console.log('[MetaballsSoft] No target profile, maintaining initial state');
         return; // 初期状態 (DEFAULT_URULA_PROFILE) を維持
       }
 
       const target = targetProfileRef.current;
       const t = morphProgress;
 
+      console.log('[MetaballsSoft] Interpolating at t=', t.toFixed(3), 'target:', target);
+
       // モーフィング完了時は最終プロファイルを直接設定
       if (t >= 1) {
+        console.log('[MetaballsSoft] Morphing complete, setting final profile');
         setCurrentProfile(target);
         return;
       }
@@ -661,6 +668,7 @@ const MetaballsSoft = forwardRef<MetaballsSoftHandle, MetaballsSoftProps>(
         history: target.history,
       };
 
+      console.log('[MetaballsSoft] Interpolated tint:', interpolated.tint, 'mat_weights:', interpolated.mat_weights);
       setCurrentProfile(interpolated);
     }, [morphProgress, morphing, profile]);
 

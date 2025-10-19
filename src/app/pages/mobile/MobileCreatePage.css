@@ -72,7 +72,7 @@
   height: 320px;
   margin: 0 0 16px;
   pointer-events: none;
-  z-index: 80;
+  z-index: 100;
 }
 
 .create-hero__canvas {
