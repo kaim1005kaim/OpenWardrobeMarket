@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { UrulaProvider } from './lib/UrulaContext';
 import { MobileHomePage } from './pages/mobile/MobileHomePage';
 import { MobileGalleryPage } from './pages/mobile/MobileGalleryPage';
 import { MobileCreateTopPage } from './pages/mobile/MobileCreateTopPage';
@@ -188,7 +189,9 @@ function MobileAppContent() {
 export function MobileApp() {
   return (
     <AuthProvider>
-      <MobileAppContent />
+      <UrulaProvider>
+        <MobileAppContent />
+      </UrulaProvider>
     </AuthProvider>
   );
 }

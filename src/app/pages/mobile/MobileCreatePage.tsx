@@ -5,7 +5,7 @@ import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/Metaball
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import { useDNA } from '../../../hooks/useDNA';
-import { useUrulaProfile } from '../../../hooks/useUrulaProfile';
+import { useUrula } from '../../lib/UrulaContext';
 import { DEFAULT_DNA, type DNA, type Answers, type GeminiCoachOut } from '../../../types/dna';
 import { COPY } from '../../../constants/copy';
 import './MobileCreatePage.css';
@@ -135,7 +135,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
   const metaballsRef = useRef<MetaballsSoftHandle>(null);
 
   // Urula profile management
-  const { profile, applyLocal, evolve } = useUrulaProfile();
+  const { profile, applyLocal, evolve, loading: profileLoading } = useUrula();
 
   // Coaching state
   const [coachData, setCoachData] = useState<GeminiCoachOut | null>(null);
@@ -733,7 +733,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />
+                {!profileLoading && <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />}
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">CREATE</h1>
@@ -816,7 +816,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />
+                {!profileLoading && <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />}
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title smaller">{COPY.flow.guidance}</h1>
@@ -902,7 +902,6 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
                   </button>
                 </>
               )}
-              </div>
 
               <button
                 className="preview-btn"
@@ -933,7 +932,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />
+                {!profileLoading && <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />}
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">{COPY.pages.REVIEW}</h1>
@@ -970,7 +969,7 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                <MetaballsSoft animated={true} profile={profile} />
+                {!profileLoading && <MetaballsSoft animated={true} profile={profile} />}
               </div>
             </div>
 

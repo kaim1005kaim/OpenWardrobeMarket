@@ -4,7 +4,7 @@ import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
 import MetaballsSoft from '../../../components/MetaballsSoft';
 import { useAuth } from '../../lib/AuthContext';
-import { useUrulaProfile } from '../../../hooks/useUrulaProfile';
+import { useUrula } from '../../lib/UrulaContext';
 import { supabase } from '../../lib/supabase';
 import { Asset, AssetStatus } from '../../lib/types';
 import {
@@ -24,7 +24,7 @@ type TabType = 'publish' | 'drafts' | 'collections';
 
 export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
   const { user } = useAuth();
-  const { profile, loading: profileLoading } = useUrulaProfile();
+  const { profile, loading: profileLoading } = useUrula();
   const [activeSection, setActiveSection] = useState<'design' | 'setting'>('design');
   const [activeTab, setActiveTab] = useState<TabType>('publish');
   const [myAssets, setMyAssets] = useState<Asset[]>([]);
