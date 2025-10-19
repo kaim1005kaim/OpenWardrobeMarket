@@ -4,6 +4,7 @@ import { GalleryViewMode } from './GalleryViewSwitcher';
 import { posterTemplates as legacyPosterTemplates, brandNames, colors } from '../../lib/designTokens';
 import { posterTemplates, getRandomTemplate } from '../../lib/posterTemplates';
 import { PosterCard } from '../PosterCard';
+import { LazyImage } from '../../../components/LazyImage';
 import './MobileGallery.css';
 
 interface MobileGalleryProps {
@@ -83,15 +84,23 @@ export function MobileGallery({
                 onClick={() => onAssetClick(asset)}
               >
                 <div className="image-wrapper">
-                  <img
-                    src={asset.src}
-                    alt={asset.title}
-                    loading={loadingStrategy}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = 'https://via.placeholder.com/400x600/EEECE6/999?text=Fashion';
-                    }}
-                  />
+                  {index < 6 ? (
+                    <img
+                      src={asset.src}
+                      alt={asset.title}
+                      loading="eager"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'https://via.placeholder.com/400x600/EEECE6/999?text=Fashion';
+                      }}
+                    />
+                  ) : (
+                    <LazyImage
+                      src={asset.src}
+                      alt={asset.title}
+                      rootMargin="300px"
+                    />
+                  )}
                 </div>
                 <div className="card-info">
                   <p className="card-title">{asset.title}</p>

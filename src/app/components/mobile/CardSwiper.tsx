@@ -1,5 +1,6 @@
 import React, { useState, useRef, TouchEvent, useEffect, useCallback } from 'react';
 import { Asset } from '../../lib/types';
+import { LazyImage } from '../../../components/LazyImage';
 
 interface CardSwiperProps {
   assets: Asset[];
@@ -171,7 +172,11 @@ export function CardSwiper({
             onClick={() => handleCardClick(asset, index)}
           >
             <div className="card-image-container">
-              <img src={asset.src} alt={asset.title} loading="lazy" />
+              <LazyImage
+                src={asset.src}
+                alt={asset.title}
+                rootMargin="400px"
+              />
               <div className="card-vertical-title card-vertical-title-left">{asset.title}</div>
             </div>
           </div>

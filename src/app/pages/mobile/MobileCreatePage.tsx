@@ -638,62 +638,70 @@ export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
       const asset = generatedAsset;
 
-      // Upload to R2 via server-side API (avoids CORS issues)
-      console.log('[handleSaveDraft] Uploading to R2 via server...');
-      const uploadRes = await fetch(`${apiUrl}/api/upload-to-r2`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          imageData: asset.imageData,
-          mimeType: asset.mimeType,
-          key: asset.key,
-        }),
-      });
-
-      if (!uploadRes.ok) {
-        const error = await uploadRes.json();
-        throw new Error(error.error || COPY.errors.upload);
-      }
-
-      const { url: finalUrl } = await uploadRes.json();
-      console.log('[handleSaveDraft] Upload successful:', finalUrl);
-
-      // Save to generation_history as draft (is_public: false)
-      const response = await fetch(`${apiUrl}/api/upload-generated`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          images: [{
-            url: finalUrl,
-            r2_key: asset.key,  // Already uploaded to R2
-          }],
-          generation_data: {
-            session_id: sessionKey,
-            prompt: asset.prompt,
-            parameters: {
-              answers: asset.answers,
-              dna: asset.dna,
-            },
-          },
-          is_public: false, // Mark as draft (not public)
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || COPY.drafts.failed);
-      }
-
-      console.log('Draft saved:', asset.key);
+      // 楽観的UI更新: 即座に成功メッセージを表示してマイページに遷移
       alert(COPY.drafts.saved);
       onNavigate?.('mypage');
+
+      // バックグラウンドでAPI呼び出しを実行
+      (async () => {
+        try {
+          console.log('[handleSaveDraft] Uploading to R2 in background...');
+
+          const uploadRes = await fetch(`${apiUrl}/api/upload-to-r2`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              imageData: asset.imageData,
+              mimeType: asset.mimeType,
+              key: asset.key,
+            }),
+          });
+
+          if (!uploadRes.ok) {
+            throw new Error('Upload failed');
+          }
+
+          const { url: finalUrl } = await uploadRes.json();
+          console.log('[handleSaveDraft] Upload successful:', finalUrl);
+
+          // Save to generation_history as draft
+          const response = await fetch(`${apiUrl}/api/upload-generated`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              images: [{
+                url: finalUrl,
+                r2_key: asset.key,
+              }],
+              generation_data: {
+                session_id: sessionKey,
+                prompt: asset.prompt,
+                parameters: {
+                  answers: asset.answers,
+                  dna: asset.dna,
+                },
+              },
+              is_public: false,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Save draft failed');
+          }
+
+          console.log('[handleSaveDraft] Draft saved successfully:', asset.key);
+        } catch (error) {
+          console.error('[handleSaveDraft] Background error:', error);
+          // エラーは静かに記録（ユーザーは既に次のページに進んでいる）
+        }
+      })();
     } catch (error) {
       console.error('[handleSaveDraft] Error:', error);
       alert(error instanceof Error ? error.message : COPY.drafts.failed);

@@ -71,85 +71,62 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       price
     };
 
-    try {
-      console.log('[MobilePublishFormPage] Starting publish process...');
+    // 楽観的UI更新: 即座に成功トーストを表示して完了画面に遷移
+    showToast('✓ ギャラリーに公開しました');
+    if (onPublish) {
+      onPublish({ ...publishData, posterUrl: imageUrl });
+    }
 
-      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
-      console.log('[MobilePublishFormPage] API URL:', apiUrl);
-      console.log('[MobilePublishFormPage] Image URL:', imageUrl);
-
-      let posterUrl = imageUrl; // デフォルトはオリジナル画像
-
-      // 1. ポスター合成APIを呼び出し（失敗してもスキップ）
+    // バックグラウンドでAPI呼び出しを実行
+    (async () => {
       try {
-        const composeRes = await fetch(`${apiUrl}/api/compose-poster`, {
+        console.log('[MobilePublishFormPage] Starting publish process in background...');
+
+        const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+        let posterUrl = imageUrl;
+
+        // 1. ポスター合成APIを呼び出し（失敗してもスキップ）
+        try {
+          const composeRes = await fetch(`${apiUrl}/api/compose-poster`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageUrl }),
+          });
+
+          if (composeRes.ok) {
+            const composeData = await composeRes.json();
+            posterUrl = composeData.posterUrl;
+            console.log('[MobilePublishFormPage] Poster composed:', posterUrl);
+          }
+        } catch (composeError) {
+          console.warn('[MobilePublishFormPage] Compose API unavailable:', composeError);
+        }
+
+        // 2. Supabaseに保存
+        const requestBody = {
+          ...publishData,
+          posterUrl,
+          originalUrl: imageUrl,
+          user_id: user!.id,
+        };
+
+        const publishRes = await fetch(`${apiUrl}/api/publish`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl }),
+          body: JSON.stringify(requestBody),
         });
 
-        console.log('[MobilePublishFormPage] Compose response status:', composeRes.status);
-
-        if (composeRes.ok) {
-          const composeData = await composeRes.json();
-          posterUrl = composeData.posterUrl;
-          console.log('[MobilePublishFormPage] Poster composed:', posterUrl);
-        } else {
-          const errorText = await composeRes.text();
-          console.warn('[MobilePublishFormPage] Compose failed, using original image:', errorText);
+        if (!publishRes.ok) {
+          throw new Error(`公開に失敗しました: ${publishRes.status}`);
         }
-      } catch (composeError) {
-        console.warn('[MobilePublishFormPage] Compose API unavailable, using original image:', composeError);
+
+        const responseData = await publishRes.json();
+        console.log('[MobilePublishFormPage] Publish completed:', responseData);
+      } catch (error) {
+        console.error('[MobilePublishFormPage] Background publish error:', error);
+        // エラーは静かに記録（ユーザーは既に次のページに進んでいる）
       }
-
-      // 2. Supabaseに保存
-      console.log('[MobilePublishFormPage] posterUrl:', posterUrl);
-      console.log('[MobilePublishFormPage] imageUrl (originalUrl):', imageUrl);
-      console.log('[MobilePublishFormPage] publishData:', publishData);
-
-      const requestBody = {
-        ...publishData,
-        posterUrl,
-        originalUrl: imageUrl,
-        user_id: user!.id, // ログインユーザーのID（handlePublish冒頭でチェック済み）
-      };
-      console.log('[MobilePublishFormPage] requestBody keys:', Object.keys(requestBody));
-      console.log('[MobilePublishFormPage] requestBody.posterUrl:', requestBody.posterUrl);
-      console.log('[MobilePublishFormPage] requestBody.originalUrl:', requestBody.originalUrl);
-      console.log('[MobilePublishFormPage] Publishing with data:', requestBody);
-
-      const publishRes = await fetch(`${apiUrl}/api/publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!publishRes.ok) {
-        const errorText = await publishRes.text();
-        console.error('[MobilePublishFormPage] Publish error response:', errorText);
-        throw new Error(`公開に失敗しました: ${publishRes.status}`);
-      }
-
-      const responseData = await publishRes.json();
-      console.log('[MobilePublishFormPage] Publish response:', responseData);
-
-      const item = responseData.item || responseData.asset;
-      if (item?.id) {
-        console.log('[MobilePublishFormPage] Item published:', item.id);
-      }
-
-      // Show success toast
-      showToast('✓ ギャラリーに公開しました');
-
-      // 3. 完了画面に遷移
-      if (onPublish) {
-        onPublish({ ...publishData, posterUrl });
-      }
-    } catch (error) {
-      console.error('[MobilePublishFormPage] Publish error:', error);
-      showToast('✗ 公開に失敗しました', true);
-      alert(error instanceof Error ? error.message : '公開に失敗しました');
-    }
+    })();
   };
 
   const showToast = (message: string, isError: boolean = false) => {
