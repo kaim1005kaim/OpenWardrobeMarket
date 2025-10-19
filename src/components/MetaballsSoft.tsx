@@ -53,12 +53,19 @@ function BlendedMaterial({ textures, profile, tintColor }: BlendedMaterialProps)
     varying vec2 vUv;
     varying vec3 vNormal;
     varying vec3 vPosition;
+    varying vec3 vViewPosition;
+    varying vec3 vWorldNormal;
 
     void main() {
       vUv = uv;
       vNormal = normalize(normalMatrix * normal);
+      vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+
+      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+      vViewPosition = -mvPosition.xyz;
       vPosition = position;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+      gl_Position = projectionMatrix * mvPosition;
     }
   `;
 
@@ -74,6 +81,26 @@ function BlendedMaterial({ textures, profile, tintColor }: BlendedMaterialProps)
     varying vec2 vUv;
     varying vec3 vNormal;
     varying vec3 vPosition;
+    varying vec3 vViewPosition;
+    varying vec3 vWorldNormal;
+
+    // ノーマルマップをタンジェント空間からワールド空間へ変換
+    vec3 perturbNormal(vec3 normalMap, vec3 worldNormal, vec3 viewPos) {
+      // タンジェントとバイノーマルを計算
+      vec3 q1 = dFdx(viewPos);
+      vec3 q2 = dFdy(viewPos);
+      vec2 st1 = dFdx(vUv);
+      vec2 st2 = dFdy(vUv);
+
+      vec3 N = normalize(worldNormal);
+      vec3 T = normalize(q1 * st2.t - q2 * st1.t);
+      vec3 B = -normalize(cross(N, T));
+      mat3 TBN = mat3(T, B, N);
+
+      // ノーマルマップを-1..1の範囲に変換
+      vec3 normal = normalMap * 2.0 - 1.0;
+      return normalize(TBN * normal);
+    }
 
     void main() {
       // UVスケーリング
@@ -82,18 +109,38 @@ function BlendedMaterial({ textures, profile, tintColor }: BlendedMaterialProps)
       // テクスチャサンプリング
       vec4 albedo1 = texture2D(uAlbedo1, scaledUv);
       vec4 albedo2 = texture2D(uAlbedo2, scaledUv);
+      vec3 normal1 = texture2D(uNormal1, scaledUv).rgb;
+      vec3 normal2 = texture2D(uNormal2, scaledUv).rgb;
 
       // ブレンド
       vec4 blendedAlbedo = mix(albedo1, albedo2, uBlendFactor);
+      vec3 blendedNormal = mix(normal1, normal2, uBlendFactor);
+
+      // ノーマルマップを適用
+      vec3 N = perturbNormal(blendedNormal, vWorldNormal, vViewPosition);
 
       // ティントカラー適用
       vec3 tinted = blendedAlbedo.rgb * uTintColor;
 
-      // 簡易ライティング
+      // ライティング設定
       vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
-      float diffuse = max(dot(vNormal, lightDir), 0.3);
+      vec3 viewDir = normalize(vViewPosition);
+      vec3 halfDir = normalize(lightDir + viewDir);
 
-      vec3 finalColor = tinted * diffuse;
+      // ディフューズライティング（ノーマルマップ適用後）
+      float diffuse = max(dot(N, lightDir), 0.0);
+      diffuse = diffuse * 0.7 + 0.3; // アンビエント追加
+
+      // スペキュラー反射（適度な光沢感）
+      float specular = pow(max(dot(N, halfDir), 0.0), 32.0);
+      specular *= 0.4; // 反射強度を調整
+
+      // 環境光のような rim light（縁の光）
+      float rim = 1.0 - max(dot(viewDir, N), 0.0);
+      rim = pow(rim, 3.0) * 0.3;
+
+      // 最終カラー合成
+      vec3 finalColor = tinted * diffuse + vec3(specular) + vec3(rim);
 
       gl_FragColor = vec4(finalColor, 1.0);
     }
