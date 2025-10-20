@@ -1101,6 +1101,32 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
                 />
               </div>
               </div>
+              {/* Debug: Show actual image dimensions */}
+              <div style={{
+                position: 'absolute',
+                top: 10,
+                left: 10,
+                background: 'rgba(0,0,0,0.7)',
+                color: 'white',
+                padding: '4px 8px',
+                fontSize: '10px',
+                borderRadius: '4px',
+                zIndex: 1000,
+              }}>
+                <img
+                  src={displayUrl}
+                  style={{ display: 'none' }}
+                  onLoad={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    console.log('[MobileCreatePage] Image natural size:', img.naturalWidth, 'x', img.naturalHeight);
+                    const debugEl = img.parentElement;
+                    if (debugEl) {
+                      debugEl.textContent = `Image: ${img.naturalWidth}×${img.naturalHeight} | Container: ${Math.round(window.innerHeight * 0.6 * 2/3)}×${Math.round(window.innerHeight * 0.6)}`;
+                    }
+                  }}
+                />
+                Loading...
+              </div>
             </div>
 
 

@@ -31,6 +31,7 @@ export type Asset = {
   dominant_color?: string;
   variation?: string;
   metadata?: Record<string, any> | null;
+  generationData?: any;
 };
 
 export type GenParams = {

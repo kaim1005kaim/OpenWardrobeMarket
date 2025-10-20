@@ -10,8 +10,10 @@ interface MobileDetailModalProps {
   onTogglePublish?: (assetId: string, isPublic: boolean) => Promise<void>;
   onDelete?: (assetId: string) => Promise<void>;
   onToggleFavorite?: (assetId: string, shouldLike: boolean) => Promise<void>;
+  onPublishFromArchive?: (imageUrl: string, generationData?: any) => void;
   similarAssets?: Asset[]; // Optional: manual similar assets (fallback)
   isOwner?: boolean;
+  isDraft?: boolean;
 }
 
 export function MobileDetailModal({
@@ -21,8 +23,10 @@ export function MobileDetailModal({
   onTogglePublish,
   onDelete,
   onToggleFavorite,
+  onPublishFromArchive,
   similarAssets = [],
-  isOwner = false
+  isOwner = false,
+  isDraft = false
 }: MobileDetailModalProps) {
   const { user } = useAuth();
   const initialPublic = useMemo(() => (asset.status ? asset.status === 'public' : !!asset.isPublic), [asset]);
@@ -196,13 +200,25 @@ export function MobileDetailModal({
 
           {isOwner ? (
             <div className="detail-owner-actions">
-              <button
-                className="detail-toggle-publish-btn"
-                onClick={handleTogglePublish}
-                disabled={isPublishing || !onTogglePublish}
-              >
-                {isPublic ? '非公開にする' : '公開する'}
-              </button>
+              {isDraft && onPublishFromArchive ? (
+                <button
+                  className="detail-toggle-publish-btn"
+                  onClick={() => {
+                    onPublishFromArchive(asset.src, asset.generationData);
+                    onClose();
+                  }}
+                >
+                  編集して公開
+                </button>
+              ) : (
+                <button
+                  className="detail-toggle-publish-btn"
+                  onClick={handleTogglePublish}
+                  disabled={isPublishing || !onTogglePublish}
+                >
+                  {isPublic ? '非公開にする' : '公開する'}
+                </button>
+              )}
               <button className="detail-delete-btn" onClick={handleDelete}>
                 削除
               </button>

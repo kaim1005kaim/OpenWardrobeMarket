@@ -30,6 +30,13 @@ function MobileAppContent() {
   const [publishImageUrl, setPublishImageUrl] = useState<string | null>(null);
   const [publishGenerationData, setPublishGenerationData] = useState<any>(null);
 
+  // Function to start publish flow from ARCHIVE with existing image
+  const handlePublishFromArchive = (imageUrl: string, generationData?: any) => {
+    setPublishImageUrl(imageUrl);
+    setPublishGenerationData(generationData || null);
+    handleNavigate('publishForm');
+  };
+
   // Initialize URL on first load
   useEffect(() => {
     // Set initial history state if not already set
@@ -140,7 +147,10 @@ function MobileAppContent() {
         />;
 
       case 'archive':
-        return <MobileMyPage onNavigate={handleNavigate} />;
+        return <MobileMyPage
+          onNavigate={handleNavigate}
+          onPublishFromArchive={handlePublishFromArchive}
+        />;
 
       case 'faq':
       case 'contact':

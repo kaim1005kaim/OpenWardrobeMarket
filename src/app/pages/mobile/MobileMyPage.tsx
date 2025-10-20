@@ -18,11 +18,12 @@ import './MobileMyPage.css';
 
 interface MobileMyPageProps {
   onNavigate?: (page: string) => void;
+  onPublishFromArchive?: (imageUrl: string, generationData?: any) => void;
 }
 
 type TabType = 'publish' | 'drafts' | 'collections';
 
-export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
+export function MobileMyPage({ onNavigate, onPublishFromArchive }: MobileMyPageProps) {
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useUrula();
   const [activeSection, setActiveSection] = useState<'design' | 'setting'>('design');
@@ -499,8 +500,10 @@ export function MobileMyPage({ onNavigate }: MobileMyPageProps) {
           onTogglePublish={handleTogglePublish}
           onDelete={handleDelete}
           onToggleFavorite={handleToggleFavorite}
+          onPublishFromArchive={onPublishFromArchive}
           similarAssets={getSimilarAssets(selectedAsset)}
           isOwner={selectedAsset.userId === user?.id}
+          isDraft={activeTab === 'drafts'}
         />
       )}
     </>
