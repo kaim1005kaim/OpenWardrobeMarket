@@ -43,17 +43,30 @@ export async function POST(req: NextRequest) {
 
     // If itemId is provided, fetch its embedding and tags
     if (itemId) {
-      const { data: targetItem, error: fetchError } = await supabase
+      // Try published_items first
+      let { data: targetItem, error: fetchError } = await supabase
         .from('published_items')
         .select('embedding, auto_tags, tags')
         .eq('id', itemId)
         .single();
 
+      // If not found in published_items, try assets table
       if (fetchError || !targetItem) {
-        return NextResponse.json(
-          { error: 'Item not found' },
-          { status: 404 }
-        );
+        console.log('[vector-search] Not found in published_items, trying assets table');
+        const { data: assetItem, error: assetError } = await supabase
+          .from('assets')
+          .select('embedding, auto_tags, tags')
+          .eq('id', itemId)
+          .single();
+
+        if (assetError || !assetItem) {
+          return NextResponse.json(
+            { error: 'Item not found in either table' },
+            { status: 404 }
+          );
+        }
+
+        targetItem = assetItem;
       }
 
       queryEmbedding = targetItem.embedding;

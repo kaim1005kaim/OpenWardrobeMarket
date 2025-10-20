@@ -29,19 +29,31 @@ export async function POST(req: NextRequest) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the target item's auto_tags
-    const { data: targetItem, error: targetError } = await supabase
+    // Try to get the target item from published_items first
+    let { data: targetItem, error: targetError } = await supabase
       .from('published_items')
       .select('id, auto_tags, tags, category')
       .eq('id', itemId)
       .single();
 
+    // If not found in published_items, try assets table
     if (targetError || !targetItem) {
-      console.error('[similar-items] Target item not found:', targetError);
-      return NextResponse.json(
-        { error: 'Item not found' },
-        { status: 404 }
-      );
+      console.log('[similar-items] Not found in published_items, trying assets table');
+      const { data: assetItem, error: assetError } = await supabase
+        .from('assets')
+        .select('id, auto_tags, tags, category')
+        .eq('id', itemId)
+        .single();
+
+      if (assetError || !assetItem) {
+        console.error('[similar-items] Target item not found in either table:', { targetError, assetError });
+        return NextResponse.json(
+          { error: 'Item not found' },
+          { status: 404 }
+        );
+      }
+
+      targetItem = assetItem;
     }
 
     const targetTags = targetItem.auto_tags || [];
