@@ -164,6 +164,7 @@ export const COPY = {
   questions: {
     vibe: "どんな雰囲気のデザインにしたいですか？",
     silhouette: "シルエットはどうしますか？",
+    fabric: "どんな素材にしたいですか？",
     color: "カラーパレットを選択してください",
     occasion: "着用シーンは？",
     season: "シーズンは？",

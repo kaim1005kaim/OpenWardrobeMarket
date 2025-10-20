@@ -1,6 +1,7 @@
 export type Answers = {
   vibe: string[];
   silhouette: string[];
+  fabric: string[];
   color: string[];
   occasion: string[];
   season: string[];
@@ -22,11 +23,12 @@ export const NEGATIVE =
   "no text, no words, no logos, no brands, no celebrities, no multiple people, no watermark, no signature";
 
 /**
- * Build base prompt from 5 question answers (existing logic)
+ * Build base prompt from 6 question answers (existing logic)
  */
 export function buildPrompt(a: Answers): string {
   const vibe = a.vibe?.[0];
   const sil = a.silhouette?.[0];
+  const fabric = a.fabric?.[0];
   const pal = (a.color || []).join(", ");
   const occ = a.occasion?.[0];
   const season = a.season?.[0];
@@ -36,6 +38,7 @@ export function buildPrompt(a: Answers): string {
     "studio lighting, clean minimal background, high detail",
     vibe && `${vibe} vibe`,
     sil && `${sil} silhouette`,
+    fabric && `${fabric} fabric`,
     pal && `palette: ${pal}`,
     occ && `for ${occ}`,
     season

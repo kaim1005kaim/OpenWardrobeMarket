@@ -46,6 +46,11 @@ const createQuestions: Question[] = [
     options: ['オーバーサイズ', 'ルーズ', 'テーラード', 'タイト', 'Aライン', 'コクーン'],
   },
   {
+    id: 'fabric',
+    question: COPY.questions.fabric || '素材は？',
+    options: ['Cotton', 'Denim', 'Leather', 'Wool', 'Silk', 'Velvet', 'Suede', 'Nylon', 'Synthetic', 'Stripe'],
+  },
+  {
     id: 'color',
     question: COPY.questions.color,
     options: ['palette'], // Single palette option
@@ -171,6 +176,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
     const answersData: Answers = {
       vibe: answers.vibe || [],
       silhouette: answers.silhouette || [],
+      fabric: answers.fabric || [],
       color: answers.color || [],
       occasion: answers.occasion || [],
       season: answers.season || [],
@@ -269,23 +275,40 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
   const applyAnswerDNA = (questionId: string, option: string) => {
     // Simple heuristic DNA adjustments
     const deltasMap: Record<string, Partial<DNA>> = {
+      // Vibe
       minimal: { minimal_maximal: -0.2 },
       luxury: { street_luxury: 0.2 },
       street: { street_luxury: -0.2 },
+
+      // Silhouette
       oversized: { oversized_fitted: -0.2 },
       fitted: { oversized_fitted: 0.2 },
       tailored: { relaxed_tailored: 0.2 },
       relaxed: { relaxed_tailored: -0.2 },
+
+      // Fabric/Texture mapping (0-1 range maps to 10 textures)
+      // 0: Canvas, 1: Denim, 2: Glassribpattern, 3: Leather, 4: Pinstripe
+      // 5: Ripstop, 6: Satin_Silk, 7: Suede, 8: Velvet, 9: Wool
+      cotton: { texture: 0.05 },      // Canvas
+      denim: { texture: 0.15 },       // Denim
+      leather: { texture: 0.35 },     // Leather
+      wool: { texture: 0.95 },        // Wool
+      silk: { texture: 0.65 },        // Satin_Silk
+      velvet: { texture: 0.85 },      // Velvet
+      suede: { texture: 0.75 },       // Suede
+      nylon: { texture: 0.55 },       // Ripstop
+      synthetic: { texture: 0.25 },   // Glassribpattern
+      stripe: { texture: 0.45 },      // Pinstripe
     };
 
-    const delta = deltasMap[option];
+    const delta = deltasMap[option.toLowerCase()];
     if (delta) {
       updateDNA((prev) => ({
         ...prev,
         ...Object.fromEntries(
           Object.entries(delta).map(([k, v]) => [
             k,
-            Math.max(-1, Math.min(1, (prev[k as keyof DNA] as number) + v)),
+            k === 'texture' ? v : Math.max(-1, Math.min(1, (prev[k as keyof DNA] as number) + v)),
           ])
         ),
       }));
@@ -343,6 +366,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
       const answersData: Answers = {
         vibe: answers.vibe || [],
         silhouette: answers.silhouette || [],
+        fabric: answers.fabric || [],
         color: answers.color || [],
         occasion: answers.occasion || [],
         season: answers.season || [],
@@ -417,6 +441,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
       const answersData: Answers = {
         vibe: answers.vibe || [],
         silhouette: answers.silhouette || [],
+        fabric: answers.fabric || [],
         color: convertColorIdsToNames(answers.color || []),
         occasion: answers.occasion || [],
         season: answers.season || [],

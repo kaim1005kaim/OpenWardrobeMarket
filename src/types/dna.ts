@@ -3,11 +3,12 @@
  */
 
 /**
- * User answers from 5 questions
+ * User answers from 6 questions
  */
 export type Answers = {
   vibe: string[];
   silhouette: string[];
+  fabric: string[];
   color: string[];
   occasion: string[];
   season: string[];
