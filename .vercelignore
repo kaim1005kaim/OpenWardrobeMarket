@@ -1,0 +1,40 @@
+# Python virtual environment
+server/venv/
+
+# Node modules (already ignored by default but being explicit)
+node_modules/
+
+# Build outputs
+.next/
+dist/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+/tmp/
+*.tmp
+
+# macOS
+.DS_Store
+._*
+
+# Git
+.git/
+
+# Environment files (keep .env.example)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+
+# Test coverage
+coverage/
