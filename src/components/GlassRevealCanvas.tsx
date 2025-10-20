@@ -174,7 +174,8 @@ export default function GlassRevealCanvas({
       }
     );
     texImg.minFilter = THREE.LinearFilter; texImg.magFilter = THREE.LinearFilter;
-    texImg.colorSpace = THREE.SRGBColorSpace;
+    // DO NOT set colorSpace - it causes double gamma correction and makes colors darker
+    // texImg.colorSpace = THREE.SRGBColorSpace;
 
     const texGlass = loader.load(
       glassURL,
@@ -191,7 +192,8 @@ export default function GlassRevealCanvas({
     texGlass.wrapS = texGlass.wrapT = THREE.RepeatWrapping;
     texGlass.minFilter = THREE.LinearFilter;
     texGlass.magFilter = THREE.LinearFilter;
-    texGlass.colorSpace = THREE.SRGBColorSpace;
+    // DO NOT set colorSpace for glass pattern
+    // texGlass.colorSpace = THREE.SRGBColorSpace;
 
     const geo = new THREE.PlaneGeometry(2,2);
     const mat = new THREE.ShaderMaterial({
