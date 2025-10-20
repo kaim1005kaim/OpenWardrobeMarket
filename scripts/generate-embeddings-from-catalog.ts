@@ -2,7 +2,11 @@
  * Generate CLIP embeddings for catalog images in R2
  *
  * This script scans the owm-assets/catalog/ directory in R2 and generates
- * embeddings for all images found there.
+ * embeddings for all images found there using a self-hosted CLIP server.
+ *
+ * Prerequisites:
+ *   1. Start CLIP server: cd server && python clip-server.py --model vit-l-14 --device mps
+ *   2. Run this script: npx tsx scripts/generate-embeddings-from-catalog.ts
  *
  * Usage:
  *   npx tsx scripts/generate-embeddings-from-catalog.ts
@@ -12,9 +16,9 @@
  *   - R2_SECRET_ACCESS_KEY
  *   - R2_S3_ENDPOINT
  *   - R2_BUCKET
- *   - HUGGINGFACE_API_KEY
  *   - NEXT_PUBLIC_SUPABASE_URL
  *   - SUPABASE_SERVICE_ROLE_KEY
+ *   - CLIP_SERVER_URL (optional, defaults to http://localhost:5000)
  */
 
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
@@ -27,14 +31,14 @@ const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID!;
 const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY!;
 const R2_ENDPOINT = process.env.R2_S3_ENDPOINT!;
 const R2_BUCKET = process.env.R2_BUCKET || 'owm-assets';
-const HF_API_KEY = process.env.HUGGINGFACE_API_KEY!;
+const CLIP_SERVER_URL = process.env.CLIP_SERVER_URL || 'http://localhost:5000';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_BASE_URL!;
 
-if (!R2_ACCESS_KEY || !R2_SECRET_KEY || !R2_ENDPOINT || !HF_API_KEY) {
+if (!R2_ACCESS_KEY || !R2_SECRET_KEY || !R2_ENDPOINT) {
   console.error('Missing required environment variables');
-  console.error('Required: R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_S3_ENDPOINT, HUGGINGFACE_API_KEY');
+  console.error('Required: R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_S3_ENDPOINT');
   process.exit(1);
 }
 
@@ -51,39 +55,31 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function generateEmbedding(imageBuffer: Buffer): Promise<number[] | null> {
   try {
-    const base64Image = imageBuffer.toString('base64');
+    // Use FormData to send image to self-hosted CLIP server
+    const FormData = (await import('form-data')).default;
+    const formData = new FormData();
+    formData.append('image', imageBuffer, { filename: 'image.jpg' });
 
-    const response = await fetch(
-      'https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${HF_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputs: base64Image,
-          options: {
-            wait_for_model: true,
-          },
-        }),
-      }
-    );
+    const response = await fetch(`${CLIP_SERVER_URL}/embed`, {
+      method: 'POST',
+      body: formData as any,
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Hugging Face API error:', errorText);
+      console.error('CLIP server error:', errorText);
       return null;
     }
 
-    const embedding = await response.json();
+    const result = await response.json();
+    const embedding = result.embedding;
 
     if (!Array.isArray(embedding) || embedding.length === 0) {
       console.error('Invalid embedding format');
       return null;
     }
 
-    // Normalize to 512 dimensions
+    // Normalize to 512 dimensions if needed
     let normalizedEmbedding = embedding;
     if (embedding.length !== 512) {
       if (embedding.length > 512) {
@@ -102,6 +98,25 @@ async function generateEmbedding(imageBuffer: Buffer): Promise<number[] | null> 
 
 async function main() {
   console.log('🚀 Scanning catalog images in R2...');
+  console.log(`🔗 Using CLIP server at: ${CLIP_SERVER_URL}\n`);
+
+  // Check CLIP server health
+  try {
+    const healthResponse = await fetch(`${CLIP_SERVER_URL}/health`);
+    if (!healthResponse.ok) {
+      throw new Error('CLIP server not responding');
+    }
+    const healthData = await healthResponse.json();
+    console.log('✅ CLIP server is healthy');
+    console.log(`   Model: ${healthData.model}`);
+    console.log(`   Device: ${healthData.device}`);
+    console.log(`   Dimensions: ${healthData.dimensions}\n`);
+  } catch (error) {
+    console.error('❌ CLIP server is not running!');
+    console.error('   Please start the server first:');
+    console.error('   cd server && python clip-server.py --model vit-l-14 --device mps\n');
+    process.exit(1);
+  }
 
   // List all objects in catalog/ directory
   const listCommand = new ListObjectsV2Command({
@@ -187,10 +202,8 @@ async function main() {
         failureCount++;
       }
 
-      // Rate limiting
-      if (i < imageFiles.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+      // No rate limiting needed for self-hosted CLIP
+      // Process images as fast as possible
     } catch (error) {
       console.error('  ❌ Error processing image:', error);
       failureCount++;

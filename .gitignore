@@ -94,3 +94,5 @@ public/spa/
 docs/*.json
 *.json.key
 tsconfig.tsbuildinfo
+server/venv/
+server/venv/
