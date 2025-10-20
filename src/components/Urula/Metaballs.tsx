@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { MarchingCubes, MarchingCube, Environment } from '@react-three/drei';
+import { MarchingCubes, MarchingCube, Environment, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { DNA } from '../../types/dna';
 
@@ -133,7 +133,7 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
     if (groupRef.current && animated) {
       const time = state.clock.elapsedTime;
 
-      // Gentle rotation
+      // Gentle horizontal rotation only (user can rotate freely with OrbitControls)
       groupRef.current.rotation.y = Math.sin(time * 0.2) * 0.1;
 
       // Breathing scale animation
@@ -206,6 +206,15 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
       </MarchingCubes>
 
       <Environment preset="studio" />
+
+      {/* OrbitControls for interactive 3D rotation */}
+      <OrbitControls
+        enablePan={false}
+        enableZoom={false}
+        rotateSpeed={0.5}
+        minPolarAngle={0}
+        maxPolarAngle={Math.PI}
+      />
     </group>
   );
 }
