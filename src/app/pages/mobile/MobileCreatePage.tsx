@@ -7,6 +7,7 @@ import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import { useDNA } from '../../../hooks/useDNA';
 import { useUrula } from '../../lib/UrulaContext';
 import { DEFAULT_DNA, type DNA, type Answers, type GeminiCoachOut } from '../../../types/dna';
+import { generateAutoTags } from '../../../lib/autoTags';
 import { COPY } from '../../../constants/copy';
 import './MobileCreatePage.css';
 
@@ -23,6 +24,7 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
 
 interface MobileCreatePageProps {
   onNavigate?: (page: string) => void;
+  onStartPublish?: (imageUrl: string, generationData: any) => void;
 }
 
 interface Question {
@@ -121,7 +123,7 @@ function hexToHSL(hex: string): { h: number; s: number; l: number } {
   return { h: Math.round(h * 360), s, l };
 }
 
-export function MobileCreatePage({ onNavigate }: MobileCreatePageProps) {
+export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePageProps) {
   const [stage, setStage] = useState<Stage>('answering');
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
