@@ -115,30 +115,43 @@ export async function GET(request: Request) {
       console.log('[api/assets] Published items count:', publishedData?.length || 0);
 
       // Convert published_items to asset format
-      const publishedAsAssets = (publishedData || []).map((item: any) => ({
-        id: item.id,
-        user_id: item.user_id,
-        title: item.title,
-        description: item.description,
-        status: 'public',
-        tags: item.tags || [],
-        price: item.price,
-        likes: item.likes || 0,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        // image_id is now TEXT, can be either UUID or catalog path like "catalog/01.png"
-        final_key: item.image_id,
-        final_url: item.poster_url || item.original_url || (item.image_id?.startsWith('catalog/')
-          ? `${publicBaseUrl}/${item.image_id}`
-          : null),
-        raw_key: null,
-        raw_url: null,
-        metadata: {
-          width: 1024,
-          height: 1536,
-          mime_type: 'image/png'
+      const publishedAsAssets = (publishedData || []).map((item: any) => {
+        // Determine final_url based on image_id type
+        let finalUrl = item.poster_url || item.original_url;
+
+        if (!finalUrl && item.image_id) {
+          if (item.image_id.startsWith('catalog/')) {
+            // Catalog image from public folder
+            finalUrl = `${publicBaseUrl}/${item.image_id}`;
+          } else {
+            // User-generated image from R2
+            finalUrl = `${publicBaseUrl}/${item.image_id}`;
+          }
         }
-      }));
+
+        return {
+          id: item.id,
+          user_id: item.user_id,
+          title: item.title,
+          description: item.description,
+          status: 'public',
+          tags: item.tags || [],
+          price: item.price,
+          likes: item.likes || 0,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          // image_id is now TEXT, can be either UUID or catalog path like "catalog/01.png"
+          final_key: item.image_id,
+          final_url: finalUrl,
+          raw_key: null,
+          raw_url: null,
+          metadata: {
+            width: 1024,
+            height: 1536,
+            mime_type: 'image/png'
+          }
+        };
+      });
 
       // Combine, deduplicate by image URL, and sort by created_at
       const combined = [...(assetsData || []), ...publishedAsAssets];
@@ -199,29 +212,42 @@ export async function GET(request: Request) {
       console.log('[api/assets] User draft images count:', imagesData?.length || 0);
 
       // Convert published_items to asset format
-      const publishedAsAssets = (publishedData || []).map((item: any) => ({
-        id: item.id,
-        user_id: item.user_id,
-        title: item.title,
-        description: item.description,
-        status: 'public',
-        tags: item.tags || [],
-        price: item.price,
-        likes: item.likes || 0,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        final_key: item.image_id,
-        final_url: item.poster_url || item.original_url || (item.image_id?.startsWith('catalog/')
-          ? `${publicBaseUrl}/${item.image_id}`
-          : null),
-        raw_key: null,
-        raw_url: null,
-        metadata: {
-          width: 1024,
-          height: 1536,
-          mime_type: 'image/png'
+      const publishedAsAssets = (publishedData || []).map((item: any) => {
+        // Determine final_url based on image_id type
+        let finalUrl = item.poster_url || item.original_url;
+
+        if (!finalUrl && item.image_id) {
+          if (item.image_id.startsWith('catalog/')) {
+            // Catalog image from public folder
+            finalUrl = `${publicBaseUrl}/${item.image_id}`;
+          } else {
+            // User-generated image from R2
+            finalUrl = `${publicBaseUrl}/${item.image_id}`;
+          }
         }
-      }));
+
+        return {
+          id: item.id,
+          user_id: item.user_id,
+          title: item.title,
+          description: item.description,
+          status: 'public',
+          tags: item.tags || [],
+          price: item.price,
+          likes: item.likes || 0,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          final_key: item.image_id,
+          final_url: finalUrl,
+          raw_key: null,
+          raw_url: null,
+          metadata: {
+            width: 1024,
+            height: 1536,
+            mime_type: 'image/png'
+          }
+        };
+      });
 
       // Convert images to asset format (drafts)
       const draftAsAssets = (imagesData || []).map((item: any) => ({
