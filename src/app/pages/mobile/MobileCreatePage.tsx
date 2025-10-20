@@ -542,6 +542,11 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
       return;
     }
 
+    if (!onStartPublish) {
+      alert('公開機能が利用できません');
+      return;
+    }
+
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
@@ -550,12 +555,11 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
       }
 
       const token = sessionData.session.access_token;
-      const userId = sessionData.session.user.id;
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
       const asset = generatedAsset;
 
-      // Upload to R2 via server-side API (avoids CORS issues)
-      console.log('[handlePublish] Uploading to R2 via server...');
+      // Upload to R2 first to get the final URL
+      console.log('[handlePublish] Uploading to R2...');
       const uploadRes = await fetch(`${apiUrl}/api/upload-to-r2`, {
         method: 'POST',
         headers: {
@@ -576,46 +580,92 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
 
       const { url: finalUrl } = await uploadRes.json();
       console.log('[handlePublish] Upload successful:', finalUrl);
-      console.log('[handlePublish] Publishing to gallery:', finalUrl);
 
-      // Publish directly - this will create both images and published_items records
-      const response = await fetch(`${apiUrl}/api/publish`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          image_url: finalUrl,
-          r2_key: asset.key,
-          title: 'My Design',
-          description: '生成されたデザイン',
-          tags: [],
-          colors: [],
-          category: 'clothing',
-          price: 0,
-          generation_data: {
-            session_id: sessionKey,
-            prompt: asset.prompt,
-            parameters: {
-              answers: asset.answers,
-              dna: asset.dna,
-            },
-          },
-        }),
+      // Generate rule-based auto tags
+      const ruleTags = generateAutoTags({
+        answers: asset.answers as Answers,
+        dna: asset.dna,
+        prompt: asset.prompt,
       });
+      console.log('[handlePublish] Generated rule-based tags:', ruleTags);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('[handlePublish] Publish failed:', errorData);
-        throw new Error(errorData.error || '公開に失敗しました');
+      // Generate AI-based tags using Gemini Vision API
+      let aiTags: string[] = [];
+      let imageDescription = '';
+      try {
+        console.log('[handlePublish] Analyzing image with Gemini Vision...');
+        const analyzeRes = await fetch(`${apiUrl}/api/gemini/analyze-image`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            imageData: asset.imageData,
+            mimeType: asset.mimeType,
+          }),
+        });
+
+        if (analyzeRes.ok) {
+          const { tags, description } = await analyzeRes.json();
+          aiTags = tags || [];
+          imageDescription = description || '';
+          console.log('[handlePublish] Gemini Vision tags:', aiTags);
+          console.log('[handlePublish] Image description:', imageDescription);
+        } else {
+          console.warn('[handlePublish] Gemini Vision API failed, using rule-based tags only');
+        }
+      } catch (error) {
+        console.error('[handlePublish] Gemini Vision error:', error);
+        // Continue with rule-based tags only
       }
 
-      const result = await response.json();
-      console.log('[handlePublish] Successfully published:', result);
+      // Combine rule-based and AI-based tags (remove duplicates)
+      const autoTags = [...new Set([...ruleTags, ...aiTags])];
+      console.log('[handlePublish] Combined auto tags:', autoTags);
 
-      alert(COPY.status.publishSuccess);
-      onNavigate?.('gallery');
+      // Generate CLIP embedding for vector similarity search
+      let embedding: number[] | null = null;
+      try {
+        console.log('[handlePublish] Generating CLIP embedding...');
+        const embeddingRes = await fetch(`${apiUrl}/api/generate-embedding`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            imageData: asset.imageData,
+          }),
+        });
+
+        if (embeddingRes.ok) {
+          const { embedding: embeddingVector } = await embeddingRes.json();
+          embedding = embeddingVector;
+          console.log('[handlePublish] Generated embedding with dimension:', embedding.length);
+        } else {
+          console.warn('[handlePublish] Embedding generation failed, continuing without vector search capability');
+        }
+      } catch (error) {
+        console.error('[handlePublish] Embedding generation error:', error);
+        // Continue without embedding - vector search won't be available for this item
+      }
+
+      // Pass image and generation data to PublishForm page
+      const generationData = {
+        session_id: sessionKey,
+        prompt: asset.prompt,
+        parameters: {
+          answers: asset.answers,
+          dna: asset.dna,
+        },
+        auto_tags: autoTags, // Include combined auto-generated tags
+        ai_description: imageDescription, // Include AI-generated description
+        embedding: embedding, // Include CLIP embedding vector
+        r2_key: asset.key,
+      };
+
+      onStartPublish(finalUrl, generationData);
     } catch (error) {
       console.error('[handlePublish] Error:', error);
       alert(error instanceof Error ? error.message : COPY.status.publishError);

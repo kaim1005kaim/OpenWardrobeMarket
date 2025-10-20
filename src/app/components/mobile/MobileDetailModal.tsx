@@ -10,7 +10,7 @@ interface MobileDetailModalProps {
   onTogglePublish?: (assetId: string, isPublic: boolean) => Promise<void>;
   onDelete?: (assetId: string) => Promise<void>;
   onToggleFavorite?: (assetId: string, shouldLike: boolean) => Promise<void>;
-  similarAssets?: Asset[];
+  similarAssets?: Asset[]; // Optional: manual similar assets (fallback)
   isOwner?: boolean;
 }
 
@@ -32,6 +32,8 @@ export function MobileDetailModal({
   const [isLiked, setIsLiked] = useState(initialLiked);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isFavoriteProcessing, setIsFavoriteProcessing] = useState(false);
+  const [aiSimilarAssets, setAiSimilarAssets] = useState<Asset[]>([]);
+  const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -44,6 +46,75 @@ export function MobileDetailModal({
     setIsPublic(asset.status ? asset.status === 'public' : !!asset.isPublic);
     setIsLiked(asset.isLiked ?? asset.liked ?? false);
   }, [asset]);
+
+  // Fetch AI-based similar items when modal opens
+  // Try vector search first, fallback to tag-based search
+  useEffect(() => {
+    const fetchSimilarItems = async () => {
+      if (!asset.id) return;
+
+      setIsLoadingSimilar(true);
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+
+        // Try vector-based search first (Phase 3 - highest accuracy)
+        let response = await fetch(`${apiUrl}/api/vector-search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            itemId: asset.id,
+            limit: 6,
+            mode: 'auto', // Auto-detect hybrid vs pure vector
+            threshold: 0.6, // Lower threshold for more results
+          }),
+        });
+
+        // Fallback to tag-based search if vector search fails
+        if (!response.ok) {
+          console.log('[MobileDetailModal] Vector search unavailable, falling back to tag search');
+          response = await fetch(`${apiUrl}/api/similar-items`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              itemId: asset.id,
+              limit: 6,
+            }),
+          });
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          const items = data.similar_items || [];
+
+          console.log('[MobileDetailModal] Search algorithm:', data.algorithm);
+          console.log('[MobileDetailModal] Found', items.length, 'similar items');
+
+          // Map API response to Asset format
+          const mappedAssets: Asset[] = items.map((item: any) => ({
+            id: item.id,
+            title: item.title || 'Untitled',
+            src: item.image_id || '', // TODO: resolve image URL from image_id
+            tags: item.tags || [],
+            category: item.category,
+          }));
+
+          setAiSimilarAssets(mappedAssets);
+        } else {
+          console.warn('[MobileDetailModal] Failed to load similar items');
+        }
+      } catch (error) {
+        console.error('[MobileDetailModal] Error loading similar items:', error);
+      } finally {
+        setIsLoadingSimilar(false);
+      }
+    };
+
+    fetchSimilarItems();
+  }, [asset.id]);
 
   const handleTogglePublish = async () => {
     if (!onTogglePublish) return;
@@ -158,20 +229,31 @@ export function MobileDetailModal({
           </div>
         </div>
 
-        {similarAssets.length > 0 && (
+        {(aiSimilarAssets.length > 0 || similarAssets.length > 0 || isLoadingSimilar) && (
           <div className="detail-similar">
             <h3 className="detail-similar-title">SIMILAR DESIGNS</h3>
-            <div className="detail-similar-masonry">
-              {similarAssets.slice(0, 6).map((item, index) => (
-                <div
-                  key={item.id}
-                  className={`detail-similar-item detail-similar-item-${index + 1}`}
-                >
-                  <img src={item.src} alt={item.title} />
+            {isLoadingSimilar ? (
+              <div className="detail-similar-loading" style={{ textAlign: 'center', padding: '40px' }}>
+                <div className="spinner" style={{ margin: '0 auto' }} />
+              </div>
+            ) : (
+              <>
+                <div className="detail-similar-masonry">
+                  {/* Prioritize AI-based similar items, fallback to manual ones */}
+                  {(aiSimilarAssets.length > 0 ? aiSimilarAssets : similarAssets).slice(0, 6).map((item, index) => (
+                    <div
+                      key={item.id}
+                      className={`detail-similar-item detail-similar-item-${index + 1}`}
+                    >
+                      <img src={item.src} alt={item.title} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <button className="detail-similar-more">more</button>
+                {aiSimilarAssets.length > 6 && (
+                  <button className="detail-similar-more">more</button>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

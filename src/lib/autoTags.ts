@@ -125,14 +125,17 @@ export function generateAutoTags(params: {
     });
   }
 
-  // === DNA (Chaos level) ===
-  if (dna.chaos !== undefined) {
-    if (dna.chaos > 0.7) {
-      tags.push('bold', 'experimental', 'avant-garde', 'unique');
-    } else if (dna.chaos > 0.4) {
-      tags.push('balanced', 'contemporary', 'modern');
+  // === DNA (minimal_maximal axis) ===
+  if (dna.minimal_maximal !== undefined) {
+    if (dna.minimal_maximal > 0.5) {
+      // Maximal side: bold, experimental
+      tags.push('bold', 'experimental', 'maximalist', 'statement');
+    } else if (dna.minimal_maximal < -0.5) {
+      // Minimal side: clean, refined
+      tags.push('minimal', 'clean', 'refined', 'simple');
     } else {
-      tags.push('classic', 'timeless', 'traditional', 'refined');
+      // Balanced
+      tags.push('balanced', 'contemporary', 'modern');
     }
   }
 
