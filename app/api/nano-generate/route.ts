@@ -38,10 +38,27 @@ export async function POST(req: Request) {
 
     console.log('[Generator API] Prompt:', fullPrompt);
 
+    // Convert aspectRatio to width/height for Gemini
+    const aspectMap: Record<string, { width: number; height: number }> = {
+      '3:4': { width: 960, height: 1280 },
+      '2:3': { width: 1024, height: 1536 },
+      '1:1': { width: 1024, height: 1024 },
+      '4:3': { width: 1280, height: 960 },
+    };
+
+    const dimensions = aspectMap[aspectRatio] || aspectMap['3:4'];
+
+    console.log('[Generator API] Generating with dimensions:', dimensions);
+
     const resp = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: fullPrompt,
-      generationConfig: { imageConfig: { aspectRatio } },
+      generationConfig: {
+        imageConfig: {
+          width: dimensions.width,
+          height: dimensions.height
+        }
+      },
     } as any);
 
     const parts: any[] = resp.candidates?.[0]?.content?.parts ?? [];
