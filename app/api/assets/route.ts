@@ -98,20 +98,10 @@ export async function GET(request: Request) {
 
       const { data: assetsData, error: assetsError } = await assetsQuery;
 
-      // Fetch from published_items table (joined with images)
+      // Fetch from published_items table (no join needed, image_id is now TEXT)
       let publishedQuery = supabase
         .from('published_items')
-        .select(`
-          *,
-          images (
-            id,
-            r2_url,
-            r2_key,
-            width,
-            height,
-            mime_type
-          )
-        `)
+        .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(limitValue);
@@ -136,14 +126,17 @@ export async function GET(request: Request) {
         likes: item.likes || 0,
         created_at: item.created_at,
         updated_at: item.updated_at,
-        final_key: item.images?.r2_key || item.original_url,
-        final_url: item.original_url,
+        // image_id is now TEXT, can be either UUID or catalog path like "catalog/01.png"
+        final_key: item.image_id,
+        final_url: item.poster_url || item.original_url || (item.image_id?.startsWith('catalog/')
+          ? `${publicBaseUrl}/${item.image_id}`
+          : null),
         raw_key: null,
         raw_url: null,
         metadata: {
-          width: item.images?.width || 1024,
-          height: item.images?.height || 1024,
-          mime_type: item.images?.mime_type || 'image/png'
+          width: 1024,
+          height: 1536,
+          mime_type: 'image/png'
         }
       }));
 
@@ -173,20 +166,10 @@ export async function GET(request: Request) {
 
       const { data: assetsData, error: assetsError } = await assetsQuery;
 
-      // Fetch user's published items
+      // Fetch user's published items (no join needed)
       let publishedQuery = supabase
         .from('published_items')
-        .select(`
-          *,
-          images (
-            id,
-            r2_url,
-            r2_key,
-            width,
-            height,
-            mime_type
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(limitValue);
@@ -227,14 +210,16 @@ export async function GET(request: Request) {
         likes: item.likes || 0,
         created_at: item.created_at,
         updated_at: item.updated_at,
-        final_key: item.images?.r2_key || item.original_url,
-        final_url: item.original_url,
+        final_key: item.image_id,
+        final_url: item.poster_url || item.original_url || (item.image_id?.startsWith('catalog/')
+          ? `${publicBaseUrl}/${item.image_id}`
+          : null),
         raw_key: null,
         raw_url: null,
         metadata: {
-          width: item.images?.width || 1024,
-          height: item.images?.height || 1024,
-          mime_type: item.images?.mime_type || 'image/png'
+          width: 1024,
+          height: 1536,
+          mime_type: 'image/png'
         }
       }));
 
