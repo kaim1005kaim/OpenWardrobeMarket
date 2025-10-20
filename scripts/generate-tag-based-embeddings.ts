@@ -78,8 +78,6 @@ async function main() {
     .from('published_items')
     .select('id, title, auto_tags, tags')
     .is('embedding', null)
-    .not('auto_tags', 'is', null)
-    .eq('is_active', true)
     .limit(1000);
 
   if (fetchError) {
