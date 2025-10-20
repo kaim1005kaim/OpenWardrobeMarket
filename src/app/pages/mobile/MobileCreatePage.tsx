@@ -1068,14 +1068,21 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
               className="viewer-container"
               style={{
                 position: 'relative',
-                width: 'calc(100% + 40px)',
+                width: '100%',
                 height: '60vh', // Match ARCHIVE detail modal height
                 marginTop: '32px',
                 marginBottom: '24px',
-                marginLeft: '-20px',
-                marginRight: '-20px',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
               }}
             >
+              <div style={{
+                width: 'calc(60vh * 2 / 3)', // 2:3 aspect ratio based on height
+                height: '60vh',
+                maxWidth: '100%',
+                position: 'relative',
+              }}>
               <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
                 <GlassRevealCanvas
                   key={sessionKey}
@@ -1092,6 +1099,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
                   leftToRight={true}
                   active={stage === 'revealing'}
                 />
+              </div>
               </div>
             </div>
 
