@@ -51,13 +51,22 @@ export async function POST(req: NextRequest) {
 
       if (fetchError || !targetItem) {
         return NextResponse.json(
-          { error: 'Item not found or has no embedding' },
+          { error: 'Item not found' },
           { status: 404 }
         );
       }
 
       queryEmbedding = targetItem.embedding;
       queryTags = [...(targetItem.auto_tags || []), ...(targetItem.tags || [])];
+
+      // If no embedding but has tags, return early to let frontend fallback to tag search
+      if (!queryEmbedding && queryTags.length > 0) {
+        console.log('[vector-search] No embedding but has tags, client should use tag search');
+        return NextResponse.json(
+          { error: 'No embedding available, use tag search', hasTags: true },
+          { status: 400 }
+        );
+      }
     }
 
     if (!queryEmbedding) {
