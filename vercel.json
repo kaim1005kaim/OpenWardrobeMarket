@@ -1,6 +1,5 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(studio|showcase|create|createQuestions|archive|publishForm|publishComplete|faq|contact|privacy)",
