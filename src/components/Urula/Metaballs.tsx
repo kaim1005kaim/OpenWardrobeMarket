@@ -1,5 +1,5 @@
 import React, { useRef, useMemo, useImperativeHandle, forwardRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { MarchingCubes, MarchingCube, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import type { DNA } from '../../types/dna';
@@ -26,6 +26,16 @@ function dnaToVisualParams(dna: DNA) {
   const hslColor = new THREE.Color();
   hslColor.setHSL(dna.hue, dna.sat, dna.light);
 
+  // Texture index: maps 0-1 to 10 discrete texture choices
+  // 0: Canvas, 1: Denim, 2: Glassribpattern, 3: Leather, 4: Pinstripe
+  // 5: Ripstop, 6: Satin_Silk, 7: Suede, 8: Velvet, 9: Wool
+  const textureIndex = Math.floor(dna.texture * 9.99); // 0-9
+  const textureNames = [
+    'Canvas', 'Denim', 'Glassribpattern', 'Leather', 'Pinstripe',
+    'Ripstop', 'Satin_Silk', 'Suede', 'Velvet', 'Wool'
+  ];
+  const textureName = textureNames[textureIndex];
+
   return {
     strengthBase,
     strengthDelta,
@@ -33,6 +43,8 @@ function dnaToVisualParams(dna: DNA) {
     metalness,
     envMapIntensity,
     baseColor: hslColor,
+    textureIndex,
+    textureName,
   };
 }
 
@@ -57,6 +69,28 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
   const groupRef = useRef<THREE.Group>(null);
   const impactRef = useRef(0);
   const paletteChangeRef = useRef(0);
+
+  // Load texture maps
+  const albedoMap = useLoader(
+    THREE.TextureLoader,
+    `/texture/${visualParams.textureName}_albedo.png`
+  );
+  const normalMap = useLoader(
+    THREE.TextureLoader,
+    `/texture/${visualParams.textureName}_nomal.png`
+  );
+
+  // Configure texture wrapping and filtering
+  useMemo(() => {
+    if (albedoMap) {
+      albedoMap.wrapS = albedoMap.wrapT = THREE.RepeatWrapping;
+      albedoMap.repeat.set(2, 2);
+    }
+    if (normalMap) {
+      normalMap.wrapS = normalMap.wrapT = THREE.RepeatWrapping;
+      normalMap.repeat.set(2, 2);
+    }
+  }, [albedoMap, normalMap]);
 
   useImperativeHandle(innerRef, () => ({
     triggerImpact: () => {
@@ -130,10 +164,13 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
         />
 
         <meshStandardMaterial
+          map={albedoMap}
+          normalMap={normalMap}
           color={visualParams.baseColor}
           roughness={visualParams.roughness}
           metalness={visualParams.metalness}
           envMapIntensity={visualParams.envMapIntensity}
+          normalScale={new THREE.Vector2(0.3, 0.3)}
         />
       </MarchingCubes>
 
