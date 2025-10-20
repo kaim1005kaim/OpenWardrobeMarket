@@ -1,9 +1,10 @@
 {
-  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(studio|showcase|create|createQuestions|archive|publishForm|publishComplete|faq|contact|privacy)",
-      "destination": "/index.html"
+      "destination": "/spa/index.html"
     }
   ],
   "headers": [
