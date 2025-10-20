@@ -92,6 +92,31 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
     }
   }, [albedoMap, normalMap]);
 
+  // Create color variations for beautiful blending
+  const colorVariations = useMemo(() => {
+    const baseHSL = { h: 0, s: 0, l: 0 };
+    visualParams.baseColor.getHSL(baseHSL);
+
+    return {
+      base: visualParams.baseColor.clone(),
+      lighter: new THREE.Color().setHSL(
+        (baseHSL.h + 0.1) % 1,
+        baseHSL.s,
+        Math.min(baseHSL.l + 0.15, 1)
+      ),
+      desaturated: new THREE.Color().setHSL(
+        (baseHSL.h - 0.05 + 1) % 1,
+        Math.max(baseHSL.s - 0.1, 0),
+        baseHSL.l
+      ),
+      darker: new THREE.Color().setHSL(
+        (baseHSL.h + 0.05) % 1,
+        baseHSL.s,
+        Math.max(baseHSL.l - 0.1, 0.1)
+      ),
+    };
+  }, [visualParams.baseColor]);
+
   useImperativeHandle(innerRef, () => ({
     triggerImpact: () => {
       impactRef.current = 1;
@@ -138,35 +163,41 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
       <MarchingCubes
         resolution={64}
         maxPolyCount={20000}
+        enableUvs={false}
+        enableColors
       >
-        {/* Core ball */}
+        {/* Core ball - base color */}
         <MarchingCube
           strength={visualParams.strengthBase + visualParams.strengthDelta}
-          subtract={0}
+          subtract={6}
+          color={colorVariations.base}
           position={[0, 0, 0]}
         />
 
-        {/* Orbiting satellites for variety */}
+        {/* Orbiting satellites with color variations for beautiful blending */}
         <MarchingCube
           strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.6}
-          subtract={0}
+          subtract={6}
+          color={colorVariations.lighter}
           position={[0.8, 0.5, 0]}
         />
         <MarchingCube
           strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.5}
-          subtract={0}
+          subtract={6}
+          color={colorVariations.desaturated}
           position={[-0.6, -0.4, 0.3]}
         />
         <MarchingCube
           strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.4}
-          subtract={0}
+          subtract={6}
+          color={colorVariations.darker}
           position={[0.2, -0.7, -0.4]}
         />
 
         <meshStandardMaterial
+          vertexColors
           map={albedoMap}
           normalMap={normalMap}
-          color={visualParams.baseColor}
           roughness={visualParams.roughness}
           metalness={visualParams.metalness}
           envMapIntensity={visualParams.envMapIntensity}
