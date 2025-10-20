@@ -98,13 +98,28 @@ export function MobileDetailModal({
           console.log('[MobileDetailModal] Found', items.length, 'similar items');
 
           // Map API response to Asset format
-          const mappedAssets: Asset[] = items.map((item: any) => ({
-            id: item.id,
-            title: item.title || 'Untitled',
-            src: item.image_id || '', // TODO: resolve image URL from image_id
-            tags: item.tags || [],
-            category: item.category,
-          }));
+          const publicBaseUrl = import.meta.env.VITE_R2_PUBLIC_BASE_URL || 'https://owm-assets.nkmrlab.com';
+          const mappedAssets: Asset[] = items.map((item: any) => {
+            // Resolve image URL from image_id
+            let imageUrl = '';
+            if (item.image_id) {
+              if (item.image_id.startsWith('http')) {
+                // Already a full URL
+                imageUrl = item.image_id;
+              } else {
+                // Construct URL from R2 base
+                imageUrl = `${publicBaseUrl}/${item.image_id}`;
+              }
+            }
+
+            return {
+              id: item.id,
+              title: item.title || 'Untitled',
+              src: imageUrl,
+              tags: item.tags || [],
+              category: item.category,
+            };
+          });
 
           setAiSimilarAssets(mappedAssets);
         } else {
