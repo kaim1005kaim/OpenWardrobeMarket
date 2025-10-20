@@ -17,8 +17,8 @@
   right: 0;
   bottom: 0;
   background-image: url('/mobile_TOP_BG.png');
-  background-size: 90%;
-  background-position: 100% center;
+  background-size: cover;
+  background-position: center center;
   background-repeat: no-repeat;
   z-index: 1;
 }
