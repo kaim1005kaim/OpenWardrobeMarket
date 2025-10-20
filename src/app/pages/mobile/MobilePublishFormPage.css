@@ -1,7 +1,9 @@
 .mobile-publish-form-page {
   min-height: 100vh;
+  height: 100vh;
   background: #EEECE6;
-  padding-bottom: 40px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .publish-form-header {
@@ -20,7 +22,7 @@
 }
 
 .publish-form-content {
-  padding: 80px 20px 40px;
+  padding: 80px 20px 100px;
   max-width: 600px;
   margin: 0 auto;
 }
