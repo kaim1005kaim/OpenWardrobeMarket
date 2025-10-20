@@ -36,8 +36,6 @@
     ]
   },
   "include": [
-    "api",
-    "app",
     "src",
     "src/**/*.d.ts",
     "tests",
