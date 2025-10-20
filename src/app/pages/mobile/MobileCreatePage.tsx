@@ -1069,7 +1069,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
               style={{
                 position: 'relative',
                 width: 'calc(100% + 40px)',
-                aspectRatio: '3 / 4', // Match ARCHIVE aspect ratio
+                height: '60vh', // Match ARCHIVE detail modal height
                 marginTop: '32px',
                 marginBottom: '24px',
                 marginLeft: '-20px',
