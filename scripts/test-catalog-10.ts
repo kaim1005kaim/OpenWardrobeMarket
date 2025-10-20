@@ -1,24 +1,8 @@
 /**
- * Generate CLIP embeddings for catalog images in R2
+ * Test CLIP embedding generation for first 10 catalog images
  *
- * This script scans the owm-assets/catalog/ directory in R2 and generates
- * embeddings for all images found there using a self-hosted CLIP server.
- *
- * Prerequisites:
- *   1. Start CLIP server: cd server && python clip-server.py --model vit-l-14 --device mps
- *   2. Run this script: npx tsx scripts/generate-embeddings-from-catalog.ts
- *
- * Usage:
- *   npx tsx scripts/generate-embeddings-from-catalog.ts
- *
- * Environment variables required:
- *   - R2_ACCESS_KEY_ID
- *   - R2_SECRET_ACCESS_KEY
- *   - R2_S3_ENDPOINT
- *   - R2_BUCKET
- *   - NEXT_PUBLIC_SUPABASE_URL
- *   - SUPABASE_SERVICE_ROLE_KEY
- *   - CLIP_SERVER_URL (optional, defaults to http://localhost:5000)
+ * This script tests the FormData fix by processing only 10 images
+ * to verify successful embedding generation before processing all 1000.
  */
 
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
@@ -31,16 +15,10 @@ const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID!;
 const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY!;
 const R2_ENDPOINT = process.env.R2_S3_ENDPOINT!;
 const R2_BUCKET = process.env.R2_BUCKET || 'owm-assets';
-const CLIP_SERVER_URL = process.env.CLIP_SERVER_URL || 'http://localhost:5000';
+const CLIP_SERVER_URL = process.env.CLIP_SERVER_URL || 'http://localhost:5001';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_BASE_URL!;
-
-if (!R2_ACCESS_KEY || !R2_SECRET_KEY || !R2_ENDPOINT) {
-  console.error('Missing required environment variables');
-  console.error('Required: R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_S3_ENDPOINT');
-  process.exit(1);
-}
 
 const s3Client = new S3Client({
   region: 'auto',
@@ -55,24 +33,19 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function generateEmbedding(imageBuffer: Buffer): Promise<number[] | null> {
   try {
-    // Use FormData to send image to self-hosted CLIP server
+    const axios = (await import('axios')).default;
     const FormData = (await import('form-data')).default;
-    const formData = new FormData();
-    formData.append('image', imageBuffer, { filename: 'image.jpg' });
 
-    const response = await fetch(`${CLIP_SERVER_URL}/embed`, {
-      method: 'POST',
+    const formData = new FormData();
+    formData.append('image', imageBuffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
+
+    const response = await axios.post(`${CLIP_SERVER_URL}/embed`, formData, {
       headers: formData.getHeaders(),
-      body: formData as any,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('CLIP server error:', errorText);
-      return null;
-    }
-
-    const result = await response.json();
+    const result = response.data;
     const embedding = result.embedding;
 
     if (!Array.isArray(embedding) || embedding.length === 0) {
@@ -91,14 +64,18 @@ async function generateEmbedding(imageBuffer: Buffer): Promise<number[] | null> 
     }
 
     return normalizedEmbedding;
-  } catch (error) {
-    console.error('Error generating embedding:', error);
+  } catch (error: any) {
+    if (error.response) {
+      console.error('CLIP server error:', error.response.data);
+    } else {
+      console.error('Error generating embedding:', error.message);
+    }
     return null;
   }
 }
 
 async function main() {
-  console.log('🚀 Scanning catalog images in R2...');
+  console.log('🧪 Testing CLIP embedding generation with first 10 images...');
   console.log(`🔗 Using CLIP server at: ${CLIP_SERVER_URL}\n`);
 
   // Check CLIP server health
@@ -115,7 +92,7 @@ async function main() {
   } catch (error) {
     console.error('❌ CLIP server is not running!');
     console.error('   Please start the server first:');
-    console.error('   cd server && python clip-server.py --model vit-l-14 --device mps\n');
+    console.error('   cd server && python clip-server.py --model vit-b-32 --device mps --port 5001\n');
     process.exit(1);
   }
 
@@ -134,22 +111,26 @@ async function main() {
     return /\.(jpg|jpeg|png|webp)$/i.test(key);
   });
 
-  console.log(`📦 Found ${imageFiles.length} images in catalog/`);
+  console.log(`📦 Found ${imageFiles.length} total images in catalog/`);
+  console.log(`🧪 Testing with first 10 images...\n`);
 
-  if (imageFiles.length === 0) {
-    console.log('✅ No images found in catalog/');
+  // Process only first 10 images
+  const testImages = imageFiles.slice(0, 10);
+
+  if (testImages.length === 0) {
+    console.log('❌ No images found in catalog/');
     return;
   }
 
   let successCount = 0;
   let failureCount = 0;
 
-  for (let i = 0; i < imageFiles.length; i++) {
-    const obj = imageFiles[i];
+  for (let i = 0; i < testImages.length; i++) {
+    const obj = testImages[i];
     const key = obj.Key!;
     const filename = key.split('/').pop() || key;
 
-    console.log(`\n[${i + 1}/${imageFiles.length}] Processing: ${filename}`);
+    console.log(`\n[${i + 1}/${testImages.length}] Processing: ${filename}`);
 
     try {
       // Download image from R2
@@ -194,7 +175,7 @@ async function main() {
           console.error('  ❌ Failed to update database:', updateError);
           failureCount++;
         } else {
-          console.log('  📝 Updated existing item');
+          console.log('  📝 Updated existing item in database');
           successCount++;
         }
       } else {
@@ -202,19 +183,23 @@ async function main() {
         console.log('     To create items, use the catalog import script first');
         failureCount++;
       }
-
-      // No rate limiting needed for self-hosted CLIP
-      // Process images as fast as possible
     } catch (error) {
       console.error('  ❌ Error processing image:', error);
       failureCount++;
     }
   }
 
-  console.log('\n🎉 Processing complete!');
+  console.log('\n🎉 Test complete!');
   console.log(`✅ Success: ${successCount}`);
   console.log(`❌ Failed: ${failureCount}`);
-  console.log(`📊 Total: ${imageFiles.length}`);
+  console.log(`📊 Total tested: ${testImages.length}`);
+
+  if (successCount > 0) {
+    console.log('\n🚀 Fix verified! Ready to process all 1000 images.');
+    console.log('   Run: CLIP_SERVER_URL=http://localhost:5001 npx tsx scripts/generate-embeddings-from-catalog.ts');
+  } else {
+    console.log('\n⚠️  No successful embeddings generated. Check errors above.');
+  }
 }
 
 main().catch((error) => {
