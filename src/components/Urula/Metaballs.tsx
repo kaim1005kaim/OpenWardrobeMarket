@@ -259,6 +259,10 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
  * Urula: DNA-driven metaballs organism
  * Visualizes fashion DNA as a living, breathing entity
  * Reacts to user interactions and evolves with DNA changes
+ *
+ * Updated: Hybrid MeshTransmissionMaterial with texture blending
+ * texture=0: Glass-like appearance with HDRI
+ * texture>0: Fabric textures emerge through transmission
  */
 export const UrulaMetaballs = forwardRef<UrulaMetaballsHandle, MetaballsProps>(
   ({ dna, animated = true }, ref) => {
