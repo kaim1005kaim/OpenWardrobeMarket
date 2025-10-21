@@ -203,6 +203,37 @@ export async function POST(req: NextRequest) {
       console.log('[publish] Successfully created published_item:', publishedItem.id);
     }
 
+    // Generate CLIP embedding for the published image
+    try {
+      console.log('[publish] Generating CLIP embedding for:', image_url);
+      const embeddingResponse = await fetch('http://localhost:5001/embed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: image_url })
+      });
+
+      if (embeddingResponse.ok) {
+        const { embedding } = await embeddingResponse.json();
+
+        // Update published_items with the embedding
+        const { error: embeddingError } = await supabase
+          .from('published_items')
+          .update({ embedding })
+          .eq('id', publishedItem.id);
+
+        if (embeddingError) {
+          console.error('[publish] Failed to save embedding:', embeddingError.message);
+        } else {
+          console.log('[publish] Successfully generated and saved embedding');
+        }
+      } else {
+        console.warn('[publish] Embedding generation failed:', await embeddingResponse.text());
+      }
+    } catch (embeddingError) {
+      console.warn('[publish] Embedding generation error (non-fatal):', embeddingError);
+      // Continue - embedding is optional, don't fail the publish
+    }
+
     // Optionally save generation_data if provided
     if (generation_data) {
       const { error: historyError } = await supabase
