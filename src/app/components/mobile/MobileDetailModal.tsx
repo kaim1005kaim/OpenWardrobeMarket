@@ -98,7 +98,7 @@ export function MobileDetailModal({
           console.log('[MobileDetailModal] Found', items.length, 'similar items');
 
           // Map API response to Asset format
-          const publicBaseUrl = import.meta.env.VITE_R2_PUBLIC_BASE_URL || 'https://owm-assets.nkmrlab.com';
+          const publicBaseUrl = import.meta.env.VITE_R2_PUBLIC_BASE_URL || 'https://pub-4215f2149d4e4f369c2bde9f2769dfd4.r2.dev';
           const mappedAssets: Asset[] = items.map((item: any) => {
             // Resolve image URL from image_id
             let imageUrl = '';
@@ -106,9 +106,12 @@ export function MobileDetailModal({
               if (item.image_id.startsWith('http')) {
                 // Already a full URL
                 imageUrl = item.image_id;
-              } else {
+              } else if (item.image_id.startsWith('catalog/') || item.image_id.startsWith('usergen/')) {
                 // Construct URL from R2 base
                 imageUrl = `${publicBaseUrl}/${item.image_id}`;
+              } else {
+                // Fallback for unknown format
+                imageUrl = item.image_id;
               }
             }
 

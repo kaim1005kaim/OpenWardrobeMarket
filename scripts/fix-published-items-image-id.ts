@@ -5,7 +5,11 @@
  * to R2 key format (e.g., "usergen/1234567890_uuid.png")
  */
 
+import { config } from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+
+// Load .env.local
+config({ path: '.env.local' });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -28,11 +32,10 @@ function isUUID(str: string): boolean {
 async function fixPublishedItemsImageIds() {
   console.log('[fix-published-items] Starting migration...');
 
-  // Get all published_items with UUID image_ids
+  // Get all published_items with UUID image_ids (not just user-generated)
   const { data: publishedItems, error: fetchError } = await supabase
     .from('published_items')
-    .select('id, image_id, category, original_url')
-    .eq('category', 'user-generated');
+    .select('id, image_id, category, original_url');
 
   if (fetchError) {
     console.error('[fix-published-items] Error fetching published items:', fetchError);
