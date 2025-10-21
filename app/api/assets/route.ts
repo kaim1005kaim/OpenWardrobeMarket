@@ -153,15 +153,56 @@ export async function GET(request: Request) {
         };
       });
 
-      // Combine, deduplicate by image URL, and sort by created_at
+      // Combine and deduplicate by image URL
       const combined = [...(assetsData || []), ...publishedAsAssets];
       const seenUrls = new Set<string>();
-      data = combined.filter((item) => {
+      const deduplicated = combined.filter((item) => {
         const url = item.final_url || item.final_key;
         if (!url || seenUrls.has(url)) return false;
         seenUrls.add(url);
         return true;
-      }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      });
+
+      // Separate user-generated and catalog items
+      const userGenerated = deduplicated.filter((item) => {
+        const isCatalog = item.final_key?.startsWith('catalog/') || item.category === 'catalog';
+        return !isCatalog;
+      });
+      const catalog = deduplicated.filter((item) => {
+        const isCatalog = item.final_key?.startsWith('catalog/') || item.category === 'catalog';
+        return isCatalog;
+      });
+
+      // Sort user-generated items: recent first, with likes boost
+      userGenerated.sort((a, b) => {
+        const aScore = new Date(a.created_at).getTime() + (a.likes || 0) * 86400000; // 1 like = 1 day boost
+        const bScore = new Date(b.created_at).getTime() + (b.likes || 0) * 86400000;
+        return bScore - aScore;
+      });
+
+      // Randomize catalog items for diversity
+      for (let i = catalog.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [catalog[i], catalog[j]] = [catalog[j], catalog[i]];
+      }
+
+      // Interleave: prioritize user-generated, mix in catalog items
+      data = [];
+      let userIdx = 0;
+      let catalogIdx = 0;
+      while (userIdx < userGenerated.length || catalogIdx < catalog.length) {
+        // Add 2 user-generated items if available
+        if (userIdx < userGenerated.length) {
+          data.push(userGenerated[userIdx++]);
+        }
+        if (userIdx < userGenerated.length) {
+          data.push(userGenerated[userIdx++]);
+        }
+        // Add 1 catalog item
+        if (catalogIdx < catalog.length) {
+          data.push(catalog[catalogIdx++]);
+        }
+      }
 
       error = assetsError || publishedError;
     } else if (scope === 'mine' && user) {
