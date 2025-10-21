@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       console.log('[similar-items] Not found in published_items, trying assets table');
       const { data: assetItem, error: assetError } = await supabase
         .from('assets')
-        .select('id, tags, category')
+        .select('id, tags')
         .eq('id', itemId)
         .single();
 
@@ -53,8 +53,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // assets table doesn't have auto_tags, only user tags
-      targetItem = { ...assetItem, auto_tags: [] };
+      // assets table doesn't have auto_tags or category, set defaults
+      targetItem = { ...assetItem, auto_tags: [], category: 'user-generated' };
     }
 
     const targetTags = targetItem.auto_tags || [];
