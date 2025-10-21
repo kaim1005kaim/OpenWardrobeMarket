@@ -38,13 +38,13 @@ export async function POST(req: Request) {
 
     console.log('[Generator API] Prompt:', fullPrompt);
 
-    // Gemini API uses aspect_ratio string, not width/height
+    // Gemini API uses aspect_ratio string in config.imageConfig
     console.log('[Generator API] Generating with aspect ratio:', aspectRatio);
 
     const resp = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: fullPrompt,
-      generationConfig: {
+      config: {
         responseModalities: ['IMAGE'],
         imageConfig: {
           aspectRatio: aspectRatio
