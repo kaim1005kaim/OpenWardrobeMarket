@@ -6,7 +6,7 @@ import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import { useDNA } from '../../../hooks/useDNA';
 import { useUrula } from '../../lib/UrulaContext';
-import { DEFAULT_DNA, type DNA, type Answers, type GeminiCoachOut } from '../../../types/dna';
+import { DEFAULT_DNA, createRandomDNA, type DNA, type Answers, type GeminiCoachOut } from '../../../types/dna';
 import { generateAutoTags } from '../../../lib/autoTags';
 import { COPY } from '../../../constants/copy';
 import './MobileCreatePage.css';
@@ -136,9 +136,10 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedBlendedColor, setSelectedBlendedColor] = useState<string | null>(null);
 
-  // DNA management
+  // DNA management with randomized initial texture for diversity
   const sessionKey = useRef(`mobile-create-${Date.now()}`).current;
-  const { dna, updateDNA, syncNow, updateContext } = useDNA(sessionKey, DEFAULT_DNA);
+  const initialDNA = useRef(createRandomDNA()).current;
+  const { dna, updateDNA, syncNow, updateContext } = useDNA(sessionKey, initialDNA);
   const metaballsRef = useRef<MetaballsSoftHandle>(null);
 
   // Urula profile management

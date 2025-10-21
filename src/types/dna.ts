@@ -50,6 +50,23 @@ export const DEFAULT_DNA: DNA = {
 };
 
 /**
+ * Create randomized DNA for diverse texture selection
+ * Ensures users get varied textures across sessions
+ */
+export function createRandomDNA(): DNA {
+  return {
+    hue: Math.random(),
+    sat: 0.4 + Math.random() * 0.4, // 0.4-0.8 for vibrant colors
+    light: 0.4 + Math.random() * 0.3, // 0.4-0.7 for visible colors
+    minimal_maximal: (Math.random() - 0.5) * 1.2, // -0.6 to 0.6
+    street_luxury: (Math.random() - 0.5) * 1.2,
+    oversized_fitted: (Math.random() - 0.5) * 1.2,
+    relaxed_tailored: (Math.random() - 0.5) * 1.2,
+    texture: Math.random(), // 0-1 for all 10 textures
+  };
+}
+
+/**
  * Coach output from Gemini API
  */
 export type GeminiCoachOut = {
