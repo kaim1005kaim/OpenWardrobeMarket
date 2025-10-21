@@ -68,18 +68,16 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
   const impactRef = useRef(0);
   const paletteChangeRef = useRef(0);
 
-  // Load texture maps only if texture is enabled (texture >= 0.05)
-  const useTexture = dna.texture >= 0.05;
-
-  const albedoMap = useTexture ? useLoader(
+  // Always load textures (used for normalMap in transmission material)
+  const albedoMap = useLoader(
     THREE.TextureLoader,
     `/texture/${visualParams.textureName}_albedo.png`
-  ) : null;
+  );
 
-  const normalMap = useTexture ? useLoader(
+  const normalMap = useLoader(
     THREE.TextureLoader,
     `/texture/${visualParams.textureName}_nomal.png`
-  ) : null;
+  );
 
   // Configure texture wrapping and filtering
   useMemo(() => {
@@ -222,28 +220,24 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
           position={[-3, -3, -0.5]}
         />
 
-        {/* Material: Glass-like transmission for default, textured for evolved */}
-        {useTexture ? (
-          <meshStandardMaterial
-            vertexColors
-            map={albedoMap}
-            normalMap={normalMap}
-            roughness={visualParams.roughness}
-            metalness={visualParams.metalness}
-            envMapIntensity={visualParams.envMapIntensity}
-            normalScale={new THREE.Vector2(0.3, 0.3)}
-          />
-        ) : (
-          <MeshTransmissionMaterial
-            vertexColors
-            thickness={0.15}
-            roughness={0}
-            transmission={1}
-            ior={1.5}
-            chromaticAberration={0.06}
-            backside={false}
-          />
-        )}
+        {/* Hybrid material: Transmission with texture */}
+        <MeshTransmissionMaterial
+          vertexColors
+          // Texture maps for surface detail
+          normalMap={normalMap}
+          normalScale={new THREE.Vector2(0.3 * dna.texture, 0.3 * dna.texture)}
+          // Transmission properties (fade from glass to opaque)
+          transmission={Math.max(0, 1 - dna.texture * 1.5)} // 0=opaque, 1=full glass
+          thickness={0.15}
+          roughness={visualParams.roughness * dna.texture} // Smooth glass → textured surface
+          ior={1.5}
+          chromaticAberration={0.06 * (1 - dna.texture * 0.8)} // Less aberration as texture increases
+          backside={false}
+          // Add subtle metalness for fabric shimmer at higher texture values
+          metalness={visualParams.metalness * dna.texture}
+          // Blend albedo color for fabric appearance
+          color={dna.texture > 0.3 ? new THREE.Color(1, 1, 1) : undefined}
+        />
       </MarchingCubes>
 
       {/* HDRI environment for realistic lighting and reflections */}
