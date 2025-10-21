@@ -258,11 +258,58 @@ export async function POST(req: NextRequest) {
         console.warn('[publish] CLIP embedding error (non-fatal):', clipError);
       }
 
-      // 4. Update published_items with all AI-generated data
+      // 4. AI-powered pricing
+      let aiPrice = null;
+      let pricingBreakdown = null;
+
+      try {
+        const pricingResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/ai-pricing`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageData: base64Image,
+            mimeType: 'image/png',
+            autoTags,
+            likes: 0, // New item starts with 0 likes
+            category: category || 'user-generated'
+          })
+        });
+
+        if (pricingResponse.ok) {
+          pricingBreakdown = await pricingResponse.json();
+          aiPrice = pricingBreakdown.final_price;
+          console.log('[publish] AI pricing:', aiPrice, 'yen');
+          console.log('[publish] Pricing breakdown:', {
+            quality_score: pricingBreakdown.quality_score,
+            multipliers: {
+              quality: pricingBreakdown.quality_multiplier,
+              genre: pricingBreakdown.genre_multiplier,
+              scarcity: pricingBreakdown.scarcity_multiplier,
+              likes_boost: pricingBreakdown.likes_boost
+            }
+          });
+        } else {
+          console.warn('[publish] AI pricing failed:', await pricingResponse.text());
+        }
+      } catch (pricingError) {
+        console.warn('[publish] AI pricing error (non-fatal):', pricingError);
+      }
+
+      // 5. Update published_items with all AI-generated data
       const updateData: any = {};
       if (autoTags.length > 0) updateData.auto_tags = autoTags;
       if (aiDescription) updateData.ai_description = aiDescription;
       if (embedding) updateData.embedding = embedding;
+      if (aiPrice !== null) updateData.price = aiPrice;
+
+      // Save pricing breakdown as metadata
+      if (pricingBreakdown) {
+        const currentMetadata = publishedItem.metadata || {};
+        updateData.metadata = {
+          ...currentMetadata,
+          pricing_breakdown: pricingBreakdown
+        };
+      }
 
       if (Object.keys(updateData).length > 0) {
         const { error: updateError } = await supabase
@@ -273,7 +320,7 @@ export async function POST(req: NextRequest) {
         if (updateError) {
           console.error('[publish] Failed to save AI data:', updateError.message);
         } else {
-          console.log('[publish] Successfully saved AI analysis and embedding');
+          console.log('[publish] Successfully saved AI analysis, embedding, and pricing');
         }
       }
     } catch (aiError) {
