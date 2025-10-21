@@ -513,6 +513,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
         prompt,
         imageData, // Store base64 for upload
         mimeType,
+        aspectRatio: '3:4', // Store aspect ratio for correct display
       } as any);
 
       setStage('revealing');
@@ -1104,7 +1105,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
               }}
             >
               <div style={{
-                width: 'calc(60vh * 2 / 3)', // 2:3 aspect ratio based on height
+                width: 'calc(60vh * 3 / 4)', // 3:4 aspect ratio (960:1280) based on height
                 height: '60vh',
                 maxWidth: '100%',
                 position: 'relative',
@@ -1147,7 +1148,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
                     console.log('[MobileCreatePage] Image natural size:', img.naturalWidth, 'x', img.naturalHeight);
                     const debugEl = img.parentElement;
                     if (debugEl) {
-                      debugEl.textContent = `Image: ${img.naturalWidth}×${img.naturalHeight} | Container: ${Math.round(window.innerHeight * 0.6 * 2/3)}×${Math.round(window.innerHeight * 0.6)}`;
+                      debugEl.textContent = `Image: ${img.naturalWidth}×${img.naturalHeight} | Container: ${Math.round(window.innerHeight * 0.6 * 3/4)}×${Math.round(window.innerHeight * 0.6)}`;
                     }
                   }}
                 />
