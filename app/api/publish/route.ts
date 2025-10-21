@@ -207,14 +207,15 @@ export async function POST(req: NextRequest) {
     try {
       console.log('[publish] Starting AI analysis for:', image_url);
 
-      // 1. Fetch image as base64 for Gemini Vision
+      // 1. Fetch image as base64 for Gemini Vision and AI pricing
       let autoTags: string[] = [];
       let aiDescription = '';
+      let base64Image = '';
 
       try {
         const imageResponse = await fetch(image_url);
         const imageBuffer = await imageResponse.arrayBuffer();
-        const base64Image = Buffer.from(imageBuffer).toString('base64');
+        base64Image = Buffer.from(imageBuffer).toString('base64');
 
         // 2. Gemini Vision analysis
         const analysisResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gemini/analyze-image`, {
