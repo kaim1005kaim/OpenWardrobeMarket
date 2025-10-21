@@ -96,6 +96,7 @@ export function MobileDetailModal({
 
           console.log('[MobileDetailModal] Search algorithm:', data.algorithm);
           console.log('[MobileDetailModal] Found', items.length, 'similar items');
+          console.log('[MobileDetailModal] First 3 items:', items.slice(0, 3).map((i: any) => ({ id: i.id, title: i.title, image_id: i.image_id })));
 
           // Map API response to Asset format
           const publicBaseUrl = import.meta.env.VITE_R2_PUBLIC_BASE_URL || 'https://pub-4215f2149d4e4f369c2bde9f2769dfd4.r2.dev';
