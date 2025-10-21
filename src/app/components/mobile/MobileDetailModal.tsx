@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Asset } from '../../lib/types';
 import { useAuth } from '../../lib/AuthContext';
 import './MobileDetailModal.css';
+// Force rebuild for API endpoint deployment
 
 interface MobileDetailModalProps {
   asset: Asset;
