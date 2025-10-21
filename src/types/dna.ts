@@ -37,16 +37,17 @@ export type DNA = {
 
 /**
  * Default DNA values (neutral starting point)
+ * Displays as smooth glass-like metaballs with pale pink gradient
  */
 export const DEFAULT_DNA: DNA = {
-  hue: 0.5,
-  sat: 0.5,
-  light: 0.5,
+  hue: 0.95, // Pale pink (HSL ~342°)
+  sat: 0.3, // Low saturation for soft color
+  light: 0.75, // High lightness for pale appearance
   minimal_maximal: 0,
   street_luxury: 0,
   oversized_fitted: 0,
   relaxed_tailored: 0,
-  texture: 0.5,
+  texture: 0, // No texture = glass-like MeshTransmissionMaterial
 };
 
 /**

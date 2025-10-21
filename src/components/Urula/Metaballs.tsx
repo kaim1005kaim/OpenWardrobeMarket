@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { MarchingCubes, MarchingCube, Environment, OrbitControls } from '@react-three/drei';
+import { MarchingCubes, MarchingCube, MeshTransmissionMaterial, Environment, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { DNA } from '../../types/dna';
 
@@ -68,15 +68,18 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
   const impactRef = useRef(0);
   const paletteChangeRef = useRef(0);
 
-  // Load texture maps
-  const albedoMap = useLoader(
+  // Load texture maps only if texture is enabled (texture >= 0.05)
+  const useTexture = dna.texture >= 0.05;
+
+  const albedoMap = useTexture ? useLoader(
     THREE.TextureLoader,
     `/texture/${visualParams.textureName}_albedo.png`
-  );
-  const normalMap = useLoader(
+  ) : null;
+
+  const normalMap = useTexture ? useLoader(
     THREE.TextureLoader,
     `/texture/${visualParams.textureName}_nomal.png`
-  );
+  ) : null;
 
   // Configure texture wrapping and filtering
   useMemo(() => {
@@ -219,18 +222,32 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
           position={[-3, -3, -0.5]}
         />
 
-        <meshStandardMaterial
-          vertexColors
-          map={albedoMap}
-          normalMap={normalMap}
-          roughness={visualParams.roughness}
-          metalness={visualParams.metalness}
-          envMapIntensity={visualParams.envMapIntensity}
-          normalScale={new THREE.Vector2(0.3, 0.3)}
-        />
+        {/* Material: Glass-like transmission for default, textured for evolved */}
+        {useTexture ? (
+          <meshStandardMaterial
+            vertexColors
+            map={albedoMap}
+            normalMap={normalMap}
+            roughness={visualParams.roughness}
+            metalness={visualParams.metalness}
+            envMapIntensity={visualParams.envMapIntensity}
+            normalScale={new THREE.Vector2(0.3, 0.3)}
+          />
+        ) : (
+          <MeshTransmissionMaterial
+            vertexColors
+            thickness={0.15}
+            roughness={0}
+            transmission={1}
+            ior={1.5}
+            chromaticAberration={0.06}
+            backside={false}
+          />
+        )}
       </MarchingCubes>
 
-      <Environment preset="studio" />
+      {/* HDRI environment for realistic lighting and reflections */}
+      <Environment files="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/industrial_workshop_foundry_1k.hdr" />
 
       {/* OrbitControls for interactive 3D rotation */}
       <OrbitControls
