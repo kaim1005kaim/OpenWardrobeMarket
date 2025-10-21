@@ -98,19 +98,36 @@ export async function GET(request: Request) {
 
       const { data: assetsData, error: assetsError } = await assetsQuery;
 
-      // Fetch from published_items table (no join needed, image_id is now TEXT)
-      let publishedQuery = supabase
+      // Fetch from published_items table
+      // For catalog items, use RANDOM() to get diverse selection
+      // For user-generated items, sort by created_at
+
+      // Get catalog items with random sampling (3x limit for good diversity)
+      const { data: catalogData, error: catalogError } = await supabase
         .from('published_items')
         .select('*')
         .eq('is_active', true)
+        .eq('category', 'catalog')
+        .limit(limitValue * 3); // Get more catalog items for random selection
+
+      // Get user-generated items sorted by date
+      let userGenQuery = supabase
+        .from('published_items')
+        .select('*')
+        .eq('is_active', true)
+        .neq('category', 'catalog')
         .order('created_at', { ascending: false })
         .limit(limitValue);
 
       if (cursor) {
-        publishedQuery = publishedQuery.lt('created_at', cursor);
+        userGenQuery = userGenQuery.lt('created_at', cursor);
       }
 
-      const { data: publishedData, error: publishedError } = await publishedQuery;
+      const { data: userGenData, error: userGenError } = await userGenQuery;
+
+      // Combine both
+      const publishedData = [...(catalogData || []), ...(userGenData || [])];
+      const publishedError = catalogError || userGenError;
 
       console.log('[api/assets] Published items count:', publishedData?.length || 0);
 

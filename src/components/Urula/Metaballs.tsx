@@ -26,13 +26,11 @@ function dnaToVisualParams(dna: DNA) {
   const hslColor = new THREE.Color();
   hslColor.setHSL(dna.hue, dna.sat, dna.light);
 
-  // Texture index: maps 0-1 to 10 discrete texture choices
-  // 0: Canvas, 1: Denim, 2: Glassribpattern, 3: Leather, 4: Pinstripe
-  // 5: Ripstop, 6: Satin_Silk, 7: Suede, 8: Velvet, 9: Wool
-  const textureIndex = Math.floor(dna.texture * 9.99); // 0-9
+  // Texture index: maps 0-1 to 5 discrete texture choices
+  // Match available textures from loadTextures.ts
+  const textureIndex = Math.floor(dna.texture * 4.99); // 0-4
   const textureNames = [
-    'Canvas', 'Denim', 'Glassribpattern', 'Leather', 'Pinstripe',
-    'Ripstop', 'Satin_Silk', 'Suede', 'Velvet', 'Wool'
+    'Canvas', 'Denim', 'Glassribpattern', 'Leather', 'Pinstripe'
   ];
   const textureName = textureNames[textureIndex];
 
@@ -70,10 +68,10 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
   const impactRef = useRef(0);
   const paletteChangeRef = useRef(0);
 
-  // Load texture maps
+  // Load texture maps (match file extensions from loadTextures.ts)
   const albedoMap = useLoader(
     THREE.TextureLoader,
-    `/texture/${visualParams.textureName}_albedo.png`
+    `/texture/${visualParams.textureName}_albedo.webp`
   );
   const normalMap = useLoader(
     THREE.TextureLoader,
@@ -92,29 +90,46 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
     }
   }, [albedoMap, normalMap]);
 
-  // Create color variations for beautiful blending
+  // Create color variations for beautiful gradient blending (inspired by reference code)
   const colorVariations = useMemo(() => {
     const baseHSL = { h: 0, s: 0, l: 0 };
     visualParams.baseColor.getHSL(baseHSL);
 
-    return {
-      base: visualParams.baseColor.clone(),
-      lighter: new THREE.Color().setHSL(
-        (baseHSL.h + 0.1) % 1,
+    // Create 6 color variations for rich gradients
+    return [
+      // Base color (indianred equivalent)
+      visualParams.baseColor.clone(),
+      // Complementary color shift (skyblue equivalent)
+      new THREE.Color().setHSL(
+        (baseHSL.h + 0.5) % 1,
         baseHSL.s,
-        Math.min(baseHSL.l + 0.15, 1)
-      ),
-      desaturated: new THREE.Color().setHSL(
-        (baseHSL.h - 0.05 + 1) % 1,
-        Math.max(baseHSL.s - 0.1, 0),
         baseHSL.l
       ),
-      darker: new THREE.Color().setHSL(
-        (baseHSL.h + 0.05) % 1,
-        baseHSL.s,
-        Math.max(baseHSL.l - 0.1, 0.1)
+      // Analogous color 1 (teal equivalent)
+      new THREE.Color().setHSL(
+        (baseHSL.h + 0.6) % 1,
+        Math.min(baseHSL.s + 0.2, 1),
+        baseHSL.l
       ),
-    };
+      // Warm shift (orange equivalent)
+      new THREE.Color().setHSL(
+        (baseHSL.h + 0.08) % 1,
+        Math.min(baseHSL.s + 0.15, 1),
+        Math.min(baseHSL.l + 0.1, 1)
+      ),
+      // Saturated variant (hotpink equivalent)
+      new THREE.Color().setHSL(
+        (baseHSL.h - 0.05 + 1) % 1,
+        Math.min(baseHSL.s + 0.3, 1),
+        baseHSL.l
+      ),
+      // Cool desaturated (aquamarine equivalent)
+      new THREE.Color().setHSL(
+        (baseHSL.h + 0.45) % 1,
+        Math.max(baseHSL.s - 0.1, 0.5),
+        Math.min(baseHSL.l + 0.15, 0.9)
+      ),
+    ];
   }, [visualParams.baseColor]);
 
   useImperativeHandle(innerRef, () => ({
@@ -166,32 +181,42 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
         enableUvs={false}
         enableColors
       >
-        {/* Core ball - base color */}
+        {/* 6 metaballs with rich gradient colors (inspired by reference code) */}
         <MarchingCube
           strength={visualParams.strengthBase + visualParams.strengthDelta}
           subtract={6}
-          color={colorVariations.base}
-          position={[0, 0, 0]}
+          color={colorVariations[0]}
+          position={[1, 1, 0.5]}
         />
-
-        {/* Orbiting satellites with color variations for beautiful blending */}
+        <MarchingCube
+          strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.8}
+          subtract={6}
+          color={colorVariations[1]}
+          position={[-1, -1, -0.5]}
+        />
+        <MarchingCube
+          strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.7}
+          subtract={6}
+          color={colorVariations[2]}
+          position={[2, 2, 0.5]}
+        />
         <MarchingCube
           strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.6}
           subtract={6}
-          color={colorVariations.lighter}
-          position={[0.8, 0.5, 0]}
+          color={colorVariations[3]}
+          position={[-2, -2, -0.5]}
         />
         <MarchingCube
           strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.5}
           subtract={6}
-          color={colorVariations.desaturated}
-          position={[-0.6, -0.4, 0.3]}
+          color={colorVariations[4]}
+          position={[3, 3, 0.5]}
         />
         <MarchingCube
           strength={(visualParams.strengthBase + visualParams.strengthDelta) * 0.4}
           subtract={6}
-          color={colorVariations.darker}
-          position={[0.2, -0.7, -0.4]}
+          color={colorVariations[5]}
+          position={[-3, -3, -0.5]}
         />
 
         <meshStandardMaterial
