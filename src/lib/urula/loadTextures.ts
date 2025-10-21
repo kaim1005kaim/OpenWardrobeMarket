@@ -9,31 +9,56 @@ export interface MaterialTextures {
 export interface TextureSet {
   canvas: MaterialTextures;
   denim: MaterialTextures;
+  glassrib: MaterialTextures;
   leather: MaterialTextures;
   pinstripe: MaterialTextures;
-  glassrib: MaterialTextures;
+  ripstop: MaterialTextures;
+  satin_silk: MaterialTextures;
+  suede: MaterialTextures;
+  velvet: MaterialTextures;
+  wool: MaterialTextures;
 }
 
 const ALIASES = {
   canvas: {
-    albedo: '/texture/Canvas_albedo.webp',
+    albedo: '/texture/Canvas_albedo.png',
     normal: '/texture/Canvas_nomal.png'
   },
   denim: {
-    albedo: '/texture/Denim_albedo.webp',
+    albedo: '/texture/Denim_albedo.png',
     normal: '/texture/Denim_nomal.png'
   },
+  glassrib: {
+    albedo: '/texture/Glassribpattern_albedo.png',
+    normal: '/texture/Glassribpattern_nomal.png'
+  },
   leather: {
-    albedo: '/texture/Leather_albedo.webp',
+    albedo: '/texture/Leather_albedo.png',
     normal: '/texture/Leather_nomal.png'
   },
   pinstripe: {
-    albedo: '/texture/Pinstripe_albedo.webp',
+    albedo: '/texture/Pinstripe_albedo.png',
     normal: '/texture/Pinstripe_nomal.png'
   },
-  glassrib: {
-    albedo: '/texture/Glassribpattern_albedo.webp',
-    normal: '/texture/Glassribpattern_nomal.png'
+  ripstop: {
+    albedo: '/texture/Ripstop_albedo.png',
+    normal: '/texture/Ripstop_nomal.png'
+  },
+  satin_silk: {
+    albedo: '/texture/Satin_Silk_albedo.png',
+    normal: '/texture/Satin_Silk_nomal.png'
+  },
+  suede: {
+    albedo: '/texture/Suede_albedo.png',
+    normal: '/texture/Suede_nomal.png'
+  },
+  velvet: {
+    albedo: '/texture/Velvet_albedo.png',
+    normal: '/texture/Velvet_nomal.png'
+  },
+  wool: {
+    albedo: '/texture/Wool_albedo.png',
+    normal: '/texture/Wool_nomal.png'
   }
 };
 

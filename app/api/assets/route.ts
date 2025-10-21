@@ -99,18 +99,18 @@ export async function GET(request: Request) {
       const { data: assetsData, error: assetsError } = await assetsQuery;
 
       // Fetch from published_items table
-      // For catalog items, use RANDOM() to get diverse selection
-      // For user-generated items, sort by created_at
+      // For catalog items: fetch ALL and randomize on client
+      // For user-generated items: paginate by date
 
-      // Get catalog items with random sampling (3x limit for good diversity)
+      // Get ALL catalog items (no limit - we want complete randomization)
       const { data: catalogData, error: catalogError } = await supabase
         .from('published_items')
         .select('*')
         .eq('is_active', true)
         .eq('category', 'catalog')
-        .limit(limitValue * 3); // Get more catalog items for random selection
+        .limit(10000); // High limit to get all catalog items (~5237)
 
-      // Get user-generated items sorted by date
+      // Get user-generated items sorted by date with pagination
       let userGenQuery = supabase
         .from('published_items')
         .select('*')
@@ -124,6 +124,9 @@ export async function GET(request: Request) {
       }
 
       const { data: userGenData, error: userGenError } = await userGenQuery;
+
+      console.log('[api/assets] Fetched catalog items:', catalogData?.length || 0);
+      console.log('[api/assets] Fetched user-generated items:', userGenData?.length || 0);
 
       // Combine both
       const publishedData = [...(catalogData || []), ...(userGenData || [])];

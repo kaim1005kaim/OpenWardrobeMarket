@@ -26,11 +26,11 @@ function dnaToVisualParams(dna: DNA) {
   const hslColor = new THREE.Color();
   hslColor.setHSL(dna.hue, dna.sat, dna.light);
 
-  // Texture index: maps 0-1 to 5 discrete texture choices
-  // Match available textures from loadTextures.ts
-  const textureIndex = Math.floor(dna.texture * 4.99); // 0-4
+  // Texture index: maps 0-1 to 10 discrete texture choices
+  const textureIndex = Math.floor(dna.texture * 9.99); // 0-9
   const textureNames = [
-    'Canvas', 'Denim', 'Glassribpattern', 'Leather', 'Pinstripe'
+    'Canvas', 'Denim', 'Glassribpattern', 'Leather', 'Pinstripe',
+    'Ripstop', 'Satin_Silk', 'Suede', 'Velvet', 'Wool'
   ];
   const textureName = textureNames[textureIndex];
 
@@ -68,10 +68,10 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
   const impactRef = useRef(0);
   const paletteChangeRef = useRef(0);
 
-  // Load texture maps (match file extensions from loadTextures.ts)
+  // Load texture maps
   const albedoMap = useLoader(
     THREE.TextureLoader,
-    `/texture/${visualParams.textureName}_albedo.webp`
+    `/texture/${visualParams.textureName}_albedo.png`
   );
   const normalMap = useLoader(
     THREE.TextureLoader,
