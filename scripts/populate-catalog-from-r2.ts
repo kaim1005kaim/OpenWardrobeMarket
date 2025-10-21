@@ -87,39 +87,41 @@ async function populateCatalogFromR2() {
 
   console.log(`[populate-catalog] Found ${nullItems?.length || 0} items with null image_id`);
 
-  if (!nullItems || nullItems.length === 0) {
-    console.log('[populate-catalog] Nothing to do - all items have image_id');
-    return;
-  }
-
   let updated = 0;
-  let notFound = 0;
 
-  for (const item of nullItems) {
-    // Delete items with null image_id since we can't match them
-    console.log(`[populate-catalog] Deleting ${item.id} (${item.title}) - cannot match without image_id`);
+  if (nullItems && nullItems.length > 0) {
+    let notFound = 0;
 
-    const { error: deleteError } = await supabase
-      .from('published_items')
-      .delete()
-      .eq('id', item.id);
+    for (const item of nullItems) {
+      // Delete items with null image_id since we can't match them
+      console.log(`[populate-catalog] Deleting ${item.id} (${item.title}) - cannot match without image_id`);
 
-    if (deleteError) {
-      console.error(`[populate-catalog] Error deleting ${item.id}:`, deleteError.message);
-      notFound++;
-    } else {
-      updated++;
+      const { error: deleteError } = await supabase
+        .from('published_items')
+        .delete()
+        .eq('id', item.id);
+
+      if (deleteError) {
+        console.error(`[populate-catalog] Error deleting ${item.id}:`, deleteError.message);
+        notFound++;
+      } else {
+        updated++;
+      }
     }
+
+    console.log('\n[populate-catalog] Deleted null image_id items:', updated);
   }
 
-  console.log('\n[populate-catalog] Deleted null image_id items:', updated);
-  console.log('[populate-catalog] Now inserting R2 files...');
+  console.log('[populate-catalog] Now inserting/checking R2 files...');
 
   // Insert all R2 files as new published_items
   let inserted = 0;
   let skipped = 0;
 
+  let processed = 0;
   for (const filePath of r2Files) {
+    processed++;
+
     // Check if already exists
     const { data: existing } = await supabase
       .from('published_items')
@@ -129,6 +131,9 @@ async function populateCatalogFromR2() {
 
     if (existing) {
       skipped++;
+      if (processed % 500 === 0) {
+        console.log(`[populate-catalog] Progress: ${processed}/${r2Files.length} (inserted: ${inserted}, skipped: ${skipped})`);
+      }
       continue;
     }
 
@@ -151,7 +156,7 @@ async function populateCatalogFromR2() {
     } else {
       inserted++;
       if (inserted % 100 === 0) {
-        console.log(`[populate-catalog] Inserted ${inserted} items...`);
+        console.log(`[populate-catalog] Inserted ${inserted} items (${processed}/${r2Files.length})...`);
       }
     }
   }
