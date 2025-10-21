@@ -121,11 +121,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if published_items already exists for this image
-    const { data: existingPublished } = await supabase
+    // Try to find by R2 key first, then by UUID for backwards compatibility
+    const r2KeyToFind = imageRecord.r2_key || `usergen/${imageRecord.id}.png`;
+    let { data: existingPublished } = await supabase
       .from('published_items')
-      .select('id, is_active')
-      .eq('image_id', imageRecord.id)
+      .select('id, is_active, image_id')
+      .eq('image_id', r2KeyToFind)
       .single();
+
+    // Fallback: try to find by old UUID format
+    if (!existingPublished) {
+      const { data: uuidPublished } = await supabase
+        .from('published_items')
+        .select('id, is_active, image_id')
+        .eq('image_id', imageRecord.id)
+        .single();
+      existingPublished = uuidPublished;
+    }
 
     let publishedItem;
 
@@ -141,7 +153,8 @@ export async function POST(req: NextRequest) {
             price: price || 0,
             tags: tags || [],
             colors: colors || [],
-            category: category || 'clothing',
+            category: category || 'user-generated',
+            image_id: r2KeyToFind, // Ensure image_id is the R2 key path
             updated_at: new Date().toISOString()
           })
           .eq('id', existingPublished.id)
@@ -166,13 +179,13 @@ export async function POST(req: NextRequest) {
         .from('published_items')
         .insert({
           user_id: user.id,
-          image_id: imageRecord.id,
+          image_id: imageRecord.r2_key || `usergen/${imageRecord.id}.png`, // Use R2 key path, not UUID
           title: title || 'Untitled Design',
           description: description || '',
           price: price || 0,
           tags: tags || [],
           colors: colors || [],
-          category: category || 'clothing',
+          category: category || 'user-generated',
           is_active: true,
           original_url: image_url,
           poster_url: image_url,
