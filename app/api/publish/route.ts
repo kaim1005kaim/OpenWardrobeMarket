@@ -203,35 +203,82 @@ export async function POST(req: NextRequest) {
       console.log('[publish] Successfully created published_item:', publishedItem.id);
     }
 
-    // Generate CLIP embedding for the published image
+    // Generate AI analysis (auto_tags, ai_description) and CLIP embedding
     try {
-      console.log('[publish] Generating CLIP embedding for:', image_url);
-      const embeddingResponse = await fetch('http://localhost:5001/embed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: image_url })
-      });
+      console.log('[publish] Starting AI analysis for:', image_url);
 
-      if (embeddingResponse.ok) {
-        const { embedding } = await embeddingResponse.json();
+      // 1. Fetch image as base64 for Gemini Vision
+      let autoTags: string[] = [];
+      let aiDescription = '';
 
-        // Update published_items with the embedding
-        const { error: embeddingError } = await supabase
+      try {
+        const imageResponse = await fetch(image_url);
+        const imageBuffer = await imageResponse.arrayBuffer();
+        const base64Image = Buffer.from(imageBuffer).toString('base64');
+
+        // 2. Gemini Vision analysis
+        const analysisResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/gemini/analyze-image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageData: base64Image,
+            mimeType: 'image/png'
+          })
+        });
+
+        if (analysisResponse.ok) {
+          const { tags, description } = await analysisResponse.json();
+          autoTags = tags || [];
+          aiDescription = description || '';
+          console.log('[publish] Gemini analysis:', { autoTags, aiDescription });
+        } else {
+          console.warn('[publish] Gemini analysis failed:', await analysisResponse.text());
+        }
+      } catch (analysisError) {
+        console.warn('[publish] Gemini analysis error (non-fatal):', analysisError);
+      }
+
+      // 3. CLIP embedding generation
+      let embedding = null;
+      try {
+        const embeddingResponse = await fetch('http://localhost:5001/embed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: image_url })
+        });
+
+        if (embeddingResponse.ok) {
+          const result = await embeddingResponse.json();
+          embedding = result.embedding;
+          console.log('[publish] CLIP embedding generated');
+        } else {
+          console.warn('[publish] CLIP embedding failed:', await embeddingResponse.text());
+        }
+      } catch (clipError) {
+        console.warn('[publish] CLIP embedding error (non-fatal):', clipError);
+      }
+
+      // 4. Update published_items with all AI-generated data
+      const updateData: any = {};
+      if (autoTags.length > 0) updateData.auto_tags = autoTags;
+      if (aiDescription) updateData.ai_description = aiDescription;
+      if (embedding) updateData.embedding = embedding;
+
+      if (Object.keys(updateData).length > 0) {
+        const { error: updateError } = await supabase
           .from('published_items')
-          .update({ embedding })
+          .update(updateData)
           .eq('id', publishedItem.id);
 
-        if (embeddingError) {
-          console.error('[publish] Failed to save embedding:', embeddingError.message);
+        if (updateError) {
+          console.error('[publish] Failed to save AI data:', updateError.message);
         } else {
-          console.log('[publish] Successfully generated and saved embedding');
+          console.log('[publish] Successfully saved AI analysis and embedding');
         }
-      } else {
-        console.warn('[publish] Embedding generation failed:', await embeddingResponse.text());
       }
-    } catch (embeddingError) {
-      console.warn('[publish] Embedding generation error (non-fatal):', embeddingError);
-      // Continue - embedding is optional, don't fail the publish
+    } catch (aiError) {
+      console.warn('[publish] AI processing error (non-fatal):', aiError);
+      // Continue - AI features are optional, don't fail the publish
     }
 
     // Optionally save generation_data if provided
