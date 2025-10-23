@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { supabase } from '../../lib/supabase';
 import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/MetaballsSoft';
+import { MetaballsGradient } from '../../../components/Urula/MetaballsGradient';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import { useDNA } from '../../../hooks/useDNA';
@@ -821,7 +822,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                {!profileLoading && <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />}
+                {!profileLoading && <MetaballsGradient dna={dna} animated={true} />}
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">CREATE</h1>
@@ -904,7 +905,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                {!profileLoading && <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />}
+                {!profileLoading && <MetaballsGradient dna={dna} animated={true} />}
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title smaller">{COPY.flow.guidance}</h1>
@@ -1021,7 +1022,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                {!profileLoading && <MetaballsSoft ref={metaballsRef} animated={true} profile={profile} />}
+                {!profileLoading && <MetaballsGradient dna={dna} animated={true} />}
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">{COPY.pages.REVIEW}</h1>
@@ -1058,7 +1059,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                {!profileLoading && <MetaballsSoft animated={true} profile={profile} />}
+                {!profileLoading && <MetaballsGradient dna={dna} animated={true} />}
               </div>
             </div>
 
