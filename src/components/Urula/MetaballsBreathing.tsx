@@ -133,9 +133,9 @@ export const MetaballsBreathing = React.forwardRef<any, MetaballsBreathingProps>
         <Canvas
           dpr={[1, 1.5]}
           camera={{ position: [0, 0, 5], fov: 25 }}
+          gl={{ alpha: true }}
+          style={{ background: 'transparent' }}
         >
-          {/* Background color - same as reference */}
-          <color attach="background" args={['#f0f0f0']} />
           <MetaballsBreathingInner dna={dna} animated={animated} />
         </Canvas>
       </div>
