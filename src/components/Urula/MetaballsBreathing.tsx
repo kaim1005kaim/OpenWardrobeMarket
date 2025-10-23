@@ -1,6 +1,6 @@
-import React, { useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { MarchingCubes, MarchingCube, Environment, Bounds } from '@react-three/drei';
+import React, { useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
+import { MarchingCubes, MarchingCube, Environment, Bounds, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { DNA } from '../../types/dna';
 
@@ -8,13 +8,15 @@ type Ball = { base: [number, number, number]; phase: number; color: THREE.Color 
 
 interface AnimatedCubesProps {
   animated: boolean;
+  impactStrength: number;
 }
 
 /**
  * Animated metaballs with breathing and wave motion
  * Based on commit 82257b99 (before evolution system)
+ * Added: impact animation on click/tap
  */
-function AnimatedCubes({ animated }: AnimatedCubesProps) {
+function AnimatedCubes({ animated, impactStrength }: AnimatedCubesProps) {
   // 7 metaballs with reference code colors
   const balls = useMemo<Ball[]>(() => {
     const colors = [
@@ -46,8 +48,8 @@ function AnimatedCubes({ animated }: AnimatedCubesProps) {
 
   const groupRef = useRef<THREE.Group>(null);
 
-  // Breathing and wave animation
-  useFrame(({ clock }) => {
+  // Breathing and wave animation with impact
+  useFrame(({ clock }, delta) => {
     if (!groupRef.current) return;
 
     const t = clock.getElapsedTime() * 0.4;
@@ -56,6 +58,13 @@ function AnimatedCubes({ animated }: AnimatedCubesProps) {
     // Breathing pulsation effect
     const breathingCycle = clock.getElapsedTime() * 0.3;
     const breathingScale = 1 + Math.sin(breathingCycle) * 0.12;
+
+    // Gentle horizontal rotation (user can rotate freely with OrbitControls)
+    groupRef.current.rotation.y = Math.sin(t * 0.5) * 0.1;
+
+    // Impact scale pulse (same values as original implementation)
+    const impactScale = 1 + impactStrength * 0.2;
+    groupRef.current.scale.setScalar(impactScale * breathingScale);
 
     balls.forEach((ball, i) => {
       const child = groupRef.current!.children[i];
@@ -67,9 +76,9 @@ function AnimatedCubes({ animated }: AnimatedCubesProps) {
       const baseZ = ball.base[2] + a * (Math.sin(t * 0.7 + ball.phase + 2.0) * 0.22 + Math.sin(t * 0.27 + i * 0.7) * 0.04);
 
       // Apply breathing effect
-      child.position.x = baseX * breathingScale;
-      child.position.y = baseY * breathingScale;
-      child.position.z = baseZ * breathingScale;
+      child.position.x = baseX;
+      child.position.y = baseY;
+      child.position.z = baseZ;
     });
   });
 
@@ -92,13 +101,37 @@ interface MetaballsBreathingProps {
 /**
  * Breathing metaballs organism
  * Combines commit 82257b99's animation with reference code's colors
+ * Added: OrbitControls for free rotation + click/tap impact
  */
 function MetaballsBreathingInner({ dna, animated = true }: MetaballsBreathingProps) {
+  const [impactStrength, setImpactStrength] = useState(0);
+  const impactRef = useRef(0);
+
+  // Click/tap handler - trigger impact animation
+  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation();
+    impactRef.current = 1.0; // Full impact strength
+  };
+
+  // Decay impact strength over time
+  useFrame((state, delta) => {
+    if (impactRef.current > 0) {
+      impactRef.current = Math.max(0, impactRef.current - delta * 2); // Same decay rate as original
+      setImpactStrength(impactRef.current);
+    }
+  });
+
   return (
     <group>
       <ambientLight intensity={1} />
 
-      <MarchingCubes resolution={80} maxPolyCount={60000} enableUvs={false} enableColors>
+      <MarchingCubes
+        resolution={80}
+        maxPolyCount={60000}
+        enableUvs={false}
+        enableColors
+        onClick={handleClick}
+      >
         {/* meshStandardMaterial with vertexColors - same as 82257b99 */}
         <meshStandardMaterial
           vertexColors
@@ -106,11 +139,20 @@ function MetaballsBreathingInner({ dna, animated = true }: MetaballsBreathingPro
           metalness={0}
         />
 
-        <AnimatedCubes animated={animated} />
+        <AnimatedCubes animated={animated} impactStrength={impactStrength} />
       </MarchingCubes>
 
       {/* HDRI environment for realistic lighting - same as reference */}
       <Environment files="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/industrial_workshop_foundry_1k.hdr" />
+
+      {/* OrbitControls for interactive 3D rotation - same as commit 6551cf5a */}
+      <OrbitControls
+        enablePan={false}
+        enableZoom={false}
+        rotateSpeed={0.5}
+        minPolarAngle={0}
+        maxPolarAngle={Math.PI}
+      />
 
       {/* Bounds to fit viewport - same as reference */}
       <Bounds fit clip observe margin={1}>
