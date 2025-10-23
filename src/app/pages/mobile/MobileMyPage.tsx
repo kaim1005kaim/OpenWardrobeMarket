@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { MobileLayout } from '../../components/mobile/MobileLayout';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
-import MetaballsSoft from '../../../components/MetaballsSoft';
+import { MetaballsGradient } from '../../../components/Urula/MetaballsGradient';
+import { DEFAULT_DNA } from '../../../types/dna';
 import { useAuth } from '../../lib/AuthContext';
-import { useUrula } from '../../lib/UrulaContext';
 import { supabase } from '../../lib/supabase';
 import { Asset, AssetStatus } from '../../lib/types';
 import {
@@ -25,7 +25,6 @@ type TabType = 'publish' | 'drafts' | 'collections';
 
 export function MobileMyPage({ onNavigate, onPublishFromArchive }: MobileMyPageProps) {
   const { user } = useAuth();
-  const { profile, loading: profileLoading } = useUrula();
   const [activeSection, setActiveSection] = useState<'design' | 'setting'>('design');
   const [activeTab, setActiveTab] = useState<TabType>('publish');
   const [myAssets, setMyAssets] = useState<Asset[]>([]);
@@ -335,7 +334,7 @@ export function MobileMyPage({ onNavigate, onPublishFromArchive }: MobileMyPageP
           <div className="title-section">
             <h1 className="page-title">{COPY.mypage.title}</h1>
             <div className="profile-avatar-circle">
-              {!profileLoading && <MetaballsSoft profile={profile} />}
+              <MetaballsGradient dna={DEFAULT_DNA} animated={false} />
             </div>
           </div>
 
