@@ -334,7 +334,7 @@ export function MobileMyPage({ onNavigate, onPublishFromArchive }: MobileMyPageP
           <div className="title-section">
             <h1 className="page-title">{COPY.mypage.title}</h1>
             <div className="profile-avatar-circle">
-              <MetaballsBreathing dna={DEFAULT_DNA} animated={false} />
+              <MetaballsBreathing dna={DEFAULT_DNA} animated={true} />
             </div>
           </div>
 
