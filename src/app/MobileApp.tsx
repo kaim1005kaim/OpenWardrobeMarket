@@ -114,7 +114,9 @@ function MobileAppContent() {
         return <MobileGalleryPage onNavigate={handleNavigate} />;
 
       case 'create':
-        return <MobileCreateTopPage onNavigate={handleNavigate} onStartCreate={() => setCurrentPage('createQuestions')} />;
+        // Redirect to createQuestions (unified page with start stage)
+        setCurrentPage('createQuestions');
+        return null;
 
       case 'createQuestions':
         return <MobileCreatePage

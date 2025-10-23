@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { supabase } from '../../lib/supabase';
 import MetaballsSoft, { MetaballsSoftHandle } from '../../../components/MetaballsSoft';
-import { MetaballsGradient } from '../../../components/Urula/MetaballsGradient';
+import { MetaballsBreathing } from '../../../components/Urula/MetaballsBreathing';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
 import { useDisplayImage } from '../../../hooks/useDisplayImage';
 import { useDNA } from '../../../hooks/useDNA';
@@ -69,7 +69,7 @@ const createQuestions: Question[] = [
   },
 ];
 
-type Stage = 'answering' | 'coaching' | 'preview' | 'generating' | 'revealing' | 'done';
+type Stage = 'start' | 'answering' | 'coaching' | 'preview' | 'generating' | 'revealing' | 'done';
 
 // Color palette grid - 4 rows x 7 columns like reference image
 const colorPaletteGrid = [
@@ -130,7 +130,7 @@ function hexToHSL(hex: string): { h: number; s: number; l: number } {
 }
 
 export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePageProps) {
-  const [stage, setStage] = useState<Stage>('answering');
+  const [stage, setStage] = useState<Stage>('start');
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [freeText, setFreeText] = useState('');
@@ -816,19 +816,42 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
         </button>
       </header>
 
+      {/* メタボールとタイトル - 全ステージで常に表示 */}
+      <div className="create-hero">
+        <div className="create-hero__canvas">
+          <MetaballsBreathing dna={DEFAULT_DNA} animated={true} />
+        </div>
+        <div className="create-hero__title">
+          <h1 className="create-title">CREATE</h1>
+        </div>
+      </div>
+
       <div className="create-content">
+        {/* Stage: Start (Welcome screen) */}
+        {stage === 'start' && (
+          <div className="start-container">
+            <p className="create-top-description">
+              選んで、答えて、話しかけて、<br />
+              あなただけのデザインをつくろう
+            </p>
+            <button
+              className="start-btn"
+              onClick={() => setStage('answering')}
+            >
+              デザインを始める
+            </button>
+            <button
+              className="how-to-btn"
+              onClick={() => console.log('Navigate to how-to')}
+            >
+              使い方
+            </button>
+          </div>
+        )}
+
         {/* Stage: Answering (5 questions) */}
         {stage === 'answering' && (
           <>
-            <div className="create-hero">
-              <div className="create-hero__canvas">
-                {!profileLoading && <MetaballsGradient dna={dna} animated={true} />}
-              </div>
-              <div className="create-hero__title">
-                <h1 className="create-title">CREATE</h1>
-              </div>
-            </div>
-
             <div className="question-container">
               <h2 className="question-text">{currentQuestion.question}</h2>
               {currentQuestion.multiSelect && <p className="hint-text">{COPY.flow.multiSelectHint}</p>}
@@ -905,7 +928,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                {!profileLoading && <MetaballsGradient dna={dna} animated={true} />}
+                <MetaballsBreathing dna={DEFAULT_DNA} animated={true} />
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title smaller">{COPY.flow.guidance}</h1>
@@ -1022,7 +1045,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                {!profileLoading && <MetaballsGradient dna={dna} animated={true} />}
+                <MetaballsBreathing dna={DEFAULT_DNA} animated={true} />
               </div>
               <div className="create-hero__title">
                 <h1 className="create-title">{COPY.pages.REVIEW}</h1>
@@ -1059,7 +1082,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
           <>
             <div className="create-hero">
               <div className="create-hero__canvas">
-                {!profileLoading && <MetaballsGradient dna={dna} animated={true} />}
+                <MetaballsBreathing dna={DEFAULT_DNA} animated={true} />
               </div>
             </div>
 

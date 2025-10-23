@@ -41,7 +41,7 @@ export function MobileCreateTopPage({ onNavigate, onStartCreate }: MobileCreateT
       </header>
 
       <div className="create-top-content">
-        {/* メタボール（設問画面と同じ構造） */}
+        {/* メタボールエリア */}
         <div className="create-hero">
           <div className="create-hero__canvas">
             <MetaballsBreathing dna={DEFAULT_DNA} animated={true} />
