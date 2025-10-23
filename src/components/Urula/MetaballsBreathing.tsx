@@ -62,8 +62,8 @@ function AnimatedCubes({ animated, impactStrength }: AnimatedCubesProps) {
     // Gentle horizontal rotation (user can rotate freely with OrbitControls)
     groupRef.current.rotation.y = Math.sin(t * 0.5) * 0.1;
 
-    // Impact scale pulse (same values as original implementation)
-    const impactScale = 1 + impactStrength * 0.2;
+    // Impact scale pulse - gentler expansion (0.1 instead of 0.2)
+    const impactScale = 1 + impactStrength * 0.1;
     groupRef.current.scale.setScalar(impactScale * breathingScale);
 
     balls.forEach((ball, i) => {
@@ -110,14 +110,23 @@ function MetaballsBreathingInner({ dna, animated = true }: MetaballsBreathingPro
   // Click/tap handler - trigger impact animation
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation();
-    impactRef.current = 1.0; // Full impact strength
+    // Gradual ramp up instead of instant jump
+    if (impactRef.current < 0.5) {
+      impactRef.current = 0.5; // Gentler impact strength
+    }
   };
 
-  // Decay impact strength over time
+  // Decay impact strength over time with smooth interpolation
   useFrame((state, delta) => {
+    // Smoothly ramp up to target
+    const targetImpact = impactRef.current;
+    const currentImpact = impactStrength;
+    const newImpact = currentImpact + (targetImpact - currentImpact) * delta * 5;
+
+    // Strong decay for smooth return
     if (impactRef.current > 0) {
-      impactRef.current = Math.max(0, impactRef.current - delta * 2); // Same decay rate as original
-      setImpactStrength(impactRef.current);
+      impactRef.current = Math.max(0, impactRef.current - delta * 0.8); // Much slower decay
+      setImpactStrength(newImpact);
     }
   });
 
