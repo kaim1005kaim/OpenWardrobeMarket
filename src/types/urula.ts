@@ -5,8 +5,14 @@
 export interface MaterialWeights {
   canvas: number;
   denim: number;
+  glassribpattern: number;
   leather: number;
   pinstripe: number;
+  ripstop: number;
+  satin_silk: number;
+  suede: number;
+  velvet: number;
+  wool: number;
 }
 
 export interface HSLColor {
@@ -53,10 +59,16 @@ export interface EvolutionInput {
 
 export const DEFAULT_URULA_PROFILE: Omit<UserUrulaProfile, 'user_id' | 'updated_at'> = {
   mat_weights: {
-    canvas: 0.34,
-    denim: 0.33,
-    leather: 0.33,
-    pinstripe: 0.2,
+    canvas: 0.1,
+    denim: 0.1,
+    glassribpattern: 0.1,
+    leather: 0.1,
+    pinstripe: 0.1,
+    ripstop: 0.1,
+    satin_silk: 0.1,
+    suede: 0.1,
+    velvet: 0.1,
+    wool: 0.1,
   },
   glass_gene: 0.5,
   chaos: 0.35,

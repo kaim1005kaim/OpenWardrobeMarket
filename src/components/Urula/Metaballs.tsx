@@ -8,7 +8,7 @@ import type { DNA } from '../../types/dna';
  * Map DNA to visual parameters for Urula metaballs
  * Smoothly interpolates to create seamless evolution
  */
-function dnaToVisualParams(dna: DNA) {
+function dnaToVisualParams(dna: DNA, mat_weights?: any) {
   // Strength multiplier: controls volume and boundary (minimal_maximal + oversized_fitted)
   // Minimal = smaller strength, Maximal = larger strength
   // Oversized = larger strength, Fitted = smaller strength
@@ -26,13 +26,39 @@ function dnaToVisualParams(dna: DNA) {
   const hslColor = new THREE.Color();
   hslColor.setHSL(dna.hue, dna.sat, dna.light);
 
-  // Texture index: maps 0-1 to 10 discrete texture choices
-  const textureIndex = Math.floor(dna.texture * 9.99); // 0-9
-  const textureNames = [
-    'Canvas', 'Denim', 'Glassribpattern', 'Leather', 'Pinstripe',
-    'Ripstop', 'Satin_Silk', 'Suede', 'Velvet', 'Wool'
-  ];
-  const textureName = textureNames[textureIndex];
+  // Texture selection: use mat_weights if available, otherwise fallback to DNA.texture
+  let textureIndex = 0;
+  let textureName = 'Canvas';
+
+  if (mat_weights) {
+    // Find dominant texture from mat_weights
+    const textureNames = [
+      'Canvas', 'Denim', 'Glassribpattern', 'Leather', 'Pinstripe',
+      'Ripstop', 'Satin_Silk', 'Suede', 'Velvet', 'Wool'
+    ];
+    const textureKeys = [
+      'canvas', 'denim', 'glassribpattern', 'leather', 'pinstripe',
+      'ripstop', 'satin_silk', 'suede', 'velvet', 'wool'
+    ];
+
+    let maxWeight = 0;
+    textureKeys.forEach((key, idx) => {
+      const weight = mat_weights[key] || 0;
+      if (weight > maxWeight) {
+        maxWeight = weight;
+        textureIndex = idx;
+        textureName = textureNames[idx];
+      }
+    });
+  } else {
+    // Fallback: use DNA.texture field
+    textureIndex = Math.floor(dna.texture * 9.99); // 0-9
+    const textureNames = [
+      'Canvas', 'Denim', 'Glassribpattern', 'Leather', 'Pinstripe',
+      'Ripstop', 'Satin_Silk', 'Suede', 'Velvet', 'Wool'
+    ];
+    textureName = textureNames[textureIndex];
+  }
 
   return {
     strengthBase,
@@ -54,6 +80,7 @@ export interface UrulaMetaballsHandle {
 interface MetaballsProps {
   dna: DNA;
   animated?: boolean;
+  mat_weights?: any; // MaterialWeights from Urula profile
 }
 
 interface MetaballsInnerProps extends MetaballsProps {
@@ -62,8 +89,8 @@ interface MetaballsInnerProps extends MetaballsProps {
   innerRef?: React.Ref<UrulaMetaballsHandle>;
 }
 
-function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, innerRef }: MetaballsInnerProps) {
-  const visualParams = useMemo(() => dnaToVisualParams(dna), [dna]);
+function MetaballsInner({ dna, mat_weights, animated = true, onImpact, onPaletteChange, innerRef }: MetaballsInnerProps) {
+  const visualParams = useMemo(() => dnaToVisualParams(dna, mat_weights), [dna, mat_weights]);
   const groupRef = useRef<THREE.Group>(null);
   const impactRef = useRef(0);
   const paletteChangeRef = useRef(0);
@@ -265,7 +292,7 @@ function MetaballsInner({ dna, animated = true, onImpact, onPaletteChange, inner
  * texture>0: Fabric textures emerge through transmission
  */
 export const UrulaMetaballs = forwardRef<UrulaMetaballsHandle, MetaballsProps>(
-  ({ dna, animated = true }, ref) => {
+  ({ dna, mat_weights, animated = true }, ref) => {
     return (
       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
         <Canvas
@@ -273,7 +300,7 @@ export const UrulaMetaballs = forwardRef<UrulaMetaballsHandle, MetaballsProps>(
           camera={{ position: [0, 0, 5], fov: 50 }}
           style={{ background: 'transparent' }}
         >
-          <MetaballsInner dna={dna} animated={animated} innerRef={ref} />
+          <MetaballsInner dna={dna} mat_weights={mat_weights} animated={animated} innerRef={ref} />
         </Canvas>
       </div>
     );

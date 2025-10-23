@@ -8,34 +8,49 @@ import type { UserUrulaProfile, EvolutionInput, MaterialWeights, Tint } from '..
 // Material learning rules: tag → material weight deltas
 // Increased deltas for faster visual evolution
 const MAT_RULES: Record<string, Partial<MaterialWeights>> = {
-  // Direct material mappings (very strong)
-  leather: { leather: 0.30 },
-  denim: { denim: 0.30 },
-  pinstripe: { pinstripe: 0.30 },
-  canvas: { canvas: 0.25 },
+  // Direct material mappings (very strong - exact matches)
+  leather: { leather: 0.35 },
+  denim: { denim: 0.35 },
+  pinstripe: { pinstripe: 0.35 },
+  canvas: { canvas: 0.35 },
+  silk: { satin_silk: 0.35 },
+  satin: { satin_silk: 0.35 },
+  velvet: { velvet: 0.35 },
+  suede: { suede: 0.35 },
+  wool: { wool: 0.35 },
+  ripstop: { ripstop: 0.35 },
 
   // Style mappings (strong)
-  luxury: { leather: 0.25 },
-  luxe: { leather: 0.25 },
-  formal: { pinstripe: 0.20 },
-  tailored: { pinstripe: 0.20 },
-  classic: { pinstripe: 0.15 },
-  elegant: { pinstripe: 0.12, leather: 0.12 },
+  luxury: { leather: 0.20, velvet: 0.15, satin_silk: 0.15 },
+  luxe: { velvet: 0.20, satin_silk: 0.15, leather: 0.10 },
+  formal: { pinstripe: 0.20, wool: 0.15 },
+  tailored: { pinstripe: 0.20, wool: 0.10 },
+  classic: { pinstripe: 0.15, wool: 0.12 },
+  elegant: { satin_silk: 0.18, velvet: 0.15, leather: 0.10 },
 
-  street: { denim: 0.25 },
-  casual: { denim: 0.20 },
-  urban: { denim: 0.15 },
+  street: { denim: 0.25, ripstop: 0.12 },
+  casual: { denim: 0.20, canvas: 0.12 },
+  urban: { denim: 0.15, ripstop: 0.10 },
 
-  workwear: { canvas: 0.20 },
-  work: { canvas: 0.15 },
-  utility: { canvas: 0.15 },
-  outdoor: { canvas: 0.12 },
+  workwear: { canvas: 0.20, ripstop: 0.15 },
+  work: { canvas: 0.15, wool: 0.10 },
+  utility: { canvas: 0.15, ripstop: 0.12 },
+  outdoor: { canvas: 0.12, ripstop: 0.15 },
+
+  // Fabric-related styles
+  flowing: { satin_silk: 0.20, velvet: 0.12 },
+  structured: { canvas: 0.15, wool: 0.12 },
+  soft: { velvet: 0.18, suede: 0.15 },
+  textured: { suede: 0.18, wool: 0.12 },
+  smooth: { satin_silk: 0.20, leather: 0.10 },
 
   // Seasonal/occasion (medium)
-  summer: { canvas: 0.08 },
-  winter: { leather: 0.08 },
-  business: { pinstripe: 0.12 },
-  party: { leather: 0.08 },
+  summer: { canvas: 0.10, ripstop: 0.08 },
+  winter: { wool: 0.15, velvet: 0.12, leather: 0.10 },
+  spring: { satin_silk: 0.10, canvas: 0.08 },
+  fall: { wool: 0.12, suede: 0.10 },
+  business: { pinstripe: 0.15, wool: 0.12 },
+  party: { velvet: 0.15, satin_silk: 0.12, leather: 0.08 },
 };
 
 /**
@@ -74,21 +89,38 @@ function normalizeWeights(weights: MaterialWeights): MaterialWeights {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
-  // If there's a clear dominant material (>40%), emphasize it
+  // If there's a clear dominant material (>30%), emphasize it
   const dominant = sorted[0];
   const second = sorted[1];
+  const third = sorted[2];
 
-  if (dominant.value > 0.4) {
-    // Apply 80/20 rule: dominant gets at least 60%, second gets remainder
-    const dominantRatio = Math.max(0.6, Math.min(0.9, dominant.value / (dominant.value + second.value)));
-    const secondRatio = 1 - dominantRatio;
+  if (dominant.value > 0.3) {
+    // Apply 70/20/10 rule: dominant gets majority, top 2-3 materials share rest
+    const total = dominant.value + second.value + (third?.value || 0);
+    const dominantRatio = Math.max(0.5, Math.min(0.8, dominant.value / total));
+    const secondRatio = Math.max(0.15, (1 - dominantRatio) * 0.6);
+    const thirdRatio = 1 - dominantRatio - secondRatio;
 
-    return {
-      [dominant.name]: dominantRatio,
-      [second.name]: secondRatio,
-      [sorted[2].name]: 0,
-      [sorted[3].name]: 0,
-    } as unknown as MaterialWeights;
+    const result = {
+      canvas: 0,
+      denim: 0,
+      glassribpattern: 0,
+      leather: 0,
+      pinstripe: 0,
+      ripstop: 0,
+      satin_silk: 0,
+      suede: 0,
+      velvet: 0,
+      wool: 0,
+    } as MaterialWeights;
+
+    result[dominant.name as keyof MaterialWeights] = dominantRatio;
+    result[second.name as keyof MaterialWeights] = secondRatio;
+    if (third && thirdRatio > 0.05) {
+      result[third.name as keyof MaterialWeights] = thirdRatio;
+    }
+
+    return result;
   }
 
   // Otherwise use standard normalization
@@ -98,8 +130,14 @@ function normalizeWeights(weights: MaterialWeights): MaterialWeights {
   return {
     canvas: Math.max(0, weights.canvas / sum),
     denim: Math.max(0, weights.denim / sum),
+    glassribpattern: Math.max(0, weights.glassribpattern / sum),
     leather: Math.max(0, weights.leather / sum),
     pinstripe: Math.max(0, weights.pinstripe / sum),
+    ripstop: Math.max(0, weights.ripstop / sum),
+    satin_silk: Math.max(0, weights.satin_silk / sum),
+    suede: Math.max(0, weights.suede / sum),
+    velvet: Math.max(0, weights.velvet / sum),
+    wool: Math.max(0, weights.wool / sum),
   };
 }
 

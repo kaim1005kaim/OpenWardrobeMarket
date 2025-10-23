@@ -549,6 +549,7 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
       const styleTags = [
         ...(answers.vibe || []),
         ...(answers.silhouette || []),
+        ...(answers.fabric || []),
         ...(answers.occasion || []),
         ...(answers.season || []),
       ];
