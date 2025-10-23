@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { MobileLayout } from '../../components/mobile/MobileLayout';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MobileDetailModal } from '../../components/mobile/MobileDetailModal';
-import { MetaballsGradient } from '../../../components/Urula/MetaballsGradient';
+import { MetaballsBreathing } from '../../../components/Urula/MetaballsBreathing';
 import { DEFAULT_DNA } from '../../../types/dna';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -334,7 +334,7 @@ export function MobileMyPage({ onNavigate, onPublishFromArchive }: MobileMyPageP
           <div className="title-section">
             <h1 className="page-title">{COPY.mypage.title}</h1>
             <div className="profile-avatar-circle">
-              <MetaballsGradient dna={DEFAULT_DNA} animated={false} />
+              <MetaballsBreathing dna={DEFAULT_DNA} animated={false} />
             </div>
           </div>
 

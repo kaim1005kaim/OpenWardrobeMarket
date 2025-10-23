@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
-import { MetaballsGradient } from '../../../components/Urula/MetaballsGradient';
+import { MetaballsBreathing } from '../../../components/Urula/MetaballsBreathing';
 import { DEFAULT_DNA } from '../../../types/dna';
 import './MobileCreateTopPage.css';
 
@@ -44,7 +44,7 @@ export function MobileCreateTopPage({ onNavigate, onStartCreate }: MobileCreateT
         {/* メタボール（設問画面と同じ構造） */}
         <div className="create-hero">
           <div className="create-hero__canvas">
-            <MetaballsGradient dna={DEFAULT_DNA} animated={true} />
+            <MetaballsBreathing dna={DEFAULT_DNA} animated={true} />
           </div>
           <div className="create-hero__title">
             <h1 className="create-title">CREATE</h1>
