@@ -32,21 +32,21 @@ uniform bool  u_leftToRight;
 float hash(float x){ return fract(sin(x*43758.5453)*1e4); }
 
 void main(){
-  // object-fit: cover 風のUV計算
+  // object-fit: contain 風のUV計算（画像全体を表示、余白は黒）
   float canvasAspect = u_res.x / u_res.y;
   float imageAspect = u_imgRes.x / u_imgRes.y;
 
-  // Cover: 画像をキャンバスに完全に覆うようにスケール（はみ出た部分はクロップ）
+  // Contain: 画像全体が収まるようにスケール（余白ができる）
   vec2 scale = vec2(1.0);
   if (canvasAspect > imageAspect) {
-    // キャンバスが横長 → 画像を横幅に合わせる（縦がはみ出す）
-    scale.y = imageAspect / canvasAspect;
-  } else {
-    // キャンバスが縦長 → 画像を縦幅に合わせる（横がはみ出す）
+    // キャンバスが横長 → 画像を縦幅に合わせる（左右に余白）
     scale.x = canvasAspect / imageAspect;
+  } else {
+    // キャンバスが縦長 → 画像を横幅に合わせる（上下に余白）
+    scale.y = imageAspect / canvasAspect;
   }
 
-  vec2 coverUv = (vUv - 0.5) / scale + 0.5;
+  vec2 coverUv = (vUv - 0.5) * scale + 0.5;
 
   float idx = floor(vUv.x * u_stripes);
   float s   = idx / (u_stripes - 1.0);  // 0..1 左→右
@@ -71,7 +71,13 @@ void main(){
   // 安全弁：最終到達で完全ゼロ
   if (u_progress >= 0.999) offset = vec2(0.0);
 
-  vec3 col = texture2D(u_img, coverUv + offset).rgb;
+  vec2 finalUv = coverUv + offset;
+
+  // UV範囲外チェック（0.0～1.0の範囲外は黒で塗りつぶす）
+  vec3 col = vec3(0.0);
+  if (finalUv.x >= 0.0 && finalUv.x <= 1.0 && finalUv.y >= 0.0 && finalUv.y <= 1.0) {
+    col = texture2D(u_img, finalUv).rgb;
+  }
 
   // 画像のフェードイン（アルファ制御）
   float alpha = u_fadeIn;
