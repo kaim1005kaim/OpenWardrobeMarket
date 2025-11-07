@@ -926,15 +926,6 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
         {/* Stage: Coaching */}
         {stage === 'coaching' && (
           <>
-            <div className="create-hero">
-              <div className="create-hero__canvas">
-                <MetaballsBreathing dna={DEFAULT_DNA} animated={true} />
-              </div>
-              <div className="create-hero__title">
-                <h1 className="create-title smaller">{COPY.flow.guidance}</h1>
-              </div>
-            </div>
-
             <div className="coaching-container">
               <h2 className="question-text">{COPY.flow.guidanceTooltip}</h2>
               <textarea
@@ -1043,15 +1034,6 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
         {/* Stage: Preview */}
         {stage === 'preview' && (
           <>
-            <div className="create-hero">
-              <div className="create-hero__canvas">
-                <MetaballsBreathing dna={DEFAULT_DNA} animated={true} />
-              </div>
-              <div className="create-hero__title">
-                <h1 className="create-title">{COPY.pages.REVIEW}</h1>
-              </div>
-            </div>
-
             <p style={{
               fontFamily: "'Noto Sans CJK JP', 'Noto Sans JP', sans-serif",
               fontSize: '14px',
@@ -1080,12 +1062,6 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
         {/* Stage: Generating */}
         {stage === 'generating' && (
           <>
-            <div className="create-hero">
-              <div className="create-hero__canvas">
-                <MetaballsBreathing dna={DEFAULT_DNA} animated={true} />
-              </div>
-            </div>
-
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
               <div
                 style={{
