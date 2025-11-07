@@ -117,11 +117,15 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
 
         // 2. Supabaseに保存
         const requestBody = {
-          ...publishData,
-          posterUrl,
-          originalUrl: imageUrl,
-          user_id: user!.id,
-          ...generationData, // Include generation metadata
+          image_url: imageUrl, // Use imageUrl as both original and poster
+          r2_key: generationData?.r2_key || null,
+          title: publishData.title,
+          description: publishData.description,
+          tags: publishData.tags,
+          colors: [], // TODO: Extract from generation data if available
+          category: publishData.category,
+          price: publishData.price,
+          generation_data: generationData || null,
         };
 
         const publishRes = await fetch(`${apiUrl}/api/publish`, {
