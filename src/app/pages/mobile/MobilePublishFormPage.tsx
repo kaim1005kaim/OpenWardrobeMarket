@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { useAuth } from '../../lib/AuthContext';
+import { supabase } from '../../lib/supabase';
 import './MobilePublishFormPage.css';
 
 interface MobilePublishFormPageProps {
@@ -18,6 +19,7 @@ export interface PublishData {
   saleType: 'buyout' | 'subscription';
   price: number;
   posterUrl?: string;
+  finalImageUrl?: string; // The actual image URL to display on complete page
 }
 
 export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generationData }: MobilePublishFormPageProps) {
@@ -74,7 +76,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
     // 楽観的UI更新: 即座に成功トーストを表示して完了画面に遷移
     showToast('✓ ギャラリーに公開しました');
     if (onPublish) {
-      onPublish({ ...publishData, posterUrl: imageUrl });
+      onPublish({ ...publishData, posterUrl: imageUrl, finalImageUrl: imageUrl });
     }
 
     // バックグラウンドでAPI呼び出しを実行
@@ -82,6 +84,14 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       try {
         console.log('[MobilePublishFormPage] Starting publish process in background...');
 
+        // Get auth token
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          console.error('[MobilePublishFormPage] No session found');
+          return;
+        }
+
+        const token = sessionData.session.access_token;
         const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
         let posterUrl = imageUrl;
 
@@ -89,7 +99,10 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
         try {
           const composeRes = await fetch(`${apiUrl}/api/compose-poster`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({ imageUrl }),
           });
 
@@ -108,11 +121,15 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
           posterUrl,
           originalUrl: imageUrl,
           user_id: user!.id,
+          ...generationData, // Include generation metadata
         };
 
         const publishRes = await fetch(`${apiUrl}/api/publish`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify(requestBody),
         });
 
