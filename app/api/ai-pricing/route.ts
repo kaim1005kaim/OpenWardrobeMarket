@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Get Gemini Vision quality assessment
     const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const base64Data = imageData.includes(',')
       ? imageData.split(',')[1]
