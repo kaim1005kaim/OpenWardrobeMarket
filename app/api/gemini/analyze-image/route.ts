@@ -34,24 +34,30 @@ Respond with JSON in this format:
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('[analyze-image] Request received');
+
     if (!GOOGLE_API_KEY) {
+      console.error('[analyze-image] GOOGLE_API_KEY is not configured in environment');
       return NextResponse.json(
-        { error: 'GOOGLE_API_KEY not configured' },
+        { error: 'GOOGLE_API_KEY not configured in environment' },
         { status: 500 }
       );
     }
+
+    console.log('[analyze-image] API key found, length:', GOOGLE_API_KEY.length);
 
     const body = await req.json();
     const { imageData, mimeType } = body;
 
     if (!imageData) {
+      console.error('[analyze-image] Missing imageData in request body');
       return NextResponse.json(
         { error: 'Missing imageData' },
         { status: 400 }
       );
     }
 
-    console.log('[analyze-image] Analyzing image with Gemini Vision...');
+    console.log('[analyze-image] Analyzing image with Gemini Vision...', { mimeType });
 
     const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
     const model = genAI.getGenerativeModel({
@@ -128,8 +134,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(output);
   } catch (error) {
     console.error('[analyze-image] Error:', error);
+    console.error('[analyze-image] Error stack:', error instanceof Error ? error.stack : 'N/A');
+
+    // Check if it's a Gemini API error
+    if (error instanceof Error && error.message.includes('API key')) {
+      console.error('[analyze-image] API key error detected');
+      return NextResponse.json(
+        { error: 'Invalid or missing Google API key', details: error.message },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
