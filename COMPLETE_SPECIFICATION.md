@@ -636,11 +636,16 @@ const getSuggestions = async (prefix: string): Promise<string[]> => {
 - `Glassribpattern_albedo.webp`
 
 **Normal（法線マップ）:**
-- `Canvas_nomal.png`
-- `Denim_nomal.png`
-- `Leather_nomal.png`
-- `Pinstripe_nomal.png`
-- `Glassribpattern_nomal.png`
+- `Canvas_normal.png`
+- `Denim_normal.png`
+- `Leather_normal.png`
+- `Pinstripe_normal.png`
+- `Glassribpattern_normal.png`
+
+**注意: 命名規約**
+既存のアセットファイルが `*_nomal.png` という綴りになっている場合は、以下のいずれかで統一:
+1. アセットファイルを `*_normal.png` にリネーム（推奨）
+2. コード側で `*_nomal.png` を参照（非推奨）
 
 **読み込み設定:**
 - RepeatWrapping / LinearFilter
@@ -1092,6 +1097,83 @@ CREATE POLICY "Users can insert own urula state"
   WITH CHECK (auth.uid() = user_id);
 ```
 
+**更新ロジック（指数移動平均）:**
+
+生成完了時に `generation_history.answers` と `dna` を `user_urula_state` へ反映:
+
+```typescript
+// app/api/urula/apply/route.ts
+async function updateUrulaState(userId: string, generationId: string) {
+  // 生成履歴取得
+  const { data: gen } = await supabase
+    .from('generation_history')
+    .select('answers, dna')
+    .eq('id', generationId)
+    .single();
+
+  // 現在のUrula状態取得
+  const { data: currentState } = await supabase
+    .from('user_urula_state')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  // 指数移動平均（alpha = 0.2）
+  const alpha = 0.2;
+
+  const newState = {
+    color_hist: exponentialMovingAverage(
+      currentState?.color_hist || {},
+      extractColors(gen.answers),
+      alpha
+    ),
+    material_bias: exponentialMovingAverage(
+      currentState?.material_bias || {},
+      extractMaterials(gen.answers),
+      alpha * 0.15  // 素材は +0.05~0.15
+    ),
+    shape_bias: exponentialMovingAverage(
+      currentState?.shape_bias || {},
+      extractShapes(gen.answers),
+      alpha * 0.3   // 形状は ±0.1~0.3
+    ),
+    texture_level: clamp(
+      (currentState?.texture_level || 0.25) * (1 - alpha) +
+      (gen.dna?.texture_level || 0.25) * alpha,
+      0, 1
+    ),
+    wobble: clamp(
+      (currentState?.wobble || 0.5) * (1 - alpha) +
+      (gen.dna?.wobble || 0.5) * alpha,
+      0, 1
+    ),
+    updated_at: new Date().toISOString()
+  };
+
+  // Upsert
+  await supabase
+    .from('user_urula_state')
+    .upsert({
+      user_id: userId,
+      ...newState
+    });
+}
+
+function exponentialMovingAverage(
+  current: Record<string, number>,
+  newValues: Record<string, number>,
+  alpha: number
+): Record<string, number> {
+  const result = { ...current };
+
+  for (const [key, value] of Object.entries(newValues)) {
+    result[key] = (result[key] || 0) * (1 - alpha) + value * alpha;
+  }
+
+  return result;
+}
+```
+
 #### 5.1.5 event_briefs (イベント募集)
 
 ```sql
@@ -1144,6 +1226,40 @@ CREATE POLICY "Anyone can view event submissions"
 CREATE POLICY "Users can create own submissions"
   ON event_submissions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+```
+
+**ステータス遷移ルール:**
+
+```
+submitted → shortlist → winner
+    ↓
+  (削除可能: 本人のみ)
+```
+
+**運用フロー:**
+1. **submitted**: ユーザーが投稿（デフォルト）
+2. **shortlist**: 運営が選考リストに追加（管理画面から）
+3. **winner**: 最終選出（イベントページで表彰）
+
+**管理API例:**
+```typescript
+// app/api/admin/event-submissions/[id]/status/route.ts
+export async function PATCH(request: NextRequest) {
+  const { status } = await request.json(); // 'shortlist' or 'winner'
+
+  // 管理者権限チェック
+  const isAdmin = await checkAdminRole(request);
+  if (!isAdmin) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  await supabase
+    .from('event_submissions')
+    .update({ status })
+    .eq('id', params.id);
+
+  return NextResponse.json({ success: true });
+}
 ```
 
 #### 5.1.7 user_profiles (ユーザープロファイル)
@@ -2273,7 +2389,87 @@ interface UserSettings {
 - ユーザー単位: `user_settings`テーブル or localStorage
 - セッション単位: sessionStorage
 
-#### 7.6.2 A/Bテスト（将来）
+#### 7.6.2 モード切替UI実装
+
+**Settings画面:**
+```typescript
+// src/app/pages/mobile/SettingsPage.tsx
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+
+type CreateMode = 'FUSION' | 'COMPOSER' | 'FREESTYLE' | 'REMIX' | 'EVENT' | 'PALETTE' | 'VOICE';
+
+export function SettingsPage() {
+  const [currentMode, setCurrentMode] = useState<CreateMode>('FUSION');
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    const stored = localStorage.getItem('defaultCreateMode');
+    if (stored) {
+      setCurrentMode(stored as CreateMode);
+    }
+  };
+
+  const handleModeChange = async (mode: CreateMode) => {
+    setCurrentMode(mode);
+    localStorage.setItem('defaultCreateMode', mode);
+
+    // オプション: サーバー側にも保存
+    const user = await supabase.auth.getUser();
+    if (user.data.user) {
+      await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.data.user.id,
+          default_create_mode: mode
+        });
+    }
+  };
+
+  return (
+    <div>
+      <h2>DEFAULT CREATE MODE</h2>
+      {(['FUSION', 'COMPOSER', 'FREESTYLE', 'REMIX', 'EVENT', 'PALETTE', 'VOICE'] as CreateMode[]).map(mode => (
+        <button
+          key={mode}
+          onClick={() => handleModeChange(mode)}
+          className={currentMode === mode ? 'active' : ''}
+        >
+          {mode}
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
+**CREATEページでの利用:**
+```typescript
+// src/app/pages/mobile/MobileCreatePage.tsx
+const [selectedMode, setSelectedMode] = useState<CreateMode>('FUSION');
+
+useEffect(() => {
+  const defaultMode = localStorage.getItem('defaultCreateMode') as CreateMode || 'FUSION';
+  setSelectedMode(defaultMode);
+}, []);
+
+const renderModeContent = () => {
+  switch (selectedMode) {
+    case 'FUSION':
+      return <FusionFlow />;
+    case 'COMPOSER':
+      return <ComposerFlow />;
+    case 'FREESTYLE':
+      return <FreestyleFlow />;
+    // ...
+  }
+};
+```
+
+#### 7.6.3 A/Bテスト（将来）
 
 **トグル設定例:**
 ```typescript
@@ -2395,8 +2591,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase, verifyAuth } from '../_shared/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
-const IMAGINE_API_URL = 'https://api.imagineapi.dev/v1/generations';
-
 export async function POST(request: NextRequest) {
   try {
     const userId = await verifyAuth(request);
@@ -2404,35 +2598,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { prompt, parameters } = await request.json();
+    const { prompt, negative, aspectRatio, width, height } = await request.json();
     const taskId = uuidv4();
 
-    // ImagineAPI リクエスト
-    const response = await fetch(IMAGINE_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.IMAGINEAPI_BEARER}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        prompt,
-        style: parameters.style || 'photographic',
-        aspect_ratio: parameters.aspect_ratio || '3:4',
-        webhook: `${process.env.NEXT_PUBLIC_APP_URL}/api/imagine-webhook`
-      })
+    // Google AI Studio (NanoBanana) リクエスト
+    // 実装: app/api/nano-generate/route.ts 参照
+    const response = await callNanoBananaAPI({
+      prompt,
+      negative: negative || 'logo, brand mark, celebrity, watermark, text, caption',
+      aspectRatio: aspectRatio || '3:4',
+      width: width || 960,
+      height: height || 1280,
+      webhookUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/imagine-webhook`
     });
-
-    const data = await response.json();
 
     // DBに保存
     await supabase.from('generation_history').insert({
       id: taskId,
       user_id: userId,
-      user_prompt: prompt,
-      optimized_prompt: prompt,
-      parameters,
-      task_id: data.id,
-      imagine_status: 'pending'
+      prompt,
+      negative,
+      task_id: response.taskId,
+      imagine_status: 'pending',
+      completion_status: 'pending',
+      aspect_ratio: aspectRatio || '3:4',
+      width: width || 960,
+      height: height || 1280,
+      source_mode: 'fusion'
     });
 
     return NextResponse.json({
@@ -2449,6 +2641,30 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+```
+
+**注意: FUSION mode での body サイズ制限**
+
+FUSION は base64 エンコードされた画像2枚を POST するため、Vercel のデフォルト body 制限（4.5MB）を超える可能性があります。
+
+**推奨アプローチ:**
+1. クライアント側で画像を R2 に直接アップロード（署名付き URL 使用）
+2. API には R2 キーまたは署名付き URL のみを送信
+3. サーバー側で R2 から画像を取得して Gemini Vision で分析
+
+```typescript
+// クライアント側
+const uploadedKeyA = await uploadToR2Direct(imageA);
+const uploadedKeyB = await uploadToR2Direct(imageB);
+
+// API呼び出し
+await fetch('/api/fusion/analyze', {
+  body: JSON.stringify({
+    imageKeyA: uploadedKeyA,
+    imageKeyB: uploadedKeyB,
+    userId
+  })
+});
 ```
 
 #### 8.1.4 Webhook受信API
