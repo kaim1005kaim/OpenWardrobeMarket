@@ -164,10 +164,6 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       const analysis2 = await analyzeImage(apiUrl, token, image2.base64, image2.file.type);
       console.log('[handleAnalyze] Image 2 analysis complete:', analysis2);
 
-      // Update images with analysis results
-      setImage1({ ...image1, analysis: analysis1 });
-      setImage2({ ...image2, analysis: analysis2 });
-
       // Blend DNAs
       setAnalysisProgress('DNAをブレンド中...');
       console.log('[handleAnalyze] Blending DNAs...');
@@ -175,8 +171,16 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       console.log('[handleAnalyze] Blended DNA:', blendedDNA);
       updateDNA(blendedDNA);
 
+      // Update images with analysis results AND move to preview stage
+      // Use functional updates to ensure we have the latest state
+      setImage1((prev) => ({ ...prev!, analysis: analysis1 }));
+      setImage2((prev) => ({ ...prev!, analysis: analysis2 }));
+
       console.log('[handleAnalyze] Analysis complete, moving to preview');
-      setStage('preview');
+      // Delay stage change to ensure state updates are flushed
+      setTimeout(() => {
+        setStage('preview');
+      }, 100);
     } catch (error) {
       console.error('[handleAnalyze] Error:', error);
       console.error('[handleAnalyze] Error details:', {
@@ -728,6 +732,16 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
             <p className="preview-description">
               Two visual worlds merged into one design DNA.
             </p>
+
+            {/* Debug: Log state when preview renders */}
+            {console.log('[Preview Stage] Rendering with:', {
+              hasImage1: !!image1,
+              hasImage2: !!image2,
+              hasImage1Analysis: !!image1?.analysis,
+              hasImage2Analysis: !!image2?.analysis,
+              image1Analysis: image1?.analysis,
+              image2Analysis: image2?.analysis,
+            })}
 
             {/* Analysis Results */}
             <div className="analysis-results">
