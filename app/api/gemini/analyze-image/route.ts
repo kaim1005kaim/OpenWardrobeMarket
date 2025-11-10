@@ -25,10 +25,11 @@ IMPORTANT RULES:
 - NO generic words like "clothing" or "fashion"
 - Focus on visual attributes that help find similar designs
 - Return 5-10 tags maximum
+- You MUST respond with ONLY valid JSON, no markdown formatting
 
-Respond with JSON in this format:
+Respond with ONLY this JSON format (no extra text or formatting):
 {
-  "tags": ["tag1", "tag2", "tag3", ...],
+  "tags": ["tag1", "tag2", "tag3"],
   "description": "Brief 1-sentence description of the design"
 }`;
 
@@ -87,7 +88,6 @@ export async function POST(req: NextRequest) {
       generationConfig: {
         temperature: 0.3,
         maxOutputTokens: 512,
-        responseMimeType: 'application/json',
       },
     });
 
@@ -95,14 +95,32 @@ export async function POST(req: NextRequest) {
     const text = response.text();
 
     console.log('[analyze-image] Raw response:', text);
+    console.log('[analyze-image] Response length:', text?.length || 0);
+
+    if (!text || text.trim().length === 0) {
+      console.error('[analyze-image] Empty response from Gemini API');
+      return NextResponse.json(
+        { error: 'Empty response from Gemini API' },
+        { status: 500 }
+      );
+    }
 
     let parsed;
     try {
-      parsed = JSON.parse(text);
+      // Try to extract JSON from markdown code blocks if present
+      let jsonText = text.trim();
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+
+      parsed = JSON.parse(jsonText);
     } catch (parseError) {
       console.error('[analyze-image] Failed to parse JSON response:', parseError);
+      console.error('[analyze-image] Raw text was:', text);
       return NextResponse.json(
-        { error: 'Invalid response format from AI' },
+        { error: 'Invalid response format from AI', rawResponse: text.substring(0, 200) },
         { status: 500 }
       );
     }
