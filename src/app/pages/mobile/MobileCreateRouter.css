@@ -1,0 +1,81 @@
+/* Mode Placeholder */
+.mode-placeholder {
+  min-height: 100vh;
+  background: #EEECE6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.mode-placeholder-content {
+  max-width: 400px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.mode-placeholder-title {
+  font-family: 'Trajan Pro 3', 'Cinzel', serif;
+  font-size: 36px;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  color: #333333;
+  margin: 0;
+}
+
+.mode-placeholder-subtitle {
+  font-family: "'Courier New'", monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #999999;
+  font-weight: 400;
+  margin: 0;
+}
+
+.mode-placeholder-description {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+  color: #666666;
+  margin: 16px 0;
+}
+
+.mode-placeholder-status {
+  display: inline-block;
+  padding: 8px 20px;
+  background: #333333;
+  color: #EEECE6;
+  font-family: "'Courier New'", monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  border-radius: 20px;
+  margin: 16px 0;
+}
+
+.mode-placeholder-back {
+  margin-top: 24px;
+  padding: 12px 24px;
+  background: transparent;
+  border: 1px solid #333333;
+  color: #333333;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border-radius: 4px;
+}
+
+.mode-placeholder-back:hover {
+  background: #333333;
+  color: #EEECE6;
+}
+
+.mode-placeholder-back:active {
+  transform: scale(0.97);
+}

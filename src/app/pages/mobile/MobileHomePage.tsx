@@ -238,7 +238,7 @@ export function MobileHomePage({ onNavigate }: MobileHomePageProps) {
         {/* CTA Button */}
         <button
           className="cta-button"
-          onClick={() => onNavigate?.('create')}
+          onClick={() => onNavigate?.('create-home')}
         >
           {COPY.cta.heroPrimary}
         </button>

@@ -3,8 +3,8 @@ import { AuthProvider, useAuth } from './lib/AuthContext';
 import { UrulaProvider } from './lib/UrulaContext';
 import { MobileHomePage } from './pages/mobile/MobileHomePage';
 import { MobileGalleryPage } from './pages/mobile/MobileGalleryPage';
-import { MobileCreateTopPage } from './pages/mobile/MobileCreateTopPage';
-import { MobileCreatePage } from './pages/mobile/MobileCreatePage';
+import { MobileCreateHomePage } from './pages/mobile/MobileCreateHomePage';
+import { MobileCreateRouter } from './pages/mobile/MobileCreateRouter';
 import { MobilePublishFormPage, type PublishData } from './pages/mobile/MobilePublishFormPage';
 import { MobilePublishCompletePage } from './pages/mobile/MobilePublishCompletePage';
 import { MobileMyPage } from './pages/mobile/MobileMyPage';
@@ -14,17 +14,20 @@ import { isWebView } from './lib/utils/detectWebView';
 import { loadUrulaTextures } from '../lib/urula/loadTextures';
 import './MobileApp.css';
 
-type MobilePage = 'login' | 'studio' | 'showcase' | 'create' | 'createQuestions' | 'publishForm' | 'publishComplete' | 'archive' | 'faq' | 'contact' | 'privacy';
+type MobilePage = 'login' | 'studio' | 'showcase' | 'create-home' | 'create' | 'publishForm' | 'publishComplete' | 'archive' | 'faq' | 'contact' | 'privacy';
 
 function MobileAppContent() {
   const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState<MobilePage>(() => {
     // Initialize from URL path
     const path = window.location.pathname.slice(1) || 'studio';
-    const validPages: MobilePage[] = ['login', 'studio', 'showcase', 'create', 'createQuestions', 'publishForm', 'publishComplete', 'archive', 'faq', 'contact', 'privacy'];
+    const validPages: MobilePage[] = ['login', 'studio', 'showcase', 'create-home', 'create', 'publishForm', 'publishComplete', 'archive', 'faq', 'contact', 'privacy'];
     return validPages.includes(path as MobilePage) ? (path as MobilePage) : 'studio';
   });
   const [showWebViewWarning, setShowWebViewWarning] = useState(false);
+
+  // CREATE mode routing state
+  const [createMode, setCreateMode] = useState<string | undefined>(undefined);
 
   // 公開フロー用のstate
   const [publishImageUrl, setPublishImageUrl] = useState<string | null>(null);
@@ -70,13 +73,18 @@ function MobileAppContent() {
     });
   }, []);
 
-  const handleNavigate = (page: string) => {
+  const handleNavigate = (page: string, options?: { mode?: string; from?: string }) => {
     const newPage = page as MobilePage;
     setCurrentPage(newPage);
 
+    // Handle CREATE mode routing
+    if (page === 'create' && options?.mode) {
+      setCreateMode(options.mode);
+    }
+
     // Update URL and browser history
     const url = `/${page}`;
-    window.history.pushState({ page: newPage }, '', url);
+    window.history.pushState({ page: newPage, mode: options?.mode }, '', url);
   };
 
   // Show loading state
@@ -113,13 +121,18 @@ function MobileAppContent() {
       case 'showcase':
         return <MobileGalleryPage onNavigate={handleNavigate} />;
 
-      case 'create':
-        // Redirect to createQuestions (unified page with start stage)
-        setCurrentPage('createQuestions');
-        return null;
+      case 'create-home':
+        return <MobileCreateHomePage
+          onNavigate={handleNavigate}
+          onStartCreate={(mode) => {
+            setCreateMode(mode);
+            setCurrentPage('create');
+          }}
+        />;
 
-      case 'createQuestions':
-        return <MobileCreatePage
+      case 'create':
+        return <MobileCreateRouter
+          mode={createMode}
           onNavigate={handleNavigate}
           onStartPublish={(imageUrl, generationData) => {
             setPublishImageUrl(imageUrl);

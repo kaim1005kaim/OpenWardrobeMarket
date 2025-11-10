@@ -1,0 +1,506 @@
+.mobile-fusion-page {
+  min-height: 100vh;
+  background: #EEECE6;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Header */
+.fusion-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: rgba(238, 236, 230, 0.95);
+  backdrop-filter: blur(8px);
+  z-index: 50;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.back-btn,
+.menu-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: #333333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease;
+}
+
+.back-btn:active,
+.menu-btn:active {
+  opacity: 0.6;
+}
+
+.fusion-logo-btn {
+  font-family: 'Trajan Pro 3', 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #333333;
+  padding: 8px;
+  font-weight: 300;
+  transition: opacity 0.2s ease;
+}
+
+.fusion-logo-btn:active {
+  opacity: 0.6;
+}
+
+/* Background Urula */
+.fusion-urula-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Content */
+.fusion-content {
+  flex: 1;
+  padding: 80px 20px 40px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Upload Container */
+.upload-container {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.fusion-title {
+  font-family: 'Trajan Pro 3', 'Cinzel', serif;
+  font-size: 36px;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  color: #333333;
+  margin: 0;
+  text-align: center;
+}
+
+.fusion-subtitle {
+  font-family: "'Courier New'", monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #999999;
+  margin: -16px 0 0 0;
+  text-align: center;
+}
+
+.fusion-description {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+  color: #666666;
+  margin: 0;
+  text-align: center;
+  max-width: 320px;
+}
+
+/* Upload Slots */
+.upload-slots {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.upload-slot {
+  aspect-ratio: 3/4;
+  position: relative;
+}
+
+.upload-btn {
+  width: 100%;
+  height: 100%;
+  background: #FFFFFF;
+  border: 2px dashed #CCCCCC;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.upload-btn:hover {
+  border-color: #333333;
+  background: #FAFAFA;
+}
+
+.upload-btn:active {
+  transform: scale(0.98);
+}
+
+.upload-icon {
+  font-size: 40px;
+}
+
+.upload-label {
+  font-family: "'Courier New'", monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: #999999;
+}
+
+.uploaded-preview {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.uploaded-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  border: none;
+  border-radius: 16px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.remove-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+/* Optional Prompt */
+.optional-prompt {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prompt-label {
+  font-family: "'Courier New'", monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: #999999;
+}
+
+.prompt-textarea {
+  width: 100%;
+  padding: 12px;
+  background: #FFFFFF;
+  border: 1px solid #DDDDDD;
+  border-radius: 8px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  color: #333333;
+  resize: none;
+  transition: border-color 0.2s ease;
+}
+
+.prompt-textarea:focus {
+  outline: none;
+  border-color: #333333;
+}
+
+.prompt-textarea::placeholder {
+  color: #BBBBBB;
+}
+
+/* Analyze Button */
+.analyze-btn {
+  width: 100%;
+  max-width: 320px;
+  height: 56px;
+  background: #333333;
+  border: none;
+  border-radius: 0;
+  color: #EEECE6;
+  font-family: 'Trajan Pro 3', 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 16px;
+}
+
+.analyze-btn:hover:not(:disabled) {
+  background: #444444;
+}
+
+.analyze-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.analyze-btn:disabled {
+  background: #CCCCCC;
+  cursor: not-allowed;
+}
+
+/* Analyzing Container */
+.analyzing-container {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 80px 20px;
+}
+
+.analyzing-title {
+  font-family: 'Trajan Pro 3', 'Cinzel', serif;
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  color: #333333;
+  margin: 0;
+}
+
+.analyzing-status {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  color: #666666;
+  margin: 0;
+}
+
+.analyzing-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #DDDDDD;
+  border-top-color: #333333;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Preview Container */
+.preview-container {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.preview-title {
+  font-family: 'Trajan Pro 3', 'Cinzel', serif;
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  color: #333333;
+  margin: 0;
+  text-align: center;
+}
+
+.preview-description {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: #666666;
+  margin: -12px 0 0 0;
+  text-align: center;
+}
+
+/* Analysis Results */
+.analysis-results {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.analysis-card {
+  flex: 1;
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.analysis-thumb {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.analysis-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 4px 8px;
+  background: #F5F5F5;
+  border-radius: 4px;
+  font-family: "'Courier New'", monospace;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  color: #666666;
+}
+
+.blend-icon {
+  font-size: 24px;
+  color: #999999;
+  flex-shrink: 0;
+}
+
+/* Generate Button */
+.generate-btn {
+  width: 100%;
+  max-width: 320px;
+  height: 56px;
+  background: #333333;
+  border: none;
+  border-radius: 0;
+  color: #EEECE6;
+  font-family: 'Trajan Pro 3', 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 8px;
+}
+
+.generate-btn:hover {
+  background: #444444;
+}
+
+.generate-btn:active {
+  transform: scale(0.98);
+}
+
+.back-link {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: #999999;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  padding: 8px;
+  margin-top: 8px;
+  transition: opacity 0.2s ease;
+}
+
+.back-link:hover,
+.back-link:active {
+  opacity: 0.6;
+}
+
+/* Generating Container */
+.generating-container {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 80px 20px;
+}
+
+.generating-title {
+  font-family: 'Trajan Pro 3', 'Cinzel', serif;
+  font-size: 24px;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  color: #333333;
+  margin: 0;
+}
+
+.generating-status {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  color: #666666;
+  margin: 0;
+}
+
+/* Reveal Container */
+.reveal-container {
+  width: 100%;
+  max-width: 480px;
+}
+
+.reveal-viewer {
+  width: 100%;
+  aspect-ratio: 3/4;
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+}
+
+/* Responsive */
+@media (max-height: 700px) {
+  .fusion-title {
+    font-size: 28px;
+  }
+
+  .upload-slots {
+    gap: 12px;
+  }
+}
+
+@media (min-width: 768px) {
+  .fusion-content {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+}

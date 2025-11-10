@@ -2,7 +2,7 @@ import React from 'react';
 import { COPY } from '../../../constants/copy';
 import './BottomNavigation.css';
 
-type TabType = 'studio' | 'showcase' | 'create' | 'archive';
+type TabType = 'studio' | 'showcase' | 'create-home' | 'archive';
 
 interface BottomNavigationProps {
   activeTab: TabType;
@@ -13,7 +13,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
   const tabs = [
     { id: 'studio' as TabType, label: COPY.nav.STUDIO, icon: '🏠' },
     { id: 'showcase' as TabType, label: COPY.nav.SHOWCASE, icon: '🖼️' },
-    { id: 'create' as TabType, label: COPY.nav.CREATE, icon: '✨' },
+    { id: 'create-home' as TabType, label: COPY.nav.CREATE, icon: '✨' },
     { id: 'archive' as TabType, label: COPY.nav.ARCHIVE, icon: '👤' }
   ];
 

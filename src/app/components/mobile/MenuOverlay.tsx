@@ -48,7 +48,7 @@ export function MenuOverlay({ isOpen, onClose, onNavigate }: MenuOverlayProps) {
         <nav className="menu-nav-main">
           <button onClick={() => handleNavigate('studio')}>{COPY.nav.STUDIO}</button>
           <button onClick={() => handleNavigate('showcase')}>{COPY.nav.SHOWCASE}</button>
-          <button onClick={() => handleNavigate('create')}>{COPY.nav.CREATE}</button>
+          <button onClick={() => handleNavigate('create-home')}>{COPY.nav.CREATE}</button>
           <button onClick={() => handleNavigate('archive')}>{COPY.nav.ARCHIVE}</button>
         </nav>
 
