@@ -642,10 +642,29 @@ const getSuggestions = async (prefix: string): Promise<string[]> => {
 - `Pinstripe_normal.png`
 - `Glassribpattern_normal.png`
 
-**注意: 命名規約**
-既存のアセットファイルが `*_nomal.png` という綴りになっている場合は、以下のいずれかで統一:
-1. アセットファイルを `*_normal.png` にリネーム（推奨）
-2. コード側で `*_nomal.png` を参照（非推奨）
+**⚠️ 命名規約（必須対応）**
+
+既存のアセットファイルが `*_nomal.png` になっている場合は、**必ずリネーム**してください:
+
+```bash
+# アセットリネーム（必須）
+mv Canvas_nomal.png Canvas_normal.png
+mv Denim_nomal.png Denim_normal.png
+mv Leather_nomal.png Leather_normal.png
+mv Pinstripe_nomal.png Pinstripe_normal.png
+mv Glassribpattern_nomal.png Glassribpattern_normal.png
+```
+
+**コード側参照（統一）:**
+```typescript
+// 正しい
+const normalMap = useTexture('textures/Canvas_normal.png');
+
+// 誤り（使用禁止）
+const normalMap = useTexture('textures/Canvas_nomal.png');
+```
+
+この統一により、他の開発者の混乱を防ぎ、保守性を高めます。
 
 **読み込み設定:**
 - RepeatWrapping / LinearFilter
@@ -1174,6 +1193,55 @@ function exponentialMovingAverage(
 }
 ```
 
+**初期化タイミング:**
+
+```typescript
+// Option 1: サインアップ時（Supabase Edge Function）
+// supabase/functions/on-user-created/index.ts
+Deno.serve(async (req) => {
+  const { record } = await req.json();
+  const userId = record.id;
+
+  // 初期Urula状態を作成
+  await supabaseAdmin
+    .from('user_urula_state')
+    .insert({
+      user_id: userId,
+      color_hist: {},
+      material_bias: {},
+      shape_bias: {},
+      texture_level: 0.25,
+      wobble: 0.5
+    });
+
+  return new Response('OK');
+});
+
+// Option 2: 初回アクセス時（UPSERT）
+// app/api/urula/state/route.ts
+export async function GET(request: NextRequest) {
+  const userId = await verifyAuth(request);
+
+  const { data, error } = await supabase
+    .from('user_urula_state')
+    .upsert({
+      user_id: userId,
+      color_hist: {},
+      material_bias: {},
+      shape_bias: {},
+      texture_level: 0.25,
+      wobble: 0.5
+    }, {
+      onConflict: 'user_id',
+      ignoreDuplicates: true
+    })
+    .select()
+    .single();
+
+  return NextResponse.json(data);
+}
+```
+
 #### 5.1.5 event_briefs (イベント募集)
 
 ```sql
@@ -1339,6 +1407,29 @@ CREATE TABLE dna_catalog (
 
 CREATE INDEX idx_dna_string ON dna_catalog(dna_string);
 CREATE INDEX idx_dna_tags ON dna_catalog USING GIN(tags);
+
+-- RLS（現在は無効 - 将来ユーザー固有要素追加時に有効化）
+-- ALTER TABLE dna_catalog ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Public read access" ON dna_catalog FOR SELECT USING (true);
+```
+
+**RLS方針:**
+
+現状は**公開辞書**として運用するため、RLS無効でOK。将来的にユーザー固有のDNAカスタマイズ（お気に入りDNA、カスタムパラメータ等）を追加する場合は、以下のように切り替え:
+
+```sql
+-- 将来的な拡張時
+ALTER TABLE dna_catalog ENABLE ROW LEVEL SECURITY;
+
+-- 公開DNAは全員閲覧可能
+CREATE POLICY "Anyone can view public DNA"
+  ON dna_catalog FOR SELECT
+  USING (is_public = true);
+
+-- ユーザー固有DNAは本人のみ
+CREATE POLICY "Users can view own custom DNA"
+  ON dna_catalog FOR SELECT
+  USING (auth.uid() = user_id);
 ```
 
 ### 5.2 マテリアライズドビュー
@@ -1681,6 +1772,81 @@ event: complete
 data: {"status": "completed", "imageUrl": "https://...", "taskId": "..."}
 ```
 
+**SSE実装要件（必須）:**
+
+```typescript
+// app/api/generation-stream/[taskId]/route.ts
+export const runtime = 'edge'; // または 'nodejs' + ReadableStream
+
+export async function GET(request: NextRequest, { params }: { params: { taskId: string } }) {
+  const { taskId } = params;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+
+      // 心拍keep-alive（30秒ごと）
+      const heartbeat = setInterval(() => {
+        controller.enqueue(encoder.encode(': heartbeat\n\n'));
+      }, 30000);
+
+      // Supabase Realtimeでリアルタイム監視
+      const subscription = supabase
+        .channel(`generation:${taskId}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'generation_history',
+          filter: `id=eq.${taskId}`
+        }, (payload) => {
+          const status = payload.new.completion_status;
+          const data = JSON.stringify({
+            status,
+            imageUrl: payload.new.r2_url,
+            progress: status === 'completed' ? 100 : 50
+          });
+
+          controller.enqueue(encoder.encode(`event: status\ndata: ${data}\n\n`));
+
+          if (status === 'completed' || status === 'failed') {
+            clearInterval(heartbeat);
+            subscription.unsubscribe();
+            controller.close();
+          }
+        })
+        .subscribe();
+    }
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no' // Nginx buffer無効化
+    }
+  });
+}
+```
+
+**クライアント側（再接続対応）:**
+
+```typescript
+const eventSource = new EventSource(`/api/generation-stream/${taskId}`);
+
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  setStatus(data.status);
+};
+
+eventSource.onerror = () => {
+  console.log('SSE reconnecting...');
+  // EventSourceは自動再接続
+};
+
+useEffect(() => () => eventSource.close(), []);
+```
+
 ### 6.3 検索API
 
 #### 6.3.1 テキスト検索
@@ -1970,6 +2136,41 @@ if (u_progress >= 0.999) {
 **完全性保証:**
 - `u_progress >= 0.999`到達時は`offset=vec2(0)`を**最優先に代入**
 - これにより波み残りゼロで完璧な画像表示を保証
+
+**実装チェックリスト（必須）:**
+
+```typescript
+// ✅ 1. Material extensionsを有効化
+material.extensions = {
+  derivatives: true  // dFdx/dFdy使用のため必須
+};
+
+// ✅ 2. Fragment Shaderで完全OFF条件を実装
+`
+if (u_progress >= 0.999) {
+  offset = vec2(0.0);  // 波み完全除去
+}
+`
+
+// ✅ 3. タイムライン制御
+const totalDuration = 5300; // ms
+const timeline = {
+  fadeIn: 400,
+  hold: 3000,
+  reveal: 1200,
+  settle: 700
+};
+
+// ✅ 4. プログレス計算
+const progress = clamp(elapsedTime / totalDuration, 0, 1);
+uniformsRef.current.u_progress.value = progress;
+
+// ✅ 5. 完了時のクリーンアップ
+if (progress >= 0.999) {
+  // アニメーション停止、次画面へ遷移
+  onRevealComplete?.();
+}
+```
 
 ### 6.7.4 使用箇所
 
@@ -2362,7 +2563,30 @@ HOME / GALLERY / CREATE / MY PAGE / REVIEW / GENERATE / REVEAL / PUBLISH
   letter-spacing: 0.1em;
   font-weight: 600;
 }
+
+/* 日本語テキスト用フォールバック */
+.description, .body-text, .toast-message {
+  font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+/* 混在テキスト（英数字+日本語） */
+.mixed-text {
+  font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+}
 ```
+
+**適用範囲ガイドライン:**
+
+| 要素 | フォント | 備考 |
+|------|---------|------|
+| ページタイトル | Trajan (ALL CAPS) | HOME / GALLERY / CREATE 等 |
+| CTAボタン | Trajan (ALL CAPS) | SELECT / ANALYZE / GENERATE 等 |
+| ステータス表示 | Trajan (ALL CAPS) | PREPARING / GENERATING 等 |
+| 説明文 | Noto Sans JP | ユーザー入力、アイテム説明 |
+| トースト通知 | Noto Sans JP | エラー、成功メッセージ |
+| フォーム入力 | Noto Sans JP | タイトル、説明入力欄 |
 
 ### 7.6 Settings（モード切替）
 
