@@ -164,23 +164,29 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       const analysis2 = await analyzeImage(apiUrl, token, image2.base64, image2.file.type);
       console.log('[handleAnalyze] Image 2 analysis complete:', analysis2);
 
+      // Create updated image objects with analysis
+      const updatedImage1 = { ...image1, analysis: analysis1 };
+      const updatedImage2 = { ...image2, analysis: analysis2 };
+
       // Blend DNAs
       setAnalysisProgress('DNAをブレンド中...');
       console.log('[handleAnalyze] Blending DNAs...');
       const blendedDNA = blendDNAs(analysis1.dna, analysis2.dna);
       console.log('[handleAnalyze] Blended DNA:', blendedDNA);
+
+      // Update all state together
+      console.log('[handleAnalyze] Updating state with:', {
+        updatedImage1,
+        updatedImage2,
+        blendedDNA,
+      });
+
+      setImage1(updatedImage1);
+      setImage2(updatedImage2);
       updateDNA(blendedDNA);
+      setStage('preview');
 
-      // Update images with analysis results AND move to preview stage
-      // Use functional updates to ensure we have the latest state
-      setImage1((prev) => ({ ...prev!, analysis: analysis1 }));
-      setImage2((prev) => ({ ...prev!, analysis: analysis2 }));
-
-      console.log('[handleAnalyze] Analysis complete, moving to preview');
-      // Delay stage change to ensure state updates are flushed
-      setTimeout(() => {
-        setStage('preview');
-      }, 100);
+      console.log('[handleAnalyze] Analysis complete, moved to preview');
     } catch (error) {
       console.error('[handleAnalyze] Error:', error);
       console.error('[handleAnalyze] Error details:', {
