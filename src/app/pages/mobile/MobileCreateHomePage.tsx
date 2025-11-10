@@ -4,7 +4,7 @@ import { MetaballsBreathing } from '../../../components/Urula/MetaballsBreathing
 import { ModePickerSheet } from '../../components/mobile/ModePickerSheet';
 import { QuickSwitchMenu } from '../../components/mobile/QuickSwitchMenu';
 import { DEFAULT_DNA } from '../../../types/dna';
-import { getLastUsedMode, setLastUsedMode } from '../../../lib/modeStorage';
+import { getLastUsedMode, setLastUsedMode, type CreateMode } from '../../../lib/modeStorage';
 import './MobileCreateHomePage.css';
 
 interface MobileCreateHomePageProps {
@@ -58,7 +58,7 @@ export function MobileCreateHomePage({ onNavigate, onStartCreate }: MobileCreate
   }, []);
 
   const handleStartDesigning = () => {
-    const mode = lastMode || 'fusion';
+    const mode: CreateMode = (lastMode as CreateMode) || 'fusion';
     setLastUsedMode(mode);
 
     if (onStartCreate) {
@@ -72,7 +72,7 @@ export function MobileCreateHomePage({ onNavigate, onStartCreate }: MobileCreate
     setIsPickerOpen(true);
   };
 
-  const handleModeSelect = (mode: string) => {
+  const handleModeSelect = (mode: CreateMode) => {
     setLastUsedMode(mode);
     setLastMode(mode);
     setIsPickerOpen(false);
@@ -132,7 +132,7 @@ export function MobileCreateHomePage({ onNavigate, onStartCreate }: MobileCreate
     document.addEventListener('touchend', handleTouchEnd);
   };
 
-  const handleQuickSwitchSelect = (mode: string) => {
+  const handleQuickSwitchSelect = (mode: CreateMode) => {
     setIsQuickSwitchOpen(false);
     handleModeSelect(mode);
   };

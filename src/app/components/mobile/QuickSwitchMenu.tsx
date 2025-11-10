@@ -49,9 +49,9 @@ export function QuickSwitchMenu({
   ].filter((mode, index, arr) => mode && arr.indexOf(mode) === index);
 
   // Add "All Methods" option
-  const options = [
+  const options: (CreateMode | 'all')[] = [
     ...quickOptions,
-    'all' as CreateMode, // Special value for "All Methods"
+    'all', // Special value for "All Methods"
   ];
 
   const handleSelect = (mode: CreateMode | 'all') => {

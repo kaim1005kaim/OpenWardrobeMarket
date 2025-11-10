@@ -44,7 +44,7 @@ export function getDefaultMode(): CreateMode {
   return getLastUsedMode() || DEFAULT_MODE;
 }
 
-function isValidMode(mode: string): boolean {
+function isValidMode(mode: string): mode is CreateMode {
   const validModes: CreateMode[] = [
     'fusion',
     'composer',
