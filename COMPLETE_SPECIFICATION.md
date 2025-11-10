@@ -85,7 +85,7 @@
 
 | カテゴリ | 機能 | 説明 |
 |---------|------|------|
-| 🎨 **デザイン生成** | 対話型AI生成 | DeepSeek + ImagineAPIによる高品質デザイン |
+| 🎨 **デザイン生成** | 対話型AI生成 | Gemini 2.5 Flash (分析) + Gemini 2.5 Flash Image (画像生成) |
 | 🔍 **検索・発見** | マルチモーダル検索 | テキスト、画像、タグ、カラーでの複合検索 |
 | 📊 **分析** | 個人・全体分析 | 生成履歴、トレンド、エンゲージメント分析 |
 | 🎯 **推薦** | パーソナライズ | 個人嗜好に基づくインテリジェント推薦 |
@@ -148,11 +148,11 @@
                     ▼
 ┌────────────────────────────────────────────────────────────────┐
 │                    External AI Services                         │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌───────────────┐  │
-│  │  DeepSeek AI    │  │  ImagineAPI     │  │  CLIP Server  │  │
-│  │  - Prompt Gen   │  │  - Image Gen    │  │  - Embeddings │  │
-│  │  - Chat API     │  │  - Webhook      │  │  - Similarity │  │
-│  └─────────────────┘  └─────────────────┘  └───────────────┘  │
+│  ┌──────────────────┐  ┌─────────────────┐  ┌───────────────┐ │
+│  │  Gemini 2.5 Flash│  │ Gemini 2.5 FI   │  │  CLIP Server  │ │
+│  │  - NLP/Analysis  │  │ - Image Gen     │  │  - Embeddings │ │
+│  │  - Vision API    │  │ - NanoBanana    │  │  - Similarity │ │
+│  └──────────────────┘  └─────────────────┘  └───────────────┘ │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -161,11 +161,11 @@
 #### 2.2.1 ファッションデザイン生成フロー
 
 ```
-[ユーザー入力]
+[ユーザー入力 / 画像選択]
     ↓
-[DeepSeek AIプロンプト生成]
+[Gemini 2.5 Flash: 画像分析・プロンプト合成]
     ↓ (最適化されたプロンプト)
-[ImagineAPI画像生成リクエスト]
+[Gemini 2.5 Flash Image (NanoBanana): 画像生成リクエスト]
     ↓
 [Webhook受信 → Supabase更新]
     ↓
@@ -202,8 +202,8 @@
 | バックエンド | Next.js 15 API Routes | サーバーレス、型共有、Edge対応 |
 | データベース | Supabase (PostgreSQL) | RLS、リアルタイム、認証統合 |
 | ストレージ | Cloudflare R2 | 低コスト、高速、S3互換 |
-| AI画像生成 | ImagineAPI | 高品質、Webhook対応、安定性 |
-| プロンプト生成 | DeepSeek AI | コスト効率、日本語対応 |
+| AI画像生成 | Gemini 2.5 Flash Image (NanoBanana) | 高品質、Google AI Studio統合、安定性 |
+| 自然言語処理・画像分析 | Gemini 2.5 Flash | マルチモーダル、日本語対応、Vision API |
 | ベクトル検索 | pgvector + CLIP | 高精度、オープンソース |
 
 ---
@@ -365,8 +365,8 @@ def encode_image():
 
 | サービス | 用途 | エンドポイント |
 |---------|------|--------------|
-| DeepSeek AI | プロンプト生成 | `https://api.deepseek.com/v1/chat/completions` |
-| ImagineAPI | 画像生成 | `https://api.imagineapi.dev/v1/generations` |
+| Gemini 2.5 Flash | 画像分析・自然言語処理 | Google AI Studio API |
+| Gemini 2.5 Flash Image | 画像生成 (NanoBanana) | Google AI Studio API |
 | CLIP (自前) | embedding生成 | `http://localhost:5001` |
 
 #### 3.4.2 ストレージ
@@ -902,7 +902,7 @@ CREATE TABLE generation_history (
   dna jsonb,                -- Urula嗜好反映（新規）
   chip_tags jsonb,          -- Guidanceの直観的タグ（新規）
 
-  -- ImagineAPI情報
+  -- Google AI Studio (NanoBanana) 情報
   task_id text UNIQUE,
   imagine_status text DEFAULT 'pending',  -- pending/processing/completed/failed
   completion_status text DEFAULT 'pending',  -- pending/completed/failed（新規）
@@ -2324,8 +2324,6 @@ export async function verifyAuth(request: Request): Promise<string | null> {
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '../_shared/supabase';
 
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
-
 export async function POST(request: NextRequest) {
   try {
     const userId = await verifyAuth(request);
@@ -2338,33 +2336,18 @@ export async function POST(request: NextRequest) {
 
     const { message, conversationHistory, parameters } = await request.json();
 
-    // DeepSeek APIリクエスト
-    const response = await fetch(DEEPSEEK_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: FASHION_DESIGN_SYSTEM_PROMPT
-          },
-          ...conversationHistory,
-          {
-            role: 'user',
-            content: message
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 200
-      })
+    // Gemini 2.5 Flash APIリクエスト
+    const ai = new GoogleAI({ apiKey: process.env.GOOGLE_API_KEY! });
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        { role: 'user', parts: [{ text: FASHION_DESIGN_SYSTEM_PROMPT }] },
+        ...conversationHistory,
+        { role: 'user', parts: [{ text: message }] }
+      ]
     });
 
-    const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    const aiResponse = response.parts[0].text;
 
     // プロンプト最適化ロジック
     const shouldGenerate = aiResponse.includes('[GENERATE]');
@@ -2653,7 +2636,7 @@ export async function POST(request: NextRequest) {
 
 ## 9. AI統合
 
-### 9.1 DeepSeek AI統合
+### 9.1 Gemini 2.5 Flash 統合（画像分析・自然言語処理）
 
 #### 9.1.1 システムプロンプト設計
 
@@ -2722,43 +2705,39 @@ class ConversationManager {
 }
 ```
 
-### 9.2 ImagineAPI統合
+### 9.2 Gemini 2.5 Flash Image 統合（NanoBanana / 画像生成）
 
 #### 9.2.1 生成リクエスト
 
 ```typescript
-interface ImagineGenerationRequest {
+interface NanoBananaGenerationRequest {
   prompt: string;
-  style?: string;
-  aspect_ratio?: string;
-  cfg_scale?: number;
-  steps?: number;
-  seed?: number;
-  webhook?: string;
+  negative?: string;
+  aspect_ratio?: string;  // '3:4' 固定
+  width?: number;         // 960
+  height?: number;        // 1280
 }
 
-async function generateWithImagine(
-  request: ImagineGenerationRequest
-): Promise<{ id: string; status: string }> {
-  const response = await fetch('https://api.imagineapi.dev/v1/generations', {
+async function generateWithNanoBanana(
+  request: NanoBananaGenerationRequest
+): Promise<{ taskId: string; status: string }> {
+  const response = await fetch('/api/nano-generate', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.IMAGINEAPI_BEARER}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
       prompt: request.prompt,
-      style: request.style || 'photographic',
-      aspect_ratio: request.aspect_ratio || '3:4',
-      cfg_scale: request.cfg_scale || 7.5,
-      steps: request.steps || 30,
-      seed: request.seed,
-      webhook: request.webhook
+      negative: request.negative || 'logo, brand mark, celebrity, watermark, text, caption',
+      aspectRatio: '3:4',
+      width: 960,
+      height: 1280
     })
   });
 
   if (!response.ok) {
-    throw new Error(`ImagineAPI error: ${response.status}`);
+    throw new Error(`NanoBanana API error: ${response.status}`);
   }
 
   return await response.json();
@@ -2768,30 +2747,25 @@ async function generateWithImagine(
 #### 9.2.2 Webhookハンドリング
 
 ```typescript
-interface ImagineWebhookPayload {
-  id: string;
+interface NanoBananaWebhookPayload {
+  taskId: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  result?: {
-    url: string;
-    width: number;
-    height: number;
-  };
+  imageBase64?: string;
   error?: string;
 }
 
-async function handleImagineWebhook(
-  payload: ImagineWebhookPayload
+async function handleNanoBananaWebhook(
+  payload: NanoBananaWebhookPayload
 ): Promise<void> {
-  const { id, status, result, error } = payload;
+  const { taskId, status, imageBase64, error } = payload;
 
-  if (status === 'completed' && result) {
-    // 画像ダウンロード
-    const imageResponse = await fetch(result.url);
-    const imageBuffer = await imageResponse.arrayBuffer();
+  if (status === 'completed' && imageBase64) {
+    // Base64デコード
+    const imageBuffer = Buffer.from(imageBase64, 'base64');
 
     // R2アップロード
-    const r2Key = `generations/${id}.jpg`;
-    const r2Url = await uploadToR2(Buffer.from(imageBuffer), r2Key);
+    const r2Key = `generations/${taskId}.jpg`;
+    const r2Url = await uploadToR2(imageBuffer, r2Key);
 
     // embedding生成
     const embedding = await generateEmbedding(imageBuffer);
@@ -3211,8 +3185,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 # AI Services
-DEEPSEEK_API_KEY=sk-...
-IMAGINEAPI_BEARER=Bearer ...
+GOOGLE_API_KEY=...  # Google AI Studio (Gemini 2.5 Flash / NanoBanana)
 HUGGINGFACE_API_KEY=hf_...
 
 # Storage
@@ -3248,8 +3221,7 @@ CLIP_SERVER_URL=http://localhost:5001
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "@supabase-url",
     "SUPABASE_SERVICE_ROLE_KEY": "@supabase-service-key",
-    "DEEPSEEK_API_KEY": "@deepseek-key",
-    "IMAGINEAPI_BEARER": "@imagine-bearer",
+    "GOOGLE_API_KEY": "@google-ai-key",
     "R2_ACCESS_KEY_ID": "@r2-access-key",
     "R2_SECRET_ACCESS_KEY": "@r2-secret-key",
     "R2_BUCKET": "@r2-bucket",
@@ -3283,8 +3255,7 @@ npx vercel --prod
 npx vercel
 
 # 環境変数設定
-npx vercel env add DEEPSEEK_API_KEY production
-npx vercel env add IMAGINEAPI_BEARER production
+npx vercel env add GOOGLE_API_KEY production
 ```
 
 ### 11.2 CLIP Serverデプロイ
@@ -3760,8 +3731,7 @@ const compressed = await sharp(buffer)
 |--------|------|------|----------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase URL | ✅ | - |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Service Role Key | ✅ | - |
-| `DEEPSEEK_API_KEY` | DeepSeek AI APIキー | ✅ | - |
-| `IMAGINEAPI_BEARER` | ImagineAPI Bearer Token | ✅ | - |
+| `GOOGLE_API_KEY` | Google AI Studio APIキー (Gemini / NanoBanana) | ✅ | - |
 | `HUGGINGFACE_API_KEY` | HuggingFace APIキー | ❌ | - |
 | `R2_ACCESS_KEY_ID` | Cloudflare R2 Access Key | ✅ | - |
 | `R2_SECRET_ACCESS_KEY` | Cloudflare R2 Secret Key | ✅ | - |
@@ -3778,7 +3748,7 @@ const compressed = await sharp(buffer)
 | POST | `/api/chat` | AI対話 | ✅ |
 | POST | `/api/nano-generate` | 画像生成開始 | ✅ |
 | GET | `/api/generation-stream/{taskId}` | 生成ステータス (SSE) | ✅ |
-| POST | `/api/imagine-webhook` | ImagineAPI Webhook | ❌ |
+| POST | `/api/imagine-webhook` | NanoBanana Webhook | ✅ |
 | GET | `/api/search` | テキスト検索 | ❌ |
 | POST | `/api/search` | 画像検索 | ❌ |
 | GET | `/api/analytics` | 分析データ | ✅ |
