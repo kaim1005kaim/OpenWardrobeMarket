@@ -60,15 +60,28 @@ export async function POST(req: NextRequest) {
 
     console.log('[analyze-image] Analyzing image with Gemini Vision...', { mimeType });
 
-    const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-    });
-
     // Remove data URL prefix if present (e.g., "data:image/png;base64,")
     const base64Data = imageData.includes(',')
       ? imageData.split(',')[1]
       : imageData;
+
+    console.log('[analyze-image] Image data length:', imageData.length);
+    console.log('[analyze-image] Base64 data length:', base64Data.length);
+    console.log('[analyze-image] First 50 chars:', base64Data.substring(0, 50));
+
+    // Validate base64 data
+    if (base64Data.length < 100) {
+      console.error('[analyze-image] Image data too small, likely invalid');
+      return NextResponse.json(
+        { error: 'Invalid or corrupted image data' },
+        { status: 400 }
+      );
+    }
+
+    const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+    });
 
     const result = await model.generateContent({
       contents: [
@@ -88,8 +101,11 @@ export async function POST(req: NextRequest) {
       generationConfig: {
         temperature: 0.3,
         maxOutputTokens: 512,
+        responseMimeType: 'application/json',
       },
     });
+
+    console.log('[analyze-image] Gemini API called, waiting for response...');
 
     const response = result.response;
     const text = response.text();
