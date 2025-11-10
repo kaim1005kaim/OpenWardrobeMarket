@@ -133,6 +133,13 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       return;
     }
 
+    console.log('[handleAnalyze] Starting analysis with images:', {
+      image1Type: image1.file.type,
+      image1Size: image1.base64.length,
+      image2Type: image2.file.type,
+      image2Size: image2.base64.length,
+    });
+
     setStage('analyzing');
     setAnalysisProgress('画像を解析中...');
 
@@ -143,13 +150,19 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       const token = sessionData.session.access_token;
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
 
+      console.log('[handleAnalyze] Using API URL:', apiUrl);
+
       // Analyze image 1
       setAnalysisProgress('1枚目の画像を解析中...');
+      console.log('[handleAnalyze] Analyzing image 1...');
       const analysis1 = await analyzeImage(apiUrl, token, image1.base64, image1.file.type);
+      console.log('[handleAnalyze] Image 1 analysis complete:', analysis1);
 
       // Analyze image 2
       setAnalysisProgress('2枚目の画像を解析中...');
+      console.log('[handleAnalyze] Analyzing image 2...');
       const analysis2 = await analyzeImage(apiUrl, token, image2.base64, image2.file.type);
+      console.log('[handleAnalyze] Image 2 analysis complete:', analysis2);
 
       // Update images with analysis results
       setImage1({ ...image1, analysis: analysis1 });
@@ -157,12 +170,19 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
 
       // Blend DNAs
       setAnalysisProgress('DNAをブレンド中...');
+      console.log('[handleAnalyze] Blending DNAs...');
       const blendedDNA = blendDNAs(analysis1.dna, analysis2.dna);
+      console.log('[handleAnalyze] Blended DNA:', blendedDNA);
       updateDNA(blendedDNA);
 
+      console.log('[handleAnalyze] Analysis complete, moving to preview');
       setStage('preview');
     } catch (error) {
       console.error('[handleAnalyze] Error:', error);
+      console.error('[handleAnalyze] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       alert(error instanceof Error ? error.message : '解析に失敗しました');
       setStage('upload');
     }
@@ -177,6 +197,10 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
   ): Promise<{ tags: string[]; description: string; dna: Partial<DNA> }> => {
     const imageData = base64.includes(',') ? base64.split(',')[1] : base64;
 
+    console.log('[analyzeImage] Sending request to:', `${apiUrl}/api/gemini/analyze-image`);
+    console.log('[analyzeImage] Image data length:', imageData.length);
+    console.log('[analyzeImage] MIME type:', mimeType);
+
     const response = await fetch(`${apiUrl}/api/gemini/analyze-image`, {
       method: 'POST',
       headers: {
@@ -189,11 +213,18 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       }),
     });
 
+    console.log('[analyzeImage] Response status:', response.status);
+
     if (!response.ok) {
-      throw new Error('画像解析に失敗しました');
+      const errorText = await response.text();
+      console.error('[analyzeImage] Error response:', errorText);
+      throw new Error(`画像解析に失敗しました (${response.status})`);
     }
 
-    const { tags, description } = await response.json();
+    const result = await response.json();
+    console.log('[analyzeImage] Response data:', result);
+
+    const { tags, description } = result;
 
     // Convert tags to DNA deltas
     const dna = tagsToDNA(tags);
