@@ -169,8 +169,8 @@ async function uploadToR2(buffer: Buffer, filename: string): Promise<string> {
 
   await r2Client.send(command);
 
-  // R2の公開URLを返す
-  const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL || 'https://pub-4215f2149d4e4f369c2bde9f2769dfd4.r2.dev';
+  // R2の公開URLを返す（カスタムドメインを優先）
+  const publicBaseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL || process.env.R2_PUBLIC_BASE_URL || 'https://assets.open-wardrobe-market.com';
   const publicUrl = `${publicBaseUrl}/${key}`;
 
   console.log(`[compose-poster] Uploaded to R2: ${publicUrl}`);

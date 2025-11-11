@@ -71,8 +71,10 @@ export async function POST(req: NextRequest) {
 
     await r2Client.send(command);
 
-    // Generate public URL
-    const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL || 'https://pub-4215f2149d4e4f369c2bde9f2769dfd4.r2.dev';
+    // Generate public URL using custom domain (supports public access)
+    // NEXT_PUBLIC_R2_PUBLIC_BASE_URL = assets.open-wardrobe-market.com (has public access)
+    // R2_PUBLIC_BASE_URL = pub-*.r2.dev (returns 401 for server-side fetches)
+    const publicBaseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL || process.env.R2_PUBLIC_BASE_URL || 'https://assets.open-wardrobe-market.com';
     const finalUrl = `${publicBaseUrl}/${key}`;
 
     console.log('[upload-to-r2] Upload successful:', finalUrl);
