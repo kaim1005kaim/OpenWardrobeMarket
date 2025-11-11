@@ -84,28 +84,51 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Find items with overlapping auto_tags using array overlap operator (&&)
-    // PostgreSQL && operator returns true if arrays have any common elements
-    const { data: similarItems, error: searchError } = await supabase
+    // Find items with overlapping auto_tags
+    // Note: Some catalog items may have auto_tags stored as text instead of array
+    // We'll fetch all items and filter in memory to avoid PostgreSQL type errors
+    const { data: allItems, error: fetchError } = await supabase
       .from('published_items')
       .select('id, title, image_id, auto_tags, tags, category')
       .eq('is_active', true)
       .neq('id', itemId) // Exclude the target item itself
-      .filter('auto_tags', 'ov', targetTags) // ov = overlap operator
-      .limit(limit * 3); // Get more candidates for ranking
+      .limit(500); // Get a large pool of candidates
 
-    if (searchError) {
-      console.error('[similar-items] Search error:', searchError);
+    if (fetchError) {
+      console.error('[similar-items] Fetch error:', fetchError);
       return NextResponse.json(
         { error: 'Search failed' },
         { status: 500 }
       );
     }
 
+    // Filter items with overlapping tags in memory
+    const similarItems = (allItems || []).filter((item) => {
+      let itemTags: string[] = [];
+
+      // Handle both array and string formats for auto_tags
+      if (Array.isArray(item.auto_tags)) {
+        itemTags = item.auto_tags;
+      } else if (typeof item.auto_tags === 'string') {
+        // Parse comma-separated string
+        itemTags = item.auto_tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+      }
+
+      // Check for overlap
+      return targetTags.some((tag: string) => itemTags.includes(tag));
+    });
+
     // Rank by number of overlapping tags (Jaccard similarity)
     const rankedItems = (similarItems || [])
       .map((item) => {
-        const itemTags = item.auto_tags || [];
+        // Normalize itemTags to array (handle both array and string formats)
+        let itemTags: string[] = [];
+        if (Array.isArray(item.auto_tags)) {
+          itemTags = item.auto_tags;
+        } else if (typeof item.auto_tags === 'string') {
+          itemTags = item.auto_tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+        }
+
         const overlap = targetTags.filter((tag: string) => itemTags.includes(tag));
         const union = [...new Set([...targetTags, ...itemTags])];
 
