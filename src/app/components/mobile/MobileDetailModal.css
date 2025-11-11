@@ -64,7 +64,73 @@
   cursor: default;
 }
 
-/* Image */
+/* Image Carousel */
+.detail-image-carousel {
+  width: 100%;
+  height: 60vh;
+  background: #C4C4C4;
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.carousel-images {
+  display: flex;
+  height: 100%;
+  transition: transform 0.3s ease-out;
+}
+
+.carousel-image-wrapper {
+  min-width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.carousel-image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.image-label {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.carousel-indicators {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.carousel-indicators .indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.carousel-indicators .indicator.active {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* Fallback for old .detail-image class (backwards compatibility) */
 .detail-image {
   width: 100%;
   height: 60vh;

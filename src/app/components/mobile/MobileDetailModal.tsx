@@ -40,6 +40,14 @@ export function MobileDetailModal({
   const [aiSimilarAssets, setAiSimilarAssets] = useState<Asset[]>([]);
   const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
 
+  // Variant images carousel
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [variantImages, setVariantImages] = useState<Array<{ type: 'main' | 'side' | 'back'; url: string }>>([
+    { type: 'main', url: asset.src }
+  ]);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => {
@@ -50,6 +58,24 @@ export function MobileDetailModal({
   useEffect(() => {
     setIsPublic(asset.status ? asset.status === 'public' : !!asset.isPublic);
     setIsLiked(asset.isLiked ?? asset.liked ?? false);
+
+    // Load variant images from metadata if available
+    const images: Array<{ type: 'main' | 'side' | 'back'; url: string }> = [
+      { type: 'main', url: asset.src }
+    ];
+
+    if (asset.metadata?.variants) {
+      const variants = asset.metadata.variants;
+      if (variants.side?.status === 'completed' && variants.side?.r2_url) {
+        images.push({ type: 'side', url: variants.side.r2_url });
+      }
+      if (variants.back?.status === 'completed' && variants.back?.r2_url) {
+        images.push({ type: 'back', url: variants.back.r2_url });
+      }
+    }
+
+    setVariantImages(images);
+    setCurrentImageIndex(0);
   }, [asset]);
 
   // Fetch AI-based similar items when modal opens
@@ -172,6 +198,37 @@ export function MobileDetailModal({
     }
   };
 
+  // Swipe handlers for image carousel
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && currentImageIndex < variantImages.length - 1) {
+      setCurrentImageIndex(prev => prev + 1);
+    }
+    if (isRightSwipe && currentImageIndex > 0) {
+      setCurrentImageIndex(prev => prev - 1);
+    }
+
+    setTouchStart(0);
+    setTouchEnd(0);
+  };
+
+  const goToImage = (index: number) => {
+    setCurrentImageIndex(index);
+  };
+
   const priceDisplay = asset.price != null ? `¥${Number(asset.price).toLocaleString()}` : '—';
   const baseLikes = asset.likes ?? 0;
   const likesDelta = (isLiked ? 1 : 0) - (initialLiked ? 1 : 0);
@@ -196,8 +253,33 @@ export function MobileDetailModal({
           </button>
         </div>
 
-        <div className="detail-image">
-          <img src={asset.src} alt={asset.title} />
+        <div
+          className="detail-image-carousel"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="carousel-images" style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}>
+            {variantImages.map((img, index) => (
+              <div key={index} className="carousel-image-wrapper">
+                <img src={img.url} alt={`${asset.title} - ${img.type} view`} />
+                <div className="image-label">{img.type.toUpperCase()}</div>
+              </div>
+            ))}
+          </div>
+
+          {variantImages.length > 1 && (
+            <div className="carousel-indicators">
+              {variantImages.map((_, index) => (
+                <button
+                  key={index}
+                  className={`indicator ${index === currentImageIndex ? 'active' : ''}`}
+                  onClick={() => goToImage(index)}
+                  aria-label={`Go to ${variantImages[index].type} view`}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="detail-info">
