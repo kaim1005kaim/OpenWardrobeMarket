@@ -748,6 +748,17 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
               r2_key: asset.key,
               r2_url: finalUrl,
               tags: autoTags, // Save tags for auto-tags API
+              generation_data: {
+                mode: 'fusion',
+                prompt: asset.prompt,
+                parameters: {
+                  image1_tags: image1?.analysis?.tags || [],
+                  image2_tags: image2?.analysis?.tags || [],
+                  dna: asset.dna,
+                },
+                auto_tags: autoTags,
+                ai_description: imageDescription
+              },
               metadata: {
                 mode: 'fusion',
                 image1_tags: image1?.analysis?.tags || [],
