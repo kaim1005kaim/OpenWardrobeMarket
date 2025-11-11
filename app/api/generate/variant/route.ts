@@ -4,10 +4,11 @@ export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { PredictionServiceClient } from '@google-cloud/aiplatform';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const geminiApiKey = process.env.GEMINI_API_KEY!;
+const googleCloudProject = process.env.GOOGLE_CLOUD_PROJECT!;
 
 type VariantType = 'side' | 'back';
 
@@ -27,7 +28,7 @@ function mutateForView(basePrompt: string, view: VariantType): string {
 }
 
 /**
- * Generate variant using Google AI Studio (Gemini Image)
+ * Generate variant using Vertex AI Imagen 3
  */
 async function generateVariant(
   prompt: string,
@@ -36,54 +37,70 @@ async function generateVariant(
 ): Promise<{ imageUrl: string; imageData: string }> {
   const mutatedPrompt = mutateForView(prompt, view);
 
-  console.log(`[generate/variant] Generating ${view} view with prompt:`, mutatedPrompt.slice(0, 200));
+  console.log(`[generate/variant] Generating ${view} view with Imagen 3`);
+  console.log(`[generate/variant] Prompt (first 200 chars):`, mutatedPrompt.slice(0, 200));
 
-  // Call Gemini Image API (Imagen 3)
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${geminiApiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        instances: [
-          {
-            prompt: mutatedPrompt,
-            sampleCount: 1
-          }
-        ],
-        parameters: {
-          sampleCount: 1,
-          aspectRatio: '3:4',
-          personGeneration: 'allow_adult',
-          safetySetting: 'block_only_high',
-          seed: seed // Use same seed for consistency
+  // Initialize Vertex AI client
+  const client = new PredictionServiceClient({
+    apiEndpoint: 'us-central1-aiplatform.googleapis.com'
+  });
+
+  const endpoint = `projects/${googleCloudProject}/locations/us-central1/publishers/google/models/imagen-3.0-generate-001`;
+
+  // Prepare request for Imagen 3
+  const instance = {
+    structValue: {
+      fields: {
+        prompt: {
+          stringValue: mutatedPrompt
         }
-      })
+      }
     }
-  );
+  };
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`[generate/variant] Gemini API error:`, response.status, errorText);
-    throw new Error(`Gemini API failed: ${response.status}`);
+  const parameters = {
+    structValue: {
+      fields: {
+        sampleCount: { numberValue: 1 },
+        aspectRatio: { stringValue: '3:4' },
+        personGeneration: { stringValue: 'allow_adult' },
+        safetySetting: { stringValue: 'block_only_high' }
+      }
+    }
+  };
+
+  const request = {
+    endpoint,
+    instances: [instance],
+    parameters
+  };
+
+  try {
+    const [response] = await client.predict(request);
+
+    console.log('[generate/variant] Vertex AI response received');
+
+    if (!response.predictions || response.predictions.length === 0) {
+      throw new Error('No predictions returned from Imagen 3');
+    }
+
+    const prediction = response.predictions[0];
+
+    // Extract image data from prediction
+    const imageData = prediction.structValue?.fields?.bytesBase64Encoded?.stringValue;
+
+    if (!imageData) {
+      console.error('[generate/variant] Prediction structure:', JSON.stringify(prediction, null, 2));
+      throw new Error('No image data in prediction response');
+    }
+
+    console.log(`[generate/variant] Image generated successfully, size: ${imageData.length} bytes`);
+
+    return { imageUrl: '', imageData };
+  } catch (error) {
+    console.error('[generate/variant] Vertex AI error:', error);
+    throw error;
   }
-
-  const result = await response.json();
-  const predictions = result.predictions || [];
-
-  if (predictions.length === 0 || !predictions[0].bytesBase64Encoded) {
-    throw new Error('No image generated');
-  }
-
-  const imageData = predictions[0].bytesBase64Encoded;
-  const raiFilteredReason = predictions[0].raiFilteredReason;
-
-  if (raiFilteredReason) {
-    console.warn(`[generate/variant] RAI filtered:`, raiFilteredReason);
-    throw new Error(`Content filtered: ${raiFilteredReason}`);
-  }
-
-  return { imageUrl: '', imageData }; // imageUrl will be set after R2 upload
 }
 
 /**
@@ -95,7 +112,7 @@ async function uploadToR2(
   genId: string,
   view: VariantType
 ): Promise<string> {
-  const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://open-wardrobe-market.com';
 
   const response = await fetch(`${apiUrl}/api/upload-to-r2`, {
     method: 'POST',
@@ -108,6 +125,8 @@ async function uploadToR2(
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[generate/variant] R2 upload failed:', errorText);
     throw new Error(`R2 upload failed: ${response.status}`);
   }
 
@@ -121,55 +140,65 @@ export async function POST(req: NextRequest) {
 
     if (!gen_id || !view) {
       return NextResponse.json(
-        { error: 'Missing gen_id or view' },
+        { error: 'gen_id and view are required' },
         { status: 400 }
       );
     }
 
-    if (!['side', 'back'].includes(view)) {
+    if (view !== 'side' && view !== 'back') {
       return NextResponse.json(
-        { error: 'Invalid view type. Must be "side" or "back"' },
+        { error: 'view must be "side" or "back"' },
         { status: 400 }
       );
     }
+
+    console.log(`[generate/variant] Request for ${view} view of gen_id: ${gen_id}`);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get generation data
     const { data: genData, error: genError } = await supabase
       .from('generation_history')
-      .select('*')
+      .select('prompt, user_id, metadata, seed')
       .eq('id', gen_id)
       .single();
 
     if (genError || !genData) {
+      console.error('[generate/variant] Generation not found:', genError);
       return NextResponse.json(
         { error: 'Generation not found' },
         { status: 404 }
       );
     }
 
-    const { prompt, seed, user_id, metadata } = genData;
-    const variants = metadata?.variants || [];
+    const { prompt, user_id, metadata = {}, seed } = genData;
+    const variants = metadata.variants || [];
 
-    // Check if variant already exists
-    const existingVariant = variants.find((v: any) => v.type === view);
-    if (existingVariant && existingVariant.status === 'completed') {
+    // Check if this variant already exists
+    const existing = variants.find((v: any) => v.type === view);
+    if (existing && existing.status === 'completed') {
+      console.log(`[generate/variant] ${view} variant already exists:`, existing.r2_url);
       return NextResponse.json({
-        message: 'Variant already exists',
-        r2_url: existingVariant.r2_url
+        success: true,
+        view,
+        r2_url: existing.r2_url,
+        cached: true
       });
     }
 
-    // Generate variant
-    console.log(`[generate/variant] Starting ${view} generation for gen_id: ${gen_id}`);
-
-    const { imageData } = await generateVariant(prompt, seed || Math.floor(Math.random() * 1000000), view as VariantType);
+    // Generate variant image
+    console.log(`[generate/variant] Starting generation for ${view} view...`);
+    const { imageData } = await generateVariant(
+      prompt,
+      seed || Math.floor(Math.random() * 1000000),
+      view as VariantType
+    );
 
     // Upload to R2
+    console.log(`[generate/variant] Uploading ${view} to R2...`);
     const r2Url = await uploadToR2(imageData, user_id, gen_id, view as VariantType);
 
-    console.log(`[generate/variant] ${view} uploaded to R2:`, r2Url);
+    console.log(`[generate/variant] ${view} uploaded successfully:`, r2Url);
 
     // Update generation_history metadata
     const updatedVariants = variants.filter((v: any) => v.type !== view);
@@ -190,32 +219,36 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', gen_id);
 
+    console.log(`[generate/variant] Updated generation_history metadata`);
+
     // If image is published, update published_items too
-    const { data: publishedItem } = await supabase
+    const { data: publishedItems } = await supabase
       .from('published_items')
       .select('id, metadata')
-      .eq('user_id', user_id)
-      .eq('metadata->>gen_id', gen_id)
-      .single();
+      .eq('image_id', gen_id);
 
-    if (publishedItem) {
-      const pubVariants = publishedItem.metadata?.variants || [];
-      const updatedPubVariants = pubVariants.filter((v: any) => v.type !== view);
-      updatedPubVariants.push({
-        type: view,
-        r2_url: r2Url,
-        status: 'completed'
-      });
+    if (publishedItems && publishedItems.length > 0) {
+      for (const item of publishedItems) {
+        const pubVariants = item.metadata?.variants || [];
+        const updatedPubVariants = pubVariants.filter((v: any) => v.type !== view);
+        updatedPubVariants.push({
+          type: view,
+          r2_url: r2Url,
+          status: 'completed'
+        });
 
-      await supabase
-        .from('published_items')
-        .update({
-          metadata: {
-            ...publishedItem.metadata,
-            variants: updatedPubVariants
-          }
-        })
-        .eq('id', publishedItem.id);
+        await supabase
+          .from('published_items')
+          .update({
+            metadata: {
+              ...item.metadata,
+              variants: updatedPubVariants
+            }
+          })
+          .eq('id', item.id);
+      }
+
+      console.log(`[generate/variant] Updated ${publishedItems.length} published_items`);
     }
 
     return NextResponse.json({
