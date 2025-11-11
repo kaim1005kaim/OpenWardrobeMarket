@@ -17,6 +17,24 @@ interface MobileFusionPageProps {
 
 type Stage = 'upload' | 'analyzing' | 'preview' | 'generating' | 'revealing' | 'done';
 
+interface MotifAbstraction {
+  source_cue: string;
+  operation: string;
+  placement: string[];
+  style: string;
+  scale: string;
+  notes: string;
+}
+
+interface FusionSpec {
+  palette: { name: string; hex: string; weight: number }[];
+  silhouette: string;
+  materials: string[];
+  motif_abstractions: MotifAbstraction[];
+  details: string[];
+  inspiration?: string;
+}
+
 interface UploadedImage {
   file: File;
   preview: string;
@@ -25,6 +43,7 @@ interface UploadedImage {
     tags: string[];
     description: string;
     dna: Partial<DNA>;
+    spec?: FusionSpec; // FUSION専用の詳細な仕様
   };
 }
 
@@ -204,20 +223,20 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
     }
   };
 
-  // Analyze single image with Gemini Vision
+  // Analyze single image with Gemini Vision (FUSION専用)
   const analyzeImage = async (
     apiUrl: string,
     token: string,
     base64: string,
     mimeType: string
-  ): Promise<{ tags: string[]; description: string; dna: Partial<DNA> }> => {
+  ): Promise<{ tags: string[]; description: string; dna: Partial<DNA>; spec: FusionSpec }> => {
     const imageData = base64.includes(',') ? base64.split(',')[1] : base64;
 
-    console.log('[analyzeImage] Sending request to:', `${apiUrl}/api/gemini/analyze-image`);
+    console.log('[analyzeImage] Sending request to:', `${apiUrl}/api/gemini/analyze-fusion`);
     console.log('[analyzeImage] Image data length:', imageData.length);
     console.log('[analyzeImage] MIME type:', mimeType);
 
-    const response = await fetch(`${apiUrl}/api/gemini/analyze-image`, {
+    const response = await fetch(`${apiUrl}/api/gemini/analyze-fusion`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -226,6 +245,7 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       body: JSON.stringify({
         imageData,
         mimeType,
+        generateInspiration: true, // 動的インスピレーション文を生成
       }),
     });
 
@@ -237,18 +257,71 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       throw new Error(`画像解析に失敗しました (${response.status})`);
     }
 
-    const result = await response.json();
-    console.log('[analyzeImage] Response data:', result);
+    const spec: FusionSpec = await response.json();
+    console.log('[analyzeImage] FUSION spec:', spec);
 
-    const { tags, description } = result;
+    // FUSIONスペックから従来のタグと説明を生成（後方互換性のため）
+    const tags = [
+      spec.silhouette,
+      ...spec.materials.slice(0, 3),
+      ...spec.palette.slice(0, 2).map(c => c.name),
+      ...spec.details.slice(0, 3)
+    ].filter(Boolean);
 
-    // Convert tags to DNA deltas
-    const dna = tagsToDNA(tags);
+    const description = spec.inspiration ||
+      `${spec.silhouette} design with ${spec.materials.join(', ')}`;
 
-    return { tags, description, dna };
+    // FUSIONスペックからDNAを生成
+    const dna = fusionSpecToDNA(spec);
+
+    return { tags, description, dna, spec };
   };
 
-  // Convert tags to DNA parameters
+  // FUSIONスペックからDNAパラメータを生成
+  const fusionSpecToDNA = (spec: FusionSpec): Partial<DNA> => {
+    const dna: Partial<DNA> = {};
+
+    // Silhouette mapping
+    const silhouette = spec.silhouette?.toLowerCase() || '';
+    if (silhouette.includes('oversized') || silhouette.includes('cocoon')) {
+      dna.oversized_fitted = -0.4;
+      dna.relaxed_tailored = -0.3;
+    } else if (silhouette.includes('fitted') || silhouette.includes('a-line')) {
+      dna.oversized_fitted = 0.4;
+      dna.relaxed_tailored = -0.2;
+    } else if (silhouette.includes('tailored')) {
+      dna.oversized_fitted = 0.1;
+      dna.relaxed_tailored = 0.4;
+    }
+
+    // Material-based vibe & texture
+    const materials = spec.materials.map(m => m.toLowerCase());
+    if (materials.some(m => m.includes('silk') || m.includes('satin') || m.includes('velvet'))) {
+      dna.street_luxury = 0.4;
+      dna.texture = 0.7;
+    } else if (materials.some(m => m.includes('technical') || m.includes('nylon'))) {
+      dna.street_luxury = -0.3;
+      dna.texture = 0.2;
+    } else if (materials.some(m => m.includes('wool'))) {
+      dna.texture = 0.85;
+    } else if (materials.some(m => m.includes('cotton') || m.includes('linen'))) {
+      dna.texture = 0.15;
+    }
+
+    // Motif complexity → minimal_maximal
+    const motifCount = spec.motif_abstractions?.length || 0;
+    if (motifCount === 0) {
+      dna.minimal_maximal = -0.5; // very minimal
+    } else if (motifCount >= 3) {
+      dna.minimal_maximal = 0.3; // more maximal
+    } else {
+      dna.minimal_maximal = -0.2; // slightly minimal
+    }
+
+    return dna;
+  };
+
+  // Convert tags to DNA parameters (legacy function - kept for compatibility)
   const tagsToDNA = (tags: string[]): Partial<DNA> => {
     const dna: Partial<DNA> = {};
 
@@ -365,6 +438,15 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
 
       console.log('[MobileFusionPage] Fusion prompt:', fusionPrompt);
 
+      // FUSION専用のnegativeプロンプト（背景・直喩を抑制）
+      const fusionNegative = [
+        'no city, no buildings, no torii, no streets, no signage, no text, no logos',
+        'no busy environment, no props, no crowds, no landscape',
+        'no literal objects from references, avoid scene illustration',
+        'hands not covering garment, avoid extreme poses, no motion blur',
+        'low quality, blurry, distorted, ugly, bad anatomy'
+      ].join(', ');
+
       // Generate image
       const genRes = await fetch(`${apiUrl}/api/nano-generate`, {
         method: 'POST',
@@ -374,7 +456,7 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
         },
         body: JSON.stringify({
           prompt: fusionPrompt,
-          negative: 'low quality, blurry, distorted, ugly, bad anatomy',
+          negative: fusionNegative,
           aspectRatio: '3:4',
         }),
       });
@@ -410,25 +492,124 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
     }
   };
 
-  // Create fusion-specific prompt
+  // Create fusion-specific prompt (新テンプレート - 服優先設計)
   const createFusionPrompt = (
     desc1: string,
     desc2: string,
     tags: string[],
     userPrompt: string
   ): string => {
-    const tagString = [...new Set(tags)].slice(0, 15).join(', ');
-
-    let prompt = `A high-quality fashion design photograph merging elements from two inspirations: "${desc1}" and "${desc2}". `;
-    prompt += `Style attributes: ${tagString}. `;
-
-    if (userPrompt) {
-      prompt += `Additional direction: ${userPrompt}. `;
+    if (!image1?.analysis?.spec || !image2?.analysis?.spec) {
+      // Fallback to legacy prompt if specs are not available
+      const tagString = [...new Set(tags)].slice(0, 15).join(', ');
+      let prompt = `A high-quality fashion design photograph merging elements from two inspirations: "${desc1}" and "${desc2}". `;
+      prompt += `Style attributes: ${tagString}. `;
+      if (userPrompt) {
+        prompt += `Additional direction: ${userPrompt}. `;
+      }
+      prompt += 'Professional studio lighting, 3:4 aspect ratio, fashion editorial style, clean background.';
+      return prompt;
     }
 
-    prompt += 'Professional studio lighting, 3:4 aspect ratio, fashion editorial style, clean background.';
+    const spec1 = image1.analysis.spec;
+    const spec2 = image2.analysis.spec;
 
-    return prompt;
+    // ブレンドしたスペックを作成
+    const blendedSpec = blendFusionSpecs(spec1, spec2);
+
+    // Positive prompt
+    let positive = 'FASHION EDITORIAL, full-body model centered, 3:4.\n';
+    positive += 'Focus on GARMENT, studio cyclorama background, minimal scene.\n\n';
+
+    // Silhouette
+    positive += `SILHOUETTE: ${blendedSpec.silhouette}\n`;
+
+    // Materials
+    positive += `MATERIALS: ${blendedSpec.materials.join(', ')}\n`;
+
+    // Palette
+    const paletteStr = blendedSpec.palette
+      .map(c => `${c.hex} ${c.name} (${Math.round(c.weight * 100)}%)`)
+      .join(', ');
+    positive += `PALETTE: ${paletteStr}, soft tonality.\n\n`;
+
+    // Abstract motifs
+    if (blendedSpec.motif_abstractions.length > 0) {
+      positive += 'ABSTRACT MOTIFS (no literal objects):\n';
+      blendedSpec.motif_abstractions.forEach(motif => {
+        const placementStr = motif.placement.join(' & ');
+        positive += `- ${motif.operation} on ${placementStr} in ${motif.style}, scale ${motif.scale} — from "${motif.source_cue}" → ${motif.notes}\n`;
+      });
+      positive += '\n';
+    }
+
+    // Detailing
+    if (blendedSpec.details.length > 0) {
+      positive += `DETAILING: ${blendedSpec.details.join(', ')}\n`;
+    }
+
+    // Construction & lighting
+    positive += 'CONSTRUCTION: clean seamlines, couture finishing, refined drape.\n';
+    positive += 'LIGHTING: soft editorial, high CRI, subtle specular to reveal texture.\n';
+    positive += 'CAMERA: 50–85mm look, eye-level, product-forward.\n';
+
+    // Inspiration text (dynamic)
+    if (blendedSpec.inspiration) {
+      positive += `\nINSPIRATION: ${blendedSpec.inspiration}\n`;
+    }
+
+    // User prompt
+    if (userPrompt) {
+      positive += `\nADDITIONAL DIRECTION: ${userPrompt}\n`;
+    }
+
+    console.log('[createFusionPrompt] Generated positive prompt:', positive);
+
+    return positive;
+  };
+
+  // Blend two FUSION specs
+  const blendFusionSpecs = (spec1: FusionSpec, spec2: FusionSpec): FusionSpec => {
+    // Silhouette: pick from spec1 if available, else spec2
+    const silhouette = spec1.silhouette || spec2.silhouette || 'tailored';
+
+    // Materials: merge and deduplicate, limit to 2-3
+    const materials = [...new Set([...spec1.materials, ...spec2.materials])].slice(0, 3);
+
+    // Palette: mix both palettes, normalize weights
+    const combinedPalette = [...spec1.palette, ...spec2.palette];
+    const totalWeight = combinedPalette.reduce((sum, c) => sum + c.weight, 0);
+    const normalizedPalette = combinedPalette.map(c => ({
+      ...c,
+      weight: c.weight / totalWeight
+    }));
+    // Sort by weight and take top 3
+    const palette = normalizedPalette
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 3);
+
+    // Motif abstractions: merge and limit to 3
+    const motif_abstractions = [
+      ...spec1.motif_abstractions,
+      ...spec2.motif_abstractions
+    ].slice(0, 3);
+
+    // Details: merge and limit to 4
+    const details = [...new Set([...spec1.details, ...spec2.details])].slice(0, 4);
+
+    // Inspiration: combine both with "and"
+    const inspiration = [spec1.inspiration, spec2.inspiration]
+      .filter(Boolean)
+      .join(' and ') || undefined;
+
+    return {
+      palette,
+      silhouette,
+      materials,
+      motif_abstractions,
+      details,
+      inspiration
+    };
   };
 
   const handleRevealDone = async () => {
