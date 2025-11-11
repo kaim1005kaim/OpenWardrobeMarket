@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { useAuth } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -34,12 +34,183 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
   const [saleType, setSaleType] = useState<'buyout' | 'subscription'>('buyout');
   const [price, setPrice] = useState(36323);
 
+  // AI auto-generated fields
+  const [aiDescription, setAiDescription] = useState('');
+  const [aiCategory, setAiCategory] = useState('');
+  const [aiCategoryConfidence, setAiCategoryConfidence] = useState(0);
+  const [aiTags, setAiTags] = useState<string[]>([]);
+  const [isLoadingAi, setIsLoadingAi] = useState(false);
+
+  // Variant images (main, side, back)
+  const [variants, setVariants] = useState<Array<{ type: 'main' | 'side' | 'back'; url: string; status: 'completed' | 'loading' | 'failed' }>>([
+    { type: 'main', url: imageUrl, status: 'completed' }
+  ]);
+  const [currentVariantIndex, setCurrentVariantIndex] = useState(0);
+
   const platformFee = Math.floor(price * 0.1);
   const netProfit = price - platformFee;
+
+  // Fetch AI-generated category, tags, and description on mount
+  useEffect(() => {
+    const fetchAiData = async () => {
+      if (!generationData?.session_id && !imageUrl) return;
+
+      setIsLoadingAi(true);
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+
+      try {
+        // Fetch auto-category
+        const catRes = await fetch(`${apiUrl}/api/auto/category`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gen_id: generationData?.session_id })
+        });
+
+        if (catRes.ok) {
+          const { category: autoCat, confidence } = await catRes.json();
+          setAiCategory(autoCat);
+          setAiCategoryConfidence(confidence);
+          setCategory(autoCat); // Set as initial value
+        }
+
+        // Fetch auto-tags
+        const tagsRes = await fetch(`${apiUrl}/api/auto/tags`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gen_id: generationData?.session_id })
+        });
+
+        if (tagsRes.ok) {
+          const { auto_tags } = await tagsRes.json();
+          setAiTags(auto_tags);
+          // Set first 3 tags as initial values
+          if (auto_tags[0]) setTag1(auto_tags[0]);
+          if (auto_tags[1]) setTag2(auto_tags[1]);
+          if (auto_tags[2]) setTag3(auto_tags[2]);
+        }
+
+        // Check if AI description exists from publish API
+        if (generationData?.ai_description) {
+          setAiDescription(generationData.ai_description);
+          setDescription(generationData.ai_description);
+        }
+      } catch (error) {
+        console.warn('[MobilePublishFormPage] Failed to fetch AI data:', error);
+      } finally {
+        setIsLoadingAi(false);
+      }
+    };
+
+    fetchAiData();
+  }, [generationData?.session_id, imageUrl]);
+
+  // Start variant generation and SSE subscription
+  useEffect(() => {
+    if (!generationData?.session_id) return;
+
+    const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+    const genId = generationData.session_id;
+
+    // Add skeleton loaders for side and back
+    setVariants(prev => [
+      ...prev,
+      { type: 'side', url: '', status: 'loading' },
+      { type: 'back', url: '', status: 'loading' }
+    ]);
+
+    // Start SSE connection
+    const eventSource = new EventSource(`${apiUrl}/api/generation-stream/${genId}`);
+
+    eventSource.addEventListener('connected', () => {
+      console.log('[MobilePublishFormPage] SSE connected');
+    });
+
+    eventSource.addEventListener('variant', (e) => {
+      const data = JSON.parse(e.data);
+      console.log('[MobilePublishFormPage] Variant received:', data);
+
+      setVariants(prev =>
+        prev.map(v =>
+          v.type === data.type
+            ? { type: v.type, url: data.r2_url, status: 'completed' }
+            : v
+        )
+      );
+    });
+
+    eventSource.addEventListener('error', (e: any) => {
+      const data = e.data ? JSON.parse(e.data) : {};
+      console.error('[MobilePublishFormPage] Variant error:', data);
+
+      if (data.type) {
+        setVariants(prev =>
+          prev.map(v =>
+            v.type === data.type
+              ? { ...v, status: 'failed' }
+              : v
+          )
+        );
+      }
+    });
+
+    eventSource.onerror = () => {
+      console.warn('[MobilePublishFormPage] SSE connection error');
+      eventSource.close();
+    };
+
+    // Trigger variant generation in background
+    (async () => {
+      try {
+        // Generate side view
+        fetch(`${apiUrl}/api/generate/variant`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gen_id: genId, view: 'side' })
+        }).catch(err => console.warn('[MobilePublishFormPage] Side generation failed:', err));
+
+        // Generate back view
+        fetch(`${apiUrl}/api/generate/variant`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gen_id: genId, view: 'back' })
+        }).catch(err => console.warn('[MobilePublishFormPage] Back generation failed:', err));
+      } catch (error) {
+        console.error('[MobilePublishFormPage] Failed to trigger variant generation:', error);
+      }
+    })();
+
+    return () => {
+      eventSource.close();
+    };
+  }, [generationData?.session_id]);
 
   const handleMenuNavigate = (page: string) => {
     if (onNavigate) {
       onNavigate(page);
+    }
+  };
+
+  const handleRetryVariant = async (type: 'side' | 'back') => {
+    if (!generationData?.session_id) return;
+
+    const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+
+    // Set to loading
+    setVariants(prev =>
+      prev.map(v => (v.type === type ? { ...v, status: 'loading' } : v))
+    );
+
+    try {
+      await fetch(`${apiUrl}/api/generate/variant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gen_id: generationData.session_id, view: type })
+      });
+    } catch (error) {
+      console.error(`[MobilePublishFormPage] Retry ${type} failed:`, error);
+      setVariants(prev =>
+        prev.map(v => (v.type === type ? { ...v, status: 'failed' } : v))
+      );
     }
   };
 
@@ -266,9 +437,50 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       <div className="publish-form-content">
         <h1 className="publish-form-title">デザインを公開する</h1>
 
-        {/* プレビュー画像 */}
-        <div className="preview-container">
-          <img src={imageUrl} alt="生成画像" />
+        {/* プレビュー画像カルーセル */}
+        <div className="preview-carousel">
+          <div className="carousel-container">
+            {variants.map((variant, index) => (
+              <div
+                key={variant.type}
+                className={`carousel-slide ${index === currentVariantIndex ? 'active' : ''}`}
+                style={{ transform: `translateX(${(index - currentVariantIndex) * 100}%)` }}
+              >
+                {variant.status === 'loading' ? (
+                  <div className="variant-skeleton">
+                    <div className="skeleton-loader" />
+                    <p>Generating {variant.type} view...</p>
+                  </div>
+                ) : variant.status === 'failed' ? (
+                  <div className="variant-failed">
+                    <p>Generation failed</p>
+                    <button onClick={() => handleRetryVariant(variant.type as 'side' | 'back')}>
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  <img src={variant.url} alt={`${variant.type} view`} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Carousel navigation dots */}
+          <div className="carousel-dots">
+            {variants.map((variant, index) => (
+              <button
+                key={variant.type}
+                className={`dot ${index === currentVariantIndex ? 'active' : ''}`}
+                onClick={() => setCurrentVariantIndex(index)}
+                aria-label={`View ${variant.type}`}
+              />
+            ))}
+          </div>
+
+          {/* Swipe instructions */}
+          {variants.length > 1 && (
+            <div className="carousel-hint">Swipe to see other views</div>
+          )}
         </div>
 
         {/* 評価価格 */}
@@ -303,10 +515,18 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
 
         {/* カテゴリー */}
         <div className="form-group">
-          <label>カテゴリー</label>
+          <label>
+            カテゴリー
+            {aiCategory && (
+              <span className="ai-badge" title={`AI推奨 (信頼度: ${Math.round(aiCategoryConfidence * 100)}%)`}>
+                AI
+              </span>
+            )}
+          </label>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
+            disabled={isLoadingAi}
           >
             <option value="">カテゴリーを選択してください</option>
             <option value="minimal">Minimal</option>
@@ -314,42 +534,61 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
             <option value="luxury">Luxury</option>
             <option value="outdoor">Outdoor</option>
             <option value="workwear">Workwear</option>
-            <option value="athleisure">Athleisure</option>
+            <option value="y2k">Y2K</option>
+            <option value="tailored">Tailored</option>
           </select>
         </div>
 
         {/* 説明文 */}
         <div className="form-group">
-          <label>説明文</label>
+          <label>
+            説明文
+            {aiDescription && (
+              <span className="ai-badge" title="AI生成">
+                AI
+              </span>
+            )}
+          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder=""
+            placeholder={isLoadingAi ? 'AI分析中...' : ''}
             maxLength={150}
+            disabled={isLoadingAi}
           />
           <div className="char-count">{description.length}/150</div>
         </div>
 
         {/* タグ設定 */}
         <div className="form-group">
-          <label>タグ設定</label>
+          <label>
+            タグ設定
+            {aiTags.length > 0 && (
+              <span className="ai-badge" title="AI推奨タグ">
+                AI
+              </span>
+            )}
+          </label>
           <input
             type="text"
             value={tag1}
             onChange={(e) => setTag1(e.target.value)}
             placeholder="#"
+            disabled={isLoadingAi}
           />
           <input
             type="text"
             value={tag2}
             onChange={(e) => setTag2(e.target.value)}
             placeholder="#"
+            disabled={isLoadingAi}
           />
           <input
             type="text"
             value={tag3}
             onChange={(e) => setTag3(e.target.value)}
             placeholder="#"
+            disabled={isLoadingAi}
           />
           <button className="tag-add-btn">タグを追加する</button>
         </div>
