@@ -600,25 +600,16 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       {/* Header */}
       <header className="fusion-header">
         <button
-          className="back-btn"
-          onClick={() => onNavigate?.('create-home')}
-          aria-label="Back"
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-        <button className="fusion-logo-btn" onClick={() => onNavigate?.('studio')}>
-          OWM
-        </button>
-        <button
-          className="menu-btn"
+          className="hamburger-btn"
           onClick={() => setIsMenuOpen(true)}
           aria-label="Menu"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
+        </button>
+        <button className="fusion-logo-btn" onClick={() => onNavigate?.('studio')}>
+          OWM
         </button>
       </header>
 
@@ -725,6 +716,14 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
             >
               ANALYZE & BLEND
             </button>
+
+            {/* Back Link */}
+            <button
+              className="back-link"
+              onClick={() => onNavigate?.('create-home')}
+            >
+              BACK
+            </button>
           </div>
         )}
 
@@ -776,11 +775,12 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
               GENERATE DESIGN
             </button>
 
+            {/* Back Link */}
             <button
               className="back-link"
               onClick={() => setStage('upload')}
             >
-              ← BACK TO UPLOAD
+              BACK
             </button>
           </div>
         )}
