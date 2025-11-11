@@ -88,7 +88,7 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
   const fileInput2Ref = useRef<HTMLInputElement>(null);
 
   // DNA management
-  const sessionKey = useRef(`fusion-${Date.now()}`).current;
+  const sessionKey = useRef(crypto.randomUUID()).current;
   const initialDNA = useRef(createRandomDNA()).current;
   const { dna, updateDNA, syncNow } = useDNA(sessionKey, initialDNA);
 
