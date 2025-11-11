@@ -325,6 +325,8 @@
 .mobile-fusion-page .preview-container {
   width: 100%;
   max-width: 480px;
+  height: auto;
+  min-height: unset;
   display: flex;
   flex-direction: column;
   align-items: center;
