@@ -10,7 +10,7 @@ if (!GOOGLE_API_KEY) {
   console.error('[analyze-image] Missing GOOGLE_API_KEY');
 }
 
-const FASHION_TAG_PROMPT = `Analyze this fashion design image and generate 5-10 descriptive tags in English.
+const FASHION_TAG_PROMPT = `Analyze this fashion design image and generate 5-10 descriptive tags in English, and a brief description in Japanese.
 
 Focus on:
 - **Silhouette**: oversized, fitted, relaxed, tailored, structured, loose, etc.
@@ -21,6 +21,7 @@ Focus on:
 
 IMPORTANT RULES:
 - Tags must be lowercase English words or hyphenated phrases
+- Description MUST be in Japanese (日本語)
 - NO brand names, logos, celebrities, or watermarks
 - NO generic words like "clothing" or "fashion"
 - Focus on visual attributes that help find similar designs
@@ -30,7 +31,7 @@ IMPORTANT RULES:
 Respond with ONLY this JSON format (no extra text or formatting):
 {
   "tags": ["tag1", "tag2", "tag3"],
-  "description": "Brief 1-sentence description of the design"
+  "description": "デザインの簡潔な1文の説明（日本語で）"
 }`;
 
 export async function POST(req: NextRequest) {
