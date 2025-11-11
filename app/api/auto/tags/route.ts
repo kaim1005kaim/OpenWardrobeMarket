@@ -111,14 +111,20 @@ function processTags(tags: string[]): string[] {
 
 export async function POST(req: NextRequest) {
   try {
-    const { gen_id, image_id } = await req.json();
+    console.log('[auto-tags] POST request received');
+    const body = await req.json();
+    console.log('[auto-tags] Request body:', body);
+    const { gen_id, image_id } = body;
 
     if (!gen_id && !image_id) {
+      console.error('[auto-tags] Missing gen_id and image_id in request');
       return NextResponse.json(
         { error: 'Either gen_id or image_id is required' },
         { status: 400 }
       );
     }
+
+    console.log('[auto-tags] Processing gen_id:', gen_id, 'image_id:', image_id);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -126,14 +132,18 @@ export async function POST(req: NextRequest) {
 
     // Try to get tags from generation_history first
     if (gen_id) {
-      const { data: genData } = await supabase
+      console.log('[auto-tags] Fetching tags from generation_history for gen_id:', gen_id);
+      const { data: genData, error: genError } = await supabase
         .from('generation_history')
         .select('tags')
         .eq('id', gen_id)
         .single();
 
+      console.log('[auto-tags] generation_history result:', { genData, genError });
+
       if (genData) {
         rawTags = genData.tags || [];
+        console.log('[auto-tags] Found rawTags from generation_history:', rawTags);
       }
     }
 

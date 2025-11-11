@@ -52,14 +52,22 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
 
   // Fetch AI-generated category, tags, and description on mount
   useEffect(() => {
+    console.log('[PublishFormPage] useEffect triggered. generationData:', generationData);
+    console.log('[PublishFormPage] session_id:', generationData?.session_id);
+    console.log('[PublishFormPage] imageUrl:', imageUrl);
+
     const fetchAiData = async () => {
-      if (!generationData?.session_id && !imageUrl) return;
+      if (!generationData?.session_id && !imageUrl) {
+        console.warn('[PublishFormPage] No session_id or imageUrl, skipping AI data fetch');
+        return;
+      }
 
       setIsLoadingAi(true);
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
 
       try {
         // Fetch auto-category
+        console.log('[PublishFormPage] Fetching auto-category for gen_id:', generationData?.session_id);
         const catRes = await fetch(`${apiUrl}/api/auto/category`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -68,25 +76,33 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
 
         if (catRes.ok) {
           const { category: autoCat, confidence } = await catRes.json();
+          console.log('[PublishFormPage] Auto-category received:', autoCat, 'confidence:', confidence);
           setAiCategory(autoCat);
           setAiCategoryConfidence(confidence);
           setCategory(autoCat); // Set as initial value
+        } else {
+          console.warn('[PublishFormPage] Auto-category fetch failed:', catRes.status, await catRes.text());
         }
 
         // Fetch auto-tags
+        console.log('[PublishFormPage] Fetching auto-tags for gen_id:', generationData?.session_id);
         const tagsRes = await fetch(`${apiUrl}/api/auto/tags`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ gen_id: generationData?.session_id })
         });
 
+        console.log('[PublishFormPage] Auto-tags response status:', tagsRes.status);
         if (tagsRes.ok) {
           const { auto_tags } = await tagsRes.json();
+          console.log('[PublishFormPage] Auto-tags received:', auto_tags);
           setAiTags(auto_tags);
           // Set first 3 tags as initial values
           if (auto_tags[0]) setTag1(auto_tags[0]);
           if (auto_tags[1]) setTag2(auto_tags[1]);
           if (auto_tags[2]) setTag3(auto_tags[2]);
+        } else {
+          console.warn('[PublishFormPage] Auto-tags fetch failed:', tagsRes.status, await tagsRes.text());
         }
 
         // Check if AI description exists from publish API

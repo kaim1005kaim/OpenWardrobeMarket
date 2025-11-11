@@ -771,6 +771,7 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       }
 
       // Pass to publish flow
+      console.log('[handlePublish] Preparing generationData with session_id:', sessionKey);
       const generationData = {
         session_id: sessionKey,
         prompt: asset.prompt,
@@ -786,6 +787,7 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
         r2_key: asset.key,
       };
 
+      console.log('[handlePublish] Calling onStartPublish with generationData:', JSON.stringify(generationData, null, 2));
       onStartPublish(finalUrl, generationData);
     } catch (error) {
       console.error('[handlePublish] Error:', error);
