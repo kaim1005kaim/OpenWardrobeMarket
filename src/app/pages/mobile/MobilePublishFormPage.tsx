@@ -174,10 +174,77 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
     }, 2000);
   };
 
-  const handleSaveDraft = () => {
-    // ドラフト保存処理
-    console.log('[MobilePublishFormPage] Save draft');
-    onNavigate?.('archive');
+  const handleSaveDraft = async () => {
+    if (!user?.id) {
+      alert('ログインが必要です');
+      onNavigate?.('login');
+      return;
+    }
+
+    try {
+      // 楽観的UI更新: 即座に成功メッセージを表示してアーカイブに遷移
+      showToast('✓ ドラフトに保存しました');
+      onNavigate?.('mypage');
+
+      // バックグラウンドでAPI呼び出しを実行
+      (async () => {
+        try {
+          console.log('[MobilePublishFormPage] Saving draft in background...');
+
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (!sessionData.session) {
+            console.error('[MobilePublishFormPage] No session found');
+            return;
+          }
+
+          const token = sessionData.session.access_token;
+          const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+
+          // Extract r2_key from imageUrl or generationData
+          const r2Key = generationData?.r2_key || imageUrl.split('/').pop() || `draft-${Date.now()}.png`;
+
+          const response = await fetch(`${apiUrl}/api/upload-generated`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              user_id: user.id,
+              images: [{
+                url: imageUrl,
+                r2_key: r2Key,
+              }],
+              generation_data: {
+                session_id: generationData?.session_id || `draft-${Date.now()}`,
+                prompt: title || 'Untitled Draft',
+                parameters: {
+                  title,
+                  category,
+                  description,
+                  tags: [tag1, tag2, tag3].filter(t => t.trim() !== ''),
+                  saleType,
+                  price,
+                },
+              },
+              is_public: false, // ドラフトとして保存
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Draft save failed: ${response.status}`);
+          }
+
+          const result = await response.json();
+          console.log('[MobilePublishFormPage] Draft saved successfully:', result);
+        } catch (error) {
+          console.error('[MobilePublishFormPage] Background draft save error:', error);
+        }
+      })();
+    } catch (error) {
+      console.error('[MobilePublishFormPage] Error:', error);
+      showToast('ドラフト保存に失敗しました', true);
+    }
   };
 
   return (
