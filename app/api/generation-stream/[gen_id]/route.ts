@@ -14,9 +14,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { gen_id: string } }
+  { params }: { params: Promise<{ gen_id: string }> }
 ) {
-  const genId = params.gen_id;
+  const { gen_id: genId } = await params;
 
   if (!genId) {
     return new Response('Missing gen_id', { status: 400 });
