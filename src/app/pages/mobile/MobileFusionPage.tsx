@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { MenuOverlay } from '../../components/mobile/MenuOverlay';
 import { MetaballsBreathing } from '../../../components/Urula/MetaballsBreathing';
 import GlassRevealCanvas from '../../../components/GlassRevealCanvas';
@@ -70,6 +70,20 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
 
   // Urula profile management
   const { evolve } = useUrula();
+
+  // Debug: Log preview stage state
+  useEffect(() => {
+    if (stage === 'preview') {
+      console.log('[Preview Stage] Rendering with:', {
+        hasImage1: !!image1,
+        hasImage2: !!image2,
+        hasImage1Analysis: !!image1?.analysis,
+        hasImage2Analysis: !!image2?.analysis,
+        image1Analysis: image1?.analysis,
+        image2Analysis: image2?.analysis,
+      });
+    }
+  }, [stage, image1, image2]);
 
   // Generation state
   const [generatedAsset, setGeneratedAsset] = useState<{
@@ -747,26 +761,15 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
         )}
 
         {/* Preview Stage */}
-        {stage === 'preview' && (() => {
-          // Debug: Log state when preview renders
-          console.log('[Preview Stage] Rendering with:', {
-            hasImage1: !!image1,
-            hasImage2: !!image2,
-            hasImage1Analysis: !!image1?.analysis,
-            hasImage2Analysis: !!image2?.analysis,
-            image1Analysis: image1?.analysis,
-            image2Analysis: image2?.analysis,
-          });
+        {stage === 'preview' && (
+          <div className="preview-container">
+            <h2 className="preview-title">DNA BLENDED</h2>
+            <p className="preview-description">
+              Two visual worlds merged into one design DNA.
+            </p>
 
-          return (
-            <div className="preview-container">
-              <h2 className="preview-title">DNA BLENDED</h2>
-              <p className="preview-description">
-                Two visual worlds merged into one design DNA.
-              </p>
-
-              {/* Analysis Results */}
-              <div className="analysis-results">
+            {/* Analysis Results */}
+            <div className="analysis-results">
               {image1?.analysis && (
                 <div className="analysis-card">
                   <img src={image1.preview} alt="Image 1" className="analysis-thumb" />
@@ -803,8 +806,7 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
               ← BACK TO UPLOAD
             </button>
           </div>
-          );
-        })()}
+        )}
 
         {/* Generating Stage */}
         {stage === 'generating' && (
