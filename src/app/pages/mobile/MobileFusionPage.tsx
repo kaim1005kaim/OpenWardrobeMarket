@@ -728,8 +728,15 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
 
       // Save to generation_history for auto-category and auto-tags
       try {
-        const { data: user } = await supabase.auth.getUser();
-        if (user?.user) {
+        const { data: user, error: userError } = await supabase.auth.getUser();
+        console.log('[handlePublish] Auth user check:', { hasUser: !!user?.user, userError });
+
+        if (!user?.user) {
+          console.error('[handlePublish] No authenticated user, skipping generation_history save');
+        } else {
+          console.log('[handlePublish] Attempting to save generation_history with session_id:', sessionKey);
+          console.log('[handlePublish] Tags to save:', autoTags);
+
           const { data: savedGen, error: saveError } = await supabase
             .from('generation_history')
             .upsert({
@@ -761,9 +768,11 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
             });
 
           if (saveError) {
-            console.error('[handlePublish] Failed to save generation_history:', saveError.message, saveError.details);
+            console.error('[handlePublish] Failed to save generation_history:', saveError.message, saveError.details, saveError);
           } else {
-            console.log('[handlePublish] Saved to generation_history with tags:', autoTags);
+            console.log('[handlePublish] ✅ Successfully saved to generation_history!');
+            console.log('[handlePublish] Saved tags:', autoTags);
+            console.log('[handlePublish] Saved record:', savedGen);
           }
         }
       } catch (saveError) {
