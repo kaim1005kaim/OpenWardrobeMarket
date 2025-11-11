@@ -950,7 +950,6 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
                   ref={fileInput1Ref}
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
-                  capture="environment"
                   onChange={handleFileInput(1)}
                   style={{ display: 'none' }}
                 />
@@ -981,7 +980,6 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
                   ref={fileInput2Ref}
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
-                  capture="environment"
                   onChange={handleFileInput(2)}
                   style={{ display: 'none' }}
                 />
