@@ -100,7 +100,8 @@ export function MobileDetailModal({
           console.log('[MobileDetailModal] Sample items:', items.slice(0, 3).map((i: any) => ({ id: i.id, title: i.title, image_id: i.image_id })));
 
           // Map API response to Asset format
-          const publicBaseUrl = import.meta.env.VITE_R2_PUBLIC_BASE_URL || 'https://pub-4215f2149d4e4f369c2bde9f2769dfd4.r2.dev';
+          // Use custom domain for public access (pub-*.r2.dev returns 401)
+          const publicBaseUrl = import.meta.env.VITE_R2_PUBLIC_BASE_URL || 'https://assets.open-wardrobe-market.com';
           const mappedAssets: Asset[] = items.map((item: any) => {
             // Resolve image URL from image_id
             let imageUrl = '';
@@ -108,12 +109,12 @@ export function MobileDetailModal({
               if (item.image_id.startsWith('http')) {
                 // Already a full URL
                 imageUrl = item.image_id;
-              } else if (item.image_id.startsWith('catalog/') || item.image_id.startsWith('usergen/')) {
+              } else if (item.image_id.startsWith('catalog/') || item.image_id.startsWith('usergen/') || item.image_id.startsWith('posters/')) {
                 // Construct URL from R2 base
                 imageUrl = `${publicBaseUrl}/${item.image_id}`;
               } else {
-                // Fallback for unknown format
-                imageUrl = item.image_id;
+                // Fallback: assume it's a relative R2 key
+                imageUrl = `${publicBaseUrl}/${item.image_id}`;
               }
             }
 
