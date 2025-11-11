@@ -730,35 +730,44 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       try {
         const { data: user } = await supabase.auth.getUser();
         if (user?.user) {
-          await supabase.from('generation_history').insert({
-            id: sessionKey,
-            user_id: user.user.id,
-            prompt: asset.prompt,
-            negative_prompt: '',
-            seed: Math.floor(Math.random() * 1000000),
-            r2_key: asset.key,
-            r2_url: finalUrl,
-            tags: autoTags, // Save tags for auto-tags API
-            metadata: {
-              mode: 'fusion',
-              image1_tags: image1?.analysis?.tags || [],
-              image2_tags: image2?.analysis?.tags || [],
-              dna: asset.dna,
-              vibe_vector: {
-                luxury: asset.dna.street_luxury > 0 ? Math.abs(asset.dna.street_luxury) : 0,
-                street: asset.dna.street_luxury < 0 ? Math.abs(asset.dna.street_luxury) : 0,
-                minimal: asset.dna.minimal_maximal < 0 ? Math.abs(asset.dna.minimal_maximal) : 0,
-                maximal: asset.dna.minimal_maximal > 0 ? Math.abs(asset.dna.minimal_maximal) : 0,
+          const { data: savedGen, error: saveError } = await supabase
+            .from('generation_history')
+            .upsert({
+              id: sessionKey,
+              user_id: user.user.id,
+              prompt: asset.prompt,
+              negative_prompt: '',
+              seed: Math.floor(Math.random() * 1000000),
+              r2_key: asset.key,
+              r2_url: finalUrl,
+              tags: autoTags, // Save tags for auto-tags API
+              metadata: {
+                mode: 'fusion',
+                image1_tags: image1?.analysis?.tags || [],
+                image2_tags: image2?.analysis?.tags || [],
+                dna: asset.dna,
+                vibe_vector: {
+                  luxury: asset.dna.street_luxury > 0 ? Math.abs(asset.dna.street_luxury) : 0,
+                  street: asset.dna.street_luxury < 0 ? Math.abs(asset.dna.street_luxury) : 0,
+                  minimal: asset.dna.minimal_maximal < 0 ? Math.abs(asset.dna.minimal_maximal) : 0,
+                  maximal: asset.dna.minimal_maximal > 0 ? Math.abs(asset.dna.minimal_maximal) : 0,
+                },
+                ai_description: imageDescription,
+                embedding: embedding
               },
-              ai_description: imageDescription,
-              embedding: embedding
-            },
-            status: 'completed'
-          });
-          console.log('[handlePublish] Saved to generation_history with tags:', autoTags);
+              status: 'completed'
+            }, {
+              onConflict: 'id'
+            });
+
+          if (saveError) {
+            console.error('[handlePublish] Failed to save generation_history:', saveError.message, saveError.details);
+          } else {
+            console.log('[handlePublish] Saved to generation_history with tags:', autoTags);
+          }
         }
       } catch (saveError) {
-        console.warn('[handlePublish] Failed to save generation_history (non-fatal):', saveError);
+        console.error('[handlePublish] Exception saving generation_history:', saveError);
       }
 
       // Pass to publish flow
