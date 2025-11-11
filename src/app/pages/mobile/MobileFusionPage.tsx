@@ -54,6 +54,11 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
 
 export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPageProps) {
   const [stage, setStage] = useState<Stage>('upload');
+
+  // Debug: log stage changes
+  useEffect(() => {
+    console.log('[MobileFusionPage] Stage changed to:', stage);
+  }, [stage]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [image1, setImage1] = useState<UploadedImage | null>(null);
   const [image2, setImage2] = useState<UploadedImage | null>(null);
