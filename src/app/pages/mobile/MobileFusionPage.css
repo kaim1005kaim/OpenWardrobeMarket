@@ -358,9 +358,6 @@
   align-items: center;
   gap: 16px;
   margin: 16px 0;
-  min-height: 120px;
-  background: rgba(255, 0, 0, 0.1); /* DEBUG: temporary red background */
-  border: 2px solid red; /* DEBUG: temporary red border */
 }
 
 .analysis-card {

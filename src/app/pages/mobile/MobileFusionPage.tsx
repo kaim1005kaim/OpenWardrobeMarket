@@ -71,19 +71,6 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
   // Urula profile management
   const { evolve } = useUrula();
 
-  // Debug: Log preview stage state
-  useEffect(() => {
-    if (stage === 'preview') {
-      console.log('[Preview Stage] Rendering with:', {
-        hasImage1: !!image1,
-        hasImage2: !!image2,
-        hasImage1Analysis: !!image1?.analysis,
-        hasImage2Analysis: !!image2?.analysis,
-        image1Analysis: image1?.analysis,
-        image2Analysis: image2?.analysis,
-      });
-    }
-  }, [stage, image1, image2]);
 
   // Generation state
   const [generatedAsset, setGeneratedAsset] = useState<{
@@ -605,21 +592,6 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
 
   return (
     <div className="mobile-fusion-page">
-      {/* Debug: Display current stage */}
-      <div style={{
-        position: 'fixed',
-        top: '60px',
-        left: '10px',
-        background: 'rgba(255,0,0,0.8)',
-        color: 'white',
-        padding: '5px 10px',
-        fontSize: '12px',
-        zIndex: 9999,
-        borderRadius: '4px',
-      }}>
-        Stage: {stage} | Img1: {image1?.analysis ? '✓' : '✗'} | Img2: {image2?.analysis ? '✓' : '✗'}
-      </div>
-
       {/* Header */}
       <header className="fusion-header">
         <button
