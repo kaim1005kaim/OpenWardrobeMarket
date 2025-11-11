@@ -207,14 +207,34 @@ export async function POST(req: NextRequest) {
     try {
       console.log('[publish] Starting AI analysis for:', image_url);
 
+      // Validate image_url is a valid HTTP(S) URL
+      if (!image_url || (!image_url.startsWith('http://') && !image_url.startsWith('https://'))) {
+        console.warn('[publish] Invalid image_url, skipping AI analysis:', image_url);
+        throw new Error('Invalid image URL');
+      }
+
       // 1. Fetch image as base64 for Gemini Vision and AI pricing
       let autoTags: string[] = [];
       let aiDescription = '';
       let base64Image = '';
 
       try {
+        console.log('[publish] Fetching image from URL:', image_url);
         const imageResponse = await fetch(image_url);
+        console.log('[publish] Image fetch response:', imageResponse.status, imageResponse.headers.get('content-type'));
+
+        if (!imageResponse.ok) {
+          throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+        }
+
+        const contentType = imageResponse.headers.get('content-type');
+        if (contentType && !contentType.startsWith('image/')) {
+          console.error('[publish] Response is not an image:', contentType);
+          throw new Error(`Invalid content type: ${contentType}`);
+        }
+
         const imageBuffer = await imageResponse.arrayBuffer();
+        console.log('[publish] Image buffer size:', imageBuffer.byteLength);
         base64Image = Buffer.from(imageBuffer).toString('base64');
 
         // 2. Gemini Vision analysis
