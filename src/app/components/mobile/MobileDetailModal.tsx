@@ -64,16 +64,26 @@ export function MobileDetailModal({
       { type: 'main', url: asset.src }
     ];
 
+    console.log('[MobileDetailModal] Asset metadata:', asset.metadata);
+    console.log('[MobileDetailModal] Asset full object:', asset);
+
     if (asset.metadata?.variants) {
       const variants = asset.metadata.variants;
+      console.log('[MobileDetailModal] Found variants:', variants);
+
       if (variants.side?.status === 'completed' && variants.side?.r2_url) {
+        console.log('[MobileDetailModal] Adding side image:', variants.side.r2_url);
         images.push({ type: 'side', url: variants.side.r2_url });
       }
       if (variants.back?.status === 'completed' && variants.back?.r2_url) {
+        console.log('[MobileDetailModal] Adding back image:', variants.back.r2_url);
         images.push({ type: 'back', url: variants.back.r2_url });
       }
+    } else {
+      console.log('[MobileDetailModal] No variants found in metadata');
     }
 
+    console.log('[MobileDetailModal] Final variant images:', images);
     setVariantImages(images);
     setCurrentImageIndex(0);
   }, [asset]);
