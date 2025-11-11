@@ -581,10 +581,77 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
         return;
       }
 
-      alert(COPY.drafts.saved);
-      onNavigate?.('archive');
+      const token = sessionData.session.access_token;
+      const userId = sessionData.session.user.id;
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+      const asset = generatedAsset;
 
-      // Background save...
+      // 楽観的UI更新: 即座に成功メッセージを表示してアーカイブに遷移
+      alert(COPY.drafts.saved);
+      onNavigate?.('mypage');
+
+      // バックグラウンドでAPI呼び出しを実行
+      (async () => {
+        try {
+          console.log('[handleSaveDraft] Uploading to R2 in background...');
+
+          const uploadRes = await fetch(`${apiUrl}/api/upload-to-r2`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              imageData: asset.imageData,
+              mimeType: asset.mimeType,
+              key: asset.key,
+            }),
+          });
+
+          if (!uploadRes.ok) {
+            throw new Error('Upload failed');
+          }
+
+          const { url: finalUrl } = await uploadRes.json();
+          console.log('[handleSaveDraft] Upload successful:', finalUrl);
+
+          // Save to generation_history as draft
+          const response = await fetch(`${apiUrl}/api/upload-generated`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              images: [{
+                url: finalUrl,
+                r2_key: asset.key,
+              }],
+              generation_data: {
+                session_id: sessionKey,
+                prompt: asset.prompt,
+                parameters: {
+                  mode: 'fusion',
+                  image1_tags: image1?.analysis?.tags || [],
+                  image2_tags: image2?.analysis?.tags || [],
+                  dna: asset.dna,
+                },
+              },
+              is_public: false,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Save draft failed');
+          }
+
+          console.log('[handleSaveDraft] Draft saved successfully:', asset.key);
+        } catch (error) {
+          console.error('[handleSaveDraft] Background error:', error);
+          // エラーは静かに記録（ユーザーは既に次のページに進んでいる）
+        }
+      })();
     } catch (error) {
       console.error('[handleSaveDraft] Error:', error);
       alert(error instanceof Error ? error.message : COPY.drafts.failed);
