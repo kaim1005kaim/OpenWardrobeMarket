@@ -2,7 +2,13 @@ export const runtime = 'nodejs';
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
-import { callVertexAIGemini } from '../../../../lib/vertex-ai-auth';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+
+if (!GOOGLE_API_KEY) {
+  console.error('[analyze-fusion] Missing GOOGLE_API_KEY');
+}
 
 // FUSION専用：画像を服のパラメータに変換する分析プロンプト
 const FUSION_ANALYSIS_PROMPT = `You are a fashion design translator.
@@ -82,6 +88,14 @@ export async function POST(req: NextRequest) {
   try {
     console.log('[analyze-fusion] Request received');
 
+    if (!GOOGLE_API_KEY) {
+      console.error('[analyze-fusion] GOOGLE_API_KEY is not configured');
+      return NextResponse.json(
+        { error: 'GOOGLE_API_KEY not configured' },
+        { status: 500 }
+      );
+    }
+
     const body = await req.json();
     const { imageData, mimeType, generateInspiration = true } = body;
 
@@ -90,7 +104,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing imageData' }, { status: 400 });
     }
 
-    console.log('[analyze-fusion] Analyzing with Vertex AI Gemini 2.5 FUSION prompt...');
+    console.log('[analyze-fusion] Analyzing with FUSION prompt...');
 
     // Remove data URL prefix if present
     const base64Data = imageData.includes(',')
@@ -102,30 +116,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid image data' }, { status: 400 });
     }
 
-    // Step 1: Analyze image with FUSION prompt using Vertex AI
-    const analysisResult = await callVertexAIGemini(
-      'gemini-2.5-flash',
-      [
+    const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash-image',
+    });
+
+    // Step 1: Analyze image with FUSION prompt
+    const analysisResult = await model.generateContent({
+      contents: [
         {
           role: 'user',
           parts: [
             { text: FUSION_ANALYSIS_PROMPT },
             {
-              inline_data: {
-                mime_type: mimeType || 'image/png',
+              inlineData: {
+                mimeType: mimeType || 'image/png',
                 data: base64Data,
               },
             },
           ],
         },
       ],
-      {
+      generationConfig: {
         temperature: 0.4,
         maxOutputTokens: 1024,
-      }
-    );
+      },
+    });
 
-    const analysisText = analysisResult.candidates[0].content.parts[0].text;
+    const analysisText = analysisResult.response.text();
     console.log('[analyze-fusion] Analysis raw response:', analysisText);
 
     // Parse analysis JSON
@@ -177,21 +195,20 @@ export async function POST(req: NextRequest) {
         JSON.stringify(spec, null, 2)
       );
 
-      const inspirationResult = await callVertexAIGemini(
-        'gemini-2.5-flash',
-        [
+      const inspirationResult = await model.generateContent({
+        contents: [
           {
             role: 'user',
             parts: [{ text: inspirationPrompt }],
           },
         ],
-        {
+        generationConfig: {
           temperature: 0.8,
           maxOutputTokens: 256,
-        }
-      );
+        },
+      });
 
-      const inspirationText = inspirationResult.candidates[0].content.parts[0].text.trim();
+      const inspirationText = inspirationResult.response.text().trim();
       console.log('[analyze-fusion] Generated inspiration:', inspirationText);
 
       spec.inspiration = inspirationText;

@@ -2,7 +2,13 @@ export const runtime = 'nodejs';
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
-import { callVertexAIGemini } from '../../../../lib/vertex-ai-auth';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+
+if (!GOOGLE_API_KEY) {
+  console.error('[analyze-image] Missing GOOGLE_API_KEY');
+}
 
 const FASHION_TAG_PROMPT = `Analyze this fashion design image and generate 5-10 descriptive tags in English, and a brief description in Japanese.
 
@@ -32,6 +38,16 @@ export async function POST(req: NextRequest) {
   try {
     console.log('[analyze-image] Request received');
 
+    if (!GOOGLE_API_KEY) {
+      console.error('[analyze-image] GOOGLE_API_KEY is not configured in environment');
+      return NextResponse.json(
+        { error: 'GOOGLE_API_KEY not configured in environment' },
+        { status: 500 }
+      );
+    }
+
+    console.log('[analyze-image] API key found, length:', GOOGLE_API_KEY.length);
+
     const body = await req.json();
     const { imageData, mimeType } = body;
 
@@ -43,7 +59,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('[analyze-image] Analyzing image with Vertex AI Gemini 2.5...', { mimeType });
+    console.log('[analyze-image] Analyzing image with Gemini Vision...', { mimeType });
 
     // Remove data URL prefix if present (e.g., "data:image/png;base64,")
     const base64Data = imageData.includes(',')
@@ -63,49 +79,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Call Vertex AI Gemini
-    const result = await callVertexAIGemini(
-      'gemini-2.5-flash',
-      [
+    const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash-image',
+    });
+
+    const result = await model.generateContent({
+      contents: [
         {
           role: 'user',
           parts: [
             { text: FASHION_TAG_PROMPT },
             {
-              inline_data: {
-                mime_type: mimeType || 'image/png',
+              inlineData: {
+                mimeType: mimeType || 'image/png',
                 data: base64Data,
               },
             },
           ],
         },
       ],
-      {
+      generationConfig: {
         temperature: 0.3,
         maxOutputTokens: 512,
-      }
-    );
+      },
+    });
 
-    console.log('[analyze-image] Vertex AI Gemini called, waiting for response...');
+    console.log('[analyze-image] Gemini API called, waiting for response...');
 
-    const candidates = result.candidates;
-    if (!candidates || candidates.length === 0) {
-      console.error('[analyze-image] No candidates in response');
-      return NextResponse.json(
-        { error: 'No response from Vertex AI Gemini' },
-        { status: 500 }
-      );
-    }
-
-    const text = candidates[0].content.parts[0].text;
+    const response = result.response;
+    const text = response.text();
 
     console.log('[analyze-image] Raw response:', text);
     console.log('[analyze-image] Response length:', text?.length || 0);
 
     if (!text || text.trim().length === 0) {
-      console.error('[analyze-image] Empty response from Vertex AI Gemini');
+      console.error('[analyze-image] Empty response from Gemini API');
       return NextResponse.json(
-        { error: 'Empty response from Vertex AI Gemini' },
+        { error: 'Empty response from Gemini API' },
         { status: 500 }
       );
     }
@@ -158,6 +169,15 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('[analyze-image] Error:', error);
     console.error('[analyze-image] Error stack:', error instanceof Error ? error.stack : 'N/A');
+
+    // Check if it's a Gemini API error
+    if (error instanceof Error && error.message.includes('API key')) {
+      console.error('[analyze-image] API key error detected');
+      return NextResponse.json(
+        { error: 'Invalid or missing Google API key', details: error.message },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {
