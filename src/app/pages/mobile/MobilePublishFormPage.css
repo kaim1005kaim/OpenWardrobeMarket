@@ -329,12 +329,13 @@
 
 .form-buttons {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 12px;
 }
 
 .draft-btn,
 .publish-btn {
-  flex: 1;
   height: 48px;
   border-radius: 0;
   font-family: 'Noto Sans CJK JP', 'Noto Sans JP', sans-serif;
@@ -344,24 +345,28 @@
   transition: all 0.2s ease;
 }
 
-.draft-btn {
-  background: transparent;
-  border: 1px solid #000;
-  color: #000;
-}
-
-.draft-btn:hover {
-  background: #00000010;
-}
-
 .publish-btn {
   background: #1A3A2E;
   border: none;
   color: #fff;
+  width: 100%;
+  max-width: 320px;
 }
 
 .publish-btn:hover {
   background: #0F2419;
+}
+
+.draft-btn {
+  background: transparent;
+  border: 1px solid #000;
+  color: #000;
+  width: 100%;
+  max-width: 320px;
+}
+
+.draft-btn:hover {
+  background: #00000010;
 }
 
 /* Toast animations */

@@ -32,7 +32,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
   const [tag2, setTag2] = useState('');
   const [tag3, setTag3] = useState('');
   const [saleType, setSaleType] = useState<'buyout' | 'subscription'>('buyout');
-  const [price, setPrice] = useState(36323);
+  const [price, setPrice] = useState(3000);
 
   // AI auto-generated fields
   const [aiDescription, setAiDescription] = useState('');
@@ -109,6 +109,10 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
         if (generationData?.ai_description) {
           setAiDescription(generationData.ai_description);
           setDescription(generationData.ai_description);
+
+          // Auto-generate title from AI description (first 30 characters)
+          const autoTitle = generationData.ai_description.slice(0, 30).trim();
+          setTitle(autoTitle + (generationData.ai_description.length > 30 ? '...' : ''));
         }
       } catch (error) {
         console.warn('[MobilePublishFormPage] Failed to fetch AI data:', error);
@@ -676,11 +680,11 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
 
         {/* ボタン */}
         <div className="form-buttons">
-          <button className="draft-btn" onClick={handleSaveDraft}>
-            ドラフトに保存
-          </button>
           <button className="publish-btn" onClick={handlePublish}>
             公開する
+          </button>
+          <button className="draft-btn" onClick={handleSaveDraft}>
+            ドラフトに保存
           </button>
         </div>
       </div>
