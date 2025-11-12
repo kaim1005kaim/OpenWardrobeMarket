@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
-import { callVertexAIGemini } from '../../../lib/vertex-ai-auth';
+import { callVertexAIGemini } from 'lib/vertex-ai-auth';
 
 const FASHION_TAG_PROMPT = `Analyze this fashion design image and generate 5-10 descriptive tags in English, and a brief description in Japanese.
 
