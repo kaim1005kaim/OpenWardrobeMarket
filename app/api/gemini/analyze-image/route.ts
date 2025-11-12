@@ -90,14 +90,23 @@ export async function POST(req: NextRequest) {
 
     const candidates = result.candidates;
     if (!candidates || candidates.length === 0) {
-      console.error('[analyze-image] No candidates in response');
+      console.error('[analyze-image] No candidates in response:', result);
       return NextResponse.json(
         { error: 'No response from Vertex AI Gemini' },
         { status: 500 }
       );
     }
 
-    const text = candidates[0].content.parts[0].text;
+    const candidate = candidates[0];
+    if (!candidate?.content?.parts || candidate.content.parts.length === 0) {
+      console.error('[analyze-image] Invalid candidate structure:', candidate);
+      return NextResponse.json(
+        { error: 'Invalid response structure from Vertex AI Gemini' },
+        { status: 500 }
+      );
+    }
+
+    const text = candidate.content.parts[0].text;
 
     console.log('[analyze-image] Raw response:', text);
     console.log('[analyze-image] Response length:', text?.length || 0);

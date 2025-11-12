@@ -94,7 +94,9 @@ export async function callVertexAIGemini(
     throw new Error(`Vertex AI Gemini API error: ${response.status} - ${errorText}`);
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log('[callVertexAIGemini] Full response structure:', JSON.stringify(result, null, 2));
+  return result;
 }
 
 /**

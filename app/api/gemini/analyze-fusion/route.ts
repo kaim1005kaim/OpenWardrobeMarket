@@ -125,7 +125,25 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    const analysisText = analysisResult.candidates[0].content.parts[0].text;
+    // Validate response structure
+    if (!analysisResult?.candidates || analysisResult.candidates.length === 0) {
+      console.error('[analyze-fusion] No candidates in response:', analysisResult);
+      return NextResponse.json(
+        { error: 'No response from Vertex AI Gemini' },
+        { status: 500 }
+      );
+    }
+
+    const candidate = analysisResult.candidates[0];
+    if (!candidate?.content?.parts || candidate.content.parts.length === 0) {
+      console.error('[analyze-fusion] Invalid candidate structure:', candidate);
+      return NextResponse.json(
+        { error: 'Invalid response structure from Vertex AI Gemini' },
+        { status: 500 }
+      );
+    }
+
+    const analysisText = candidate.content.parts[0].text;
     console.log('[analyze-fusion] Analysis raw response:', analysisText);
 
     // Parse analysis JSON
