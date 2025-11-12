@@ -119,7 +119,8 @@ async function uploadToR2(
 
   await r2Client.send(command);
 
-  const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL!;
+  // Use custom domain for public access (not R2's direct URL to avoid CORS issues)
+  const publicBaseUrl = process.env.R2_CUSTOM_DOMAIN_URL || process.env.R2_PUBLIC_BASE_URL!;
   const url = `${publicBaseUrl}/${key}`;
 
   console.log(`[generate/variant] Uploaded to R2: ${url}`);
