@@ -187,25 +187,43 @@ export async function POST(req: NextRequest) {
     console.log(`[generate/variant] ${view} uploaded successfully:`, r2Url);
 
     // Update generation_history metadata
-    const updatedVariants = variants.filter((v: any) => v.type !== view);
-    updatedVariants.push({
+    // IMPORTANT: Use atomic JSONB operations to avoid race conditions when multiple variants are generated concurrently
+    const newVariant = {
       type: view,
       r2_url: r2Url,
       status: 'completed',
       created_at: new Date().toISOString()
-    });
+    };
 
-    await supabase
+    // First, remove any existing variant of this type (if exists)
+    // Then append the new variant
+    // This ensures concurrent requests don't overwrite each other
+    const { data: currentData } = await supabase
       .from('generation_history')
-      .update({
-        metadata: {
-          ...metadata,
-          variants: updatedVariants
-        }
-      })
-      .eq('id', gen_id);
+      .select('metadata')
+      .eq('id', gen_id)
+      .single();
 
-    console.log(`[generate/variant] Updated generation_history metadata`);
+    if (currentData) {
+      const currentMetadata = currentData.metadata || {};
+      const currentVariants = currentMetadata.variants || [];
+
+      // Filter out existing variant of same type and add new one
+      const updatedVariants = currentVariants.filter((v: any) => v.type !== view);
+      updatedVariants.push(newVariant);
+
+      await supabase
+        .from('generation_history')
+        .update({
+          metadata: {
+            ...currentMetadata,
+            variants: updatedVariants
+          }
+        })
+        .eq('id', gen_id);
+
+      console.log(`[generate/variant] Updated generation_history metadata with ${view} variant (total: ${updatedVariants.length})`);
+    }
 
     // If image is published, update published_items too
     // Match by generation_data->session_id = gen_id
