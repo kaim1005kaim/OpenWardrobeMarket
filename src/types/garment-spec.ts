@@ -75,3 +75,67 @@ export interface VariantAttempt {
   validation: ViewValidation;
   timestamp: number;
 }
+
+/**
+ * Design Tokens extracted from main image
+ * Used to ensure SIDE/BACK variants maintain identical garment
+ */
+export interface DesignTokens {
+  /** Garment type (coat, jacket, dress, etc.) */
+  garment_type: string;
+
+  /** Silhouette (boxy, cocoon, oversized, etc.) */
+  silhouette: string;
+
+  /** Length (long, midi, short) */
+  length: string;
+
+  /** Neckline (mandarin, notch, crew, etc.) */
+  neckline: string;
+
+  /** Sleeve type (long, short, sleeveless, raglan, etc.) */
+  sleeve: string;
+
+  /** Color palette as hex codes */
+  palette_hex: string[];
+
+  /** Materials list */
+  materials: string[];
+
+  /** Invariant details that must persist across views */
+  invariant_details: string[];
+
+  /** Seam map (panel/seam lines) */
+  seam_map: string[];
+
+  /** Trim details */
+  trim: string[];
+
+  /** Gradations/finishes */
+  gradations: string[];
+
+  /** Background style */
+  bg_style: 'studio' | 'color' | 'color-grad';
+
+  /** Demographic/model description */
+  demographic: string;
+
+  /** Generation seed for reproducibility */
+  seed: number;
+
+  /** Main image URL for reference */
+  mainImageUrl: string;
+}
+
+/**
+ * Variant metadata stored in generation_history
+ */
+export interface VariantMetadata {
+  type: 'side' | 'back';
+  r2_url: string | null;
+  status: 'pending' | 'generating' | 'completed' | 'failed';
+  tries: number;
+  view_conf?: number;
+  sim_score?: number;
+  error?: string;
+}
