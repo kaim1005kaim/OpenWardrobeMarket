@@ -211,6 +211,38 @@
   background: rgba(0, 0, 0, 0.9);
 }
 
+/* Gender Toggle */
+.gender-toggle {
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.gender-btn {
+  flex: 1;
+  height: 44px;
+  background: #FFFFFF;
+  border: 1px solid #CCCCCC;
+  border-radius: 8px;
+  font-family: "'Courier New'", monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #666666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gender-btn.active {
+  background: #1A3A2E;
+  border-color: #1A3A2E;
+  color: #FFFFFF;
+}
+
+.gender-btn:hover:not(.active) {
+  background: #F5F5F5;
+}
+
 /* Optional Prompt */
 .optional-prompt {
   width: 100%;

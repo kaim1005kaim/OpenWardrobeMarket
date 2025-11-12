@@ -81,6 +81,7 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [image1, setImage1] = useState<UploadedImage | null>(null);
   const [image2, setImage2] = useState<UploadedImage | null>(null);
+  const [gender, setGender] = useState<'mens' | 'womens'>('womens');
   const [optionalPrompt, setOptionalPrompt] = useState('');
   const [analysisProgress, setAnalysisProgress] = useState('');
 
@@ -485,6 +486,8 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
           timestamp: Date.now(),
           recentSilhouettes,
           enableDiversitySampling: true,
+          gender, // Pass gender selection
+          optionalPrompt: optionalPrompt.trim() || undefined, // Pass optional direction
         }),
       });
 
@@ -1098,6 +1101,22 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
                   style={{ display: 'none' }}
                 />
               </div>
+            </div>
+
+            {/* Gender Toggle */}
+            <div className="gender-toggle">
+              <button
+                className={`gender-btn ${gender === 'womens' ? 'active' : ''}`}
+                onClick={() => setGender('womens')}
+              >
+                WOMEN'S
+              </button>
+              <button
+                className={`gender-btn ${gender === 'mens' ? 'active' : ''}`}
+                onClick={() => setGender('mens')}
+              >
+                MEN'S
+              </button>
             </div>
 
             {/* Optional Prompt */}

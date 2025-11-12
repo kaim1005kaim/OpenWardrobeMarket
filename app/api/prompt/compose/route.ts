@@ -25,7 +25,9 @@ export async function POST(req: NextRequest) {
       userId,
       timestamp,
       recentSilhouettes,
-      enableDiversitySampling = true
+      enableDiversitySampling = true,
+      gender,
+      optionalPrompt
     } = body;
 
     // FUSION mode
@@ -48,14 +50,18 @@ export async function POST(req: NextRequest) {
         spec,
         userId,
         recentSilhouettes,
-        enableDiversitySampling
+        enableDiversitySampling,
+        gender,
+        optionalPrompt
       });
 
       const result = composeFusionPrompt(spec as FusionSpec, {
         userId,
         timestamp,
         recentSilhouettes,
-        enableDiversitySampling
+        enableDiversitySampling,
+        gender,
+        optionalPrompt
       });
 
       console.log('[prompt/compose] FUSION mode output:', {

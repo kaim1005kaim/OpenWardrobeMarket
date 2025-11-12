@@ -48,6 +48,8 @@ export interface FusionPromptOptions {
   recentSilhouettes?: string[];
   enableDiversitySampling?: boolean;
   aspectRatio?: '3:4' | '4:3' | '1:1';
+  gender?: 'mens' | 'womens';
+  optionalPrompt?: string;
 }
 
 export interface FusionPromptResult {
@@ -82,7 +84,9 @@ export function composeFusionPrompt(
     timestamp = Date.now(),
     recentSilhouettes = [],
     enableDiversitySampling = true,
-    aspectRatio = '3:4'
+    aspectRatio = '3:4',
+    gender = 'womens',
+    optionalPrompt
   } = options;
 
   // 1. Select silhouette with diversity control
@@ -122,14 +126,14 @@ export function composeFusionPrompt(
 
   silhouetteDesc = silhouetteDescription(selectedSilhouette);
 
-  // 2. Select demographic (detailed JP/KR-focused)
+  // 2. Select demographic (detailed JP/KR-focused) with gender filter
   let demographic: DemographicKey | string;
   let modelPhrase: string;
 
   if (enableDiversitySampling) {
-    // Use new detailed demographic sampling
-    modelPhrase = sampleModelPhrase(seed);
-    demographic = sampleDetailedDemographic(seed);
+    // Use new detailed demographic sampling with gender filter
+    modelPhrase = sampleModelPhrase(seed, gender);
+    demographic = sampleDetailedDemographic(seed, gender);
   } else {
     // Legacy fallback
     demographic = 'asian';
@@ -194,6 +198,7 @@ MODEL: ${modelPhrase}, minimal styling, neutral expression, professional pose sh
 QUALITY: High resolution, editorial fashion photography standard, impeccable tailoring and finishing visible.
 
 ${spec.inspiration ? `\nCREATIVE DIRECTION: ${spec.inspiration}` : ''}
+${optionalPrompt ? `\nADDITIONAL DIRECTION: ${optionalPrompt}` : ''}
 
 CRITICAL: All design elements must be abstract fashion operations (seamlines, panels, pleats, embroidery, etc.). NO literal objects, logos, text, or recognizable imagery from source materials. NO cultural symbols, NO traditional patterns, NO recognizable motifs - only abstract geometric and construction-based design language.`;
 

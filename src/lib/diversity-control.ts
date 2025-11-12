@@ -166,13 +166,45 @@ export function sampleDemographic(
 /**
  * Sample detailed demographic from JP/KR-focused distribution
  * @param seed - Optional seed for deterministic sampling
+ * @param gender - Optional gender filter ('mens' or 'womens')
  * @returns Detailed demographic key (e.g., "jp_f_20s")
  */
-export function sampleDetailedDemographic(seed?: string): DemographicKey {
-  const weights = getAllModelWeights();
+export function sampleDetailedDemographic(seed?: string, gender?: 'mens' | 'womens'): DemographicKey {
+  let weights = getAllModelWeights();
+
+  // Filter by gender if specified
+  if (gender) {
+    const filteredWeights: Record<string, number> = {};
+    let totalWeight = 0;
+
+    // Filter for only JP/KR demographics matching the gender
+    Object.entries(weights).forEach(([key, weight]) => {
+      const isMale = key.includes('_m_');
+      const isFemale = key.includes('_f_');
+      const isJpKr = key.startsWith('jp_') || key.startsWith('kr_');
+
+      if (isJpKr) {
+        if ((gender === 'mens' && isMale) || (gender === 'womens' && isFemale)) {
+          filteredWeights[key] = weight;
+          totalWeight += weight;
+        }
+      }
+    });
+
+    // Normalize weights to sum to 1.0
+    if (totalWeight > 0) {
+      Object.keys(filteredWeights).forEach(key => {
+        filteredWeights[key] = filteredWeights[key] / totalWeight;
+      });
+      weights = filteredWeights as Record<DemographicKey, number>;
+    }
+
+    console.log('[sampleDetailedDemographic] Filtered weights for gender:', gender, filteredWeights);
+  }
+
   const rand = seed ? seededRandom(seed) : Math.random();
 
-  console.log('[sampleDetailedDemographic] Random value:', rand, 'Seed:', seed);
+  console.log('[sampleDetailedDemographic] Random value:', rand, 'Seed:', seed, 'Gender:', gender);
 
   let cumulative = 0;
   const entries = Object.entries(weights) as [DemographicKey, number][];
@@ -186,24 +218,26 @@ export function sampleDetailedDemographic(seed?: string): DemographicKey {
     }
   }
 
-  // Fallback to most common
-  console.log('[sampleDetailedDemographic] Fallback to jp_f_20s');
-  return 'jp_f_20s';
+  // Fallback based on gender
+  const fallback = gender === 'mens' ? 'jp_m_20s' : 'jp_f_20s';
+  console.log('[sampleDetailedDemographic] Fallback to', fallback);
+  return fallback;
 }
 
 /**
  * Generate model phrase with "no model" probability support
  * @param seed - Optional seed for deterministic sampling
+ * @param gender - Optional gender filter ('mens' or 'womens')
  * @returns Model phrase or "no visible model"
  */
-export function sampleModelPhrase(seed?: string): string {
+export function sampleModelPhrase(seed?: string, gender?: 'mens' | 'womens'): string {
   const rand = seed ? seededRandom(seed + '_nomodel') : Math.random();
 
   if (rand < NO_MODEL_PROBABILITY) {
     return "no visible model, garment-only composition, product-forward presentation, styled on invisible form";
   }
 
-  const demoKey = sampleDetailedDemographic(seed);
+  const demoKey = sampleDetailedDemographic(seed, gender);
   return demographicPhrase(demoKey);
 }
 
