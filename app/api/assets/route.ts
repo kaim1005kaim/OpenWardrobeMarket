@@ -134,6 +134,27 @@ export async function GET(request: Request) {
 
       console.log('[api/assets] Published items count:', publishedData?.length || 0);
 
+      // Get session_ids from generation_data to fetch variants from generation_history
+      const sessionIds = publishedData
+        .map((item: any) => item.generation_data?.session_id)
+        .filter(Boolean);
+
+      let variantsMap = new Map<string, any>();
+      if (sessionIds.length > 0) {
+        const { data: genHistoryData } = await supabase
+          .from('generation_history')
+          .select('id, metadata')
+          .in('id', sessionIds);
+
+        if (genHistoryData) {
+          genHistoryData.forEach((gen: any) => {
+            if (gen.metadata?.variants) {
+              variantsMap.set(gen.id, gen.metadata.variants);
+            }
+          });
+        }
+      }
+
       // Convert published_items to asset format
       const publishedAsAssets = (publishedData || []).map((item: any) => {
         // Determine final_url based on image_id type
@@ -148,6 +169,10 @@ export async function GET(request: Request) {
             finalUrl = `${publicBaseUrl}/${item.image_id}`;
           }
         }
+
+        // Get variants from generation_history if available
+        const sessionId = item.generation_data?.session_id;
+        const variants = sessionId ? variantsMap.get(sessionId) : null;
 
         return {
           id: item.id,
@@ -166,9 +191,12 @@ export async function GET(request: Request) {
           raw_key: null,
           raw_url: null,
           metadata: {
-            width: 1024,
-            height: 1536,
-            mime_type: 'image/png'
+            ...(item.metadata || {
+              width: 1024,
+              height: 1536,
+              mime_type: 'image/png'
+            }),
+            variants: variants || item.metadata?.variants
           }
         };
       });
