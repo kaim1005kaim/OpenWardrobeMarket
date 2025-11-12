@@ -64,37 +64,53 @@ export function MobileDetailModal({
       { type: 'main', url: asset.src }
     ];
 
-    console.log('[MobileDetailModal] Asset metadata:', asset.metadata);
-    console.log('[MobileDetailModal] Asset full object:', asset);
+    console.log('=== [MobileDetailModal] DETAILED DEBUG START ===');
+    console.log('[MobileDetailModal] Asset ID:', asset.id);
+    console.log('[MobileDetailModal] Asset title:', asset.title);
+    console.log('[MobileDetailModal] Asset.metadata exists:', !!asset.metadata);
+    console.log('[MobileDetailModal] Asset.metadata type:', typeof asset.metadata);
+    console.log('[MobileDetailModal] Asset.metadata:', JSON.stringify(asset.metadata, null, 2));
+    console.log('[MobileDetailModal] Asset.metadata?.variants exists:', !!asset.metadata?.variants);
+    console.log('[MobileDetailModal] Asset.metadata?.variants type:', typeof asset.metadata?.variants);
+    console.log('[MobileDetailModal] Asset.metadata?.variants:', JSON.stringify(asset.metadata?.variants, null, 2));
 
     if (asset.metadata?.variants) {
       const variants = asset.metadata.variants;
-      console.log('[MobileDetailModal] Found variants:', variants);
+      console.log('[MobileDetailModal] Found variants, is array:', Array.isArray(variants));
 
       // variants is an array: [{ type: 'side', r2_url: '...', status: 'completed' }, ...]
       if (Array.isArray(variants)) {
-        variants.forEach((variant: any) => {
+        console.log('[MobileDetailModal] Processing array format variants, count:', variants.length);
+        variants.forEach((variant: any, idx: number) => {
+          console.log(`[MobileDetailModal] Variant[${idx}]:`, JSON.stringify(variant));
           if (variant.status === 'completed' && variant.r2_url) {
-            console.log(`[MobileDetailModal] Adding ${variant.type} image:`, variant.r2_url);
+            console.log(`[MobileDetailModal] ✓ Adding ${variant.type} image:`, variant.r2_url);
             images.push({ type: variant.type, url: variant.r2_url });
+          } else {
+            console.log(`[MobileDetailModal] ✗ Skipping ${variant.type}: status=${variant.status}, has_url=${!!variant.r2_url}`);
           }
         });
       } else {
         // Backward compatibility: object format { side: {...}, back: {...} }
+        console.log('[MobileDetailModal] Processing object format variants');
+        console.log('[MobileDetailModal] variants.side:', JSON.stringify(variants.side));
+        console.log('[MobileDetailModal] variants.back:', JSON.stringify(variants.back));
+
         if (variants.side?.status === 'completed' && variants.side?.r2_url) {
-          console.log('[MobileDetailModal] Adding side image:', variants.side.r2_url);
+          console.log('[MobileDetailModal] ✓ Adding side image:', variants.side.r2_url);
           images.push({ type: 'side', url: variants.side.r2_url });
         }
         if (variants.back?.status === 'completed' && variants.back?.r2_url) {
-          console.log('[MobileDetailModal] Adding back image:', variants.back.r2_url);
+          console.log('[MobileDetailModal] ✓ Adding back image:', variants.back.r2_url);
           images.push({ type: 'back', url: variants.back.r2_url });
         }
       }
     } else {
-      console.log('[MobileDetailModal] No variants found in metadata');
+      console.log('[MobileDetailModal] ✗ No variants found in metadata');
     }
 
-    console.log('[MobileDetailModal] Final variant images:', images);
+    console.log('[MobileDetailModal] Final variant images array:', JSON.stringify(images, null, 2));
+    console.log('=== [MobileDetailModal] DETAILED DEBUG END ===');
     setVariantImages(images);
     setCurrentImageIndex(0);
   }, [asset]);

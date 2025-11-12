@@ -139,21 +139,33 @@ export async function GET(request: Request) {
         .map((item: any) => item.generation_data?.session_id)
         .filter(Boolean);
 
+      console.log('[api/assets] DEBUG: Extracted session_ids:', sessionIds);
+      console.log('[api/assets] DEBUG: First 3 items generation_data:', publishedData.slice(0, 3).map((i: any) => ({ id: i.id, generation_data: i.generation_data })));
+
       let variantsMap = new Map<string, any>();
       if (sessionIds.length > 0) {
-        const { data: genHistoryData } = await supabase
+        const { data: genHistoryData, error: genHistoryError } = await supabase
           .from('generation_history')
           .select('id, metadata')
           .in('id', sessionIds);
 
+        console.log('[api/assets] DEBUG: generation_history query returned', genHistoryData?.length || 0, 'records');
+        if (genHistoryError) {
+          console.error('[api/assets] DEBUG: generation_history query error:', genHistoryError);
+        }
+
         if (genHistoryData) {
           genHistoryData.forEach((gen: any) => {
+            console.log(`[api/assets] DEBUG: gen_history id=${gen.id}, has variants=${!!gen.metadata?.variants}`);
             if (gen.metadata?.variants) {
+              console.log(`[api/assets] DEBUG: Variants for ${gen.id}:`, JSON.stringify(gen.metadata.variants));
               variantsMap.set(gen.id, gen.metadata.variants);
             }
           });
         }
       }
+
+      console.log('[api/assets] DEBUG: variantsMap size:', variantsMap.size);
 
       // Convert published_items to asset format
       const publishedAsAssets = (publishedData || []).map((item: any) => {
@@ -174,6 +186,26 @@ export async function GET(request: Request) {
         const sessionId = item.generation_data?.session_id;
         const variants = sessionId ? variantsMap.get(sessionId) : null;
 
+        if (sessionId) {
+          console.log(`[api/assets] DEBUG: Item ${item.id} sessionId=${sessionId}, found variants=${!!variants}`);
+          if (variants) {
+            console.log(`[api/assets] DEBUG: Item ${item.id} variants:`, JSON.stringify(variants));
+          }
+        }
+
+        const finalMetadata = {
+          ...(item.metadata || {
+            width: 1024,
+            height: 1536,
+            mime_type: 'image/png'
+          }),
+          variants: variants || item.metadata?.variants
+        };
+
+        if (finalMetadata.variants) {
+          console.log(`[api/assets] DEBUG: Item ${item.id} FINAL metadata.variants:`, JSON.stringify(finalMetadata.variants));
+        }
+
         return {
           id: item.id,
           user_id: item.user_id,
@@ -190,14 +222,7 @@ export async function GET(request: Request) {
           final_url: finalUrl,
           raw_key: null,
           raw_url: null,
-          metadata: {
-            ...(item.metadata || {
-              width: 1024,
-              height: 1536,
-              mime_type: 'image/png'
-            }),
-            variants: variants || item.metadata?.variants
-          }
+          metadata: finalMetadata
         };
       });
 
