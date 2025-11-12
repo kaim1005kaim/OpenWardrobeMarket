@@ -124,18 +124,24 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
     fetchAiData();
   }, [generationData?.session_id, imageUrl]);
 
-  // Start variant generation and SSE subscription
+  // Start FUSION variant generation and SSE subscription
   useEffect(() => {
     console.log('[PublishFormPage] Variant generation useEffect triggered');
     console.log('[PublishFormPage] generationData:', generationData);
     console.log('[PublishFormPage] session_id:', generationData?.session_id);
 
-    if (!generationData?.session_id) {
-      console.warn('[PublishFormPage] ⚠️ No session_id, skipping variant generation');
+    if (!generationData?.session_id || !user?.id) {
+      console.warn('[PublishFormPage] ⚠️ No session_id or userId, skipping variant generation');
       return;
     }
 
-    console.log('[PublishFormPage] ✅ Starting variant generation for session:', generationData.session_id);
+    // Only generate variants for FUSION mode
+    if (generationData?.mode !== 'fusion') {
+      console.log('[PublishFormPage] Not FUSION mode, skipping variant generation');
+      return;
+    }
+
+    console.log('[PublishFormPage] ✅ Starting FUSION variant generation for session:', generationData.session_id);
 
     const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
     const genId = generationData.session_id;
@@ -147,40 +153,57 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       { type: 'back', url: '', status: 'loading' }
     ]);
 
-    // Start SSE connection
-    const eventSource = new EventSource(`${apiUrl}/api/generation-stream/${genId}`);
+    // Start SSE connection to FUSION variants stream
+    const eventSource = new EventSource(`${apiUrl}/api/fusion/variants-stream?genId=${genId}`);
 
-    eventSource.addEventListener('connected', () => {
-      console.log('[MobilePublishFormPage] SSE connected');
-    });
+    eventSource.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        console.log('[MobilePublishFormPage] SSE message:', data);
 
-    eventSource.addEventListener('variant', (e) => {
-      const data = JSON.parse(e.data);
-      console.log('[MobilePublishFormPage] Variant received:', data);
-
-      setVariants(prev =>
-        prev.map(v =>
-          v.type === data.type
-            ? { type: v.type, url: data.r2_url, status: 'completed' }
-            : v
-        )
-      );
-    });
-
-    eventSource.addEventListener('error', (e: any) => {
-      const data = e.data ? JSON.parse(e.data) : {};
-      console.error('[MobilePublishFormPage] Variant error:', data);
-
-      if (data.type) {
-        setVariants(prev =>
-          prev.map(v =>
-            v.type === data.type
-              ? { ...v, status: 'failed' }
-              : v
-          )
-        );
+        if (data.type === 'connected') {
+          console.log('[MobilePublishFormPage] SSE connected');
+        } else if (data.type === 'initial_state' && data.variants) {
+          // Load existing variants from database
+          data.variants.forEach((v: any) => {
+            if (v.r2_url && v.status === 'completed') {
+              setVariants(prev =>
+                prev.map(existing =>
+                  existing.type === v.type
+                    ? { type: v.type, url: v.r2_url, status: 'completed' }
+                    : existing
+                )
+              );
+            }
+          });
+        } else if (data.type === 'variant_update' && data.view) {
+          // Update progress
+          console.log(`[MobilePublishFormPage] ${data.view} status: ${data.status}`);
+        } else if (data.type === 'variant_complete' && data.variant) {
+          // Variant completed
+          console.log('[MobilePublishFormPage] Variant completed:', data.variant);
+          setVariants(prev =>
+            prev.map(v =>
+              v.type === data.variant.type
+                ? { type: v.type, url: data.variant.r2_url, status: 'completed' }
+                : v
+            )
+          );
+        } else if (data.type === 'variant_failed' && data.view) {
+          // Variant failed
+          console.error('[MobilePublishFormPage] Variant failed:', data.view, data.error);
+          setVariants(prev =>
+            prev.map(v =>
+              v.type === data.view
+                ? { ...v, status: 'failed' }
+                : v
+            )
+          );
+        }
+      } catch (err) {
+        console.error('[MobilePublishFormPage] SSE parse error:', err);
       }
-    });
+    };
 
     eventSource.onerror = () => {
       console.warn('[MobilePublishFormPage] SSE connection error');
@@ -190,27 +213,24 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
     // Trigger variant generation in background
     (async () => {
       try {
-        console.log('[MobilePublishFormPage] 🚀 Triggering variant generation...');
-        console.log('[MobilePublishFormPage] API URL:', apiUrl);
-        console.log('[MobilePublishFormPage] gen_id:', genId);
-
-        // Generate side view
-        console.log('[MobilePublishFormPage] Requesting SIDE variant...');
-        fetch(`${apiUrl}/api/generate/variant`, {
+        console.log('[MobilePublishFormPage] 🚀 Starting FUSION variant generation...');
+        const response = await fetch(`${apiUrl}/api/fusion/start-variants`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gen_id: genId, view: 'side' })
-        }).catch(err => console.warn('[MobilePublishFormPage] Side generation failed:', err));
+          body: JSON.stringify({
+            genId,
+            userId: user.id,
+            views: ['side', 'back']
+          })
+        });
 
-        // Generate back view
-        console.log('[MobilePublishFormPage] Requesting BACK variant...');
-        fetch(`${apiUrl}/api/generate/variant`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gen_id: genId, view: 'back' })
-        }).catch(err => console.warn('[MobilePublishFormPage] Back generation failed:', err));
-      } catch (error) {
-        console.error('[MobilePublishFormPage] Failed to trigger variant generation:', error);
+        if (!response.ok) {
+          throw new Error(`Failed to start variants: ${response.status}`);
+        }
+
+        console.log('[MobilePublishFormPage] Variant generation started successfully');
+      } catch (err) {
+        console.error('[MobilePublishFormPage] Failed to start variant generation:', err);
       }
     })();
 
