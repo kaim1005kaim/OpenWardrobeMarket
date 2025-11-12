@@ -304,16 +304,19 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
 
         // 2. Supabaseに保存
         const requestBody = {
-          image_url: imageUrl, // Use imageUrl as both original and poster
-          r2_key: generationData?.r2_key || null,
           title: publishData.title,
+          category: publishData.category,
           description: publishData.description,
           tags: publishData.tags,
-          colors: [], // TODO: Extract from generation data if available
-          category: publishData.category,
+          saleType: publishData.saleType,
           price: publishData.price,
-          generation_data: generationData || null,
+          posterUrl: posterUrl,
+          originalUrl: imageUrl,
+          userId: sessionData.session.user.id,
+          sessionId: generationData?.session_id || null, // Pass session_id to fetch variants
         };
+
+        console.log('[MobilePublishFormPage] Publishing with sessionId:', requestBody.sessionId);
 
         const publishRes = await fetch(`${apiUrl}/api/publish`, {
           method: 'POST',

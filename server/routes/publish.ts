@@ -18,6 +18,7 @@ interface PublishRequest {
   posterUrl: string;
   originalUrl: string;
   userId?: string; // Optional for now (will be required with auth)
+  sessionId?: string; // Optional: generation_history session_id for fetching variants
 }
 
 // POST /api/publish - Publish an item to the gallery
@@ -32,10 +33,11 @@ router.post('/', async (req, res) => {
       price,
       posterUrl,
       originalUrl,
-      userId
+      userId,
+      sessionId
     } = req.body as PublishRequest;
 
-    console.log('[Publish API] Publishing item:', { title, category, posterUrl, originalUrl });
+    console.log('[Publish API] Publishing item:', { title, category, posterUrl, originalUrl, sessionId });
 
     // Validate required fields
     if (!title || !category || !posterUrl || !originalUrl) {
@@ -43,6 +45,28 @@ router.post('/', async (req, res) => {
         success: false,
         error: 'Missing required fields: title, category, posterUrl, originalUrl'
       });
+    }
+
+    // Fetch variants from generation_history if sessionId provided
+    let metadata: any = {};
+    if (sessionId) {
+      console.log('[Publish API] Fetching variants for session:', sessionId);
+
+      const { data: genHistory, error: genError } = await supabase
+        .from('generation_history')
+        .select('metadata')
+        .eq('id', sessionId)
+        .single();
+
+      if (genError) {
+        console.error('[Publish API] Failed to fetch generation_history:', genError);
+      } else if (genHistory?.metadata?.variants) {
+        // Copy variants to published_items metadata
+        metadata.variants = genHistory.metadata.variants;
+        console.log('[Publish API] Found variants:', metadata.variants.length);
+      } else {
+        console.log('[Publish API] No variants found in generation_history');
+      }
     }
 
     // Insert into published_items table
@@ -59,6 +83,7 @@ router.post('/', async (req, res) => {
         original_url: originalUrl,
         sale_type: saleType,
         is_active: true,
+        metadata, // Include variants in metadata
       })
       .select()
       .single();
@@ -73,6 +98,7 @@ router.post('/', async (req, res) => {
     }
 
     console.log('[Publish API] Item published successfully:', data.id);
+    console.log('[Publish API] Metadata saved:', data.metadata);
 
     res.json({
       success: true,
