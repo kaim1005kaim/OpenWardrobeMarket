@@ -126,24 +126,56 @@ export async function POST(req: NextRequest) {
     );
 
     // Validate response structure
+    console.log('[analyze-fusion] Checking response structure...');
+    console.log('[analyze-fusion] analysisResult type:', typeof analysisResult);
+    console.log('[analyze-fusion] analysisResult.candidates exists:', !!analysisResult?.candidates);
+    console.log('[analyze-fusion] analysisResult.candidates length:', analysisResult?.candidates?.length);
+
     if (!analysisResult?.candidates || analysisResult.candidates.length === 0) {
-      console.error('[analyze-fusion] No candidates in response:', analysisResult);
+      console.error('[analyze-fusion] No candidates in response:', JSON.stringify(analysisResult, null, 2));
       return NextResponse.json(
         { error: 'No response from Vertex AI Gemini' },
         { status: 500 }
       );
     }
 
+    console.log('[analyze-fusion] Getting first candidate...');
     const candidate = analysisResult.candidates[0];
+    console.log('[analyze-fusion] candidate exists:', !!candidate);
+    console.log('[analyze-fusion] candidate.content exists:', !!candidate?.content);
+    console.log('[analyze-fusion] candidate.content.parts exists:', !!candidate?.content?.parts);
+    console.log('[analyze-fusion] candidate.content.parts length:', candidate?.content?.parts?.length);
+    console.log('[analyze-fusion] candidate.finishReason:', candidate?.finishReason);
+
+    // Check for MAX_TOKENS error
+    if (candidate?.finishReason === 'MAX_TOKENS') {
+      console.error('[analyze-fusion] Response truncated due to MAX_TOKENS');
+      console.error('[analyze-fusion] usageMetadata:', JSON.stringify(analysisResult.usageMetadata, null, 2));
+      return NextResponse.json(
+        { error: 'Response truncated due to token limit. Please try with a simpler image or shorter prompt.' },
+        { status: 500 }
+      );
+    }
+
     if (!candidate?.content?.parts || candidate.content.parts.length === 0) {
-      console.error('[analyze-fusion] Invalid candidate structure:', candidate);
+      console.error('[analyze-fusion] Invalid candidate structure:', JSON.stringify(candidate, null, 2));
+      console.error('[analyze-fusion] Full response:', JSON.stringify(analysisResult, null, 2));
       return NextResponse.json(
         { error: 'Invalid response structure from Vertex AI Gemini' },
         { status: 500 }
       );
     }
 
-    const analysisText = candidate.content.parts[0].text;
+    const firstPart = candidate.content.parts[0];
+    if (!firstPart || typeof firstPart.text !== 'string') {
+      console.error('[analyze-fusion] Invalid part structure:', JSON.stringify(firstPart, null, 2));
+      return NextResponse.json(
+        { error: 'Invalid text content in Vertex AI Gemini response' },
+        { status: 500 }
+      );
+    }
+
+    const analysisText = firstPart.text;
     console.log('[analyze-fusion] Analysis raw response:', analysisText);
 
     // Parse analysis JSON
