@@ -153,6 +153,7 @@ export async function POST(req: NextRequest) {
         temperature: 0.4,
         maxOutputTokens: 8192,
       },
+      undefined, // systemInstruction
       { timeout: 45000 } // 45s timeout for Gemini vision analysis
     );
 
@@ -298,6 +299,7 @@ export async function POST(req: NextRequest) {
           temperature: 0.8,
           maxOutputTokens: 256,
         },
+        undefined, // systemInstruction
         { timeout: 20000 } // 20s timeout for inspiration generation (text-only)
       );
 
