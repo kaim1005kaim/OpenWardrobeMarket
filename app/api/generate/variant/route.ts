@@ -41,6 +41,7 @@ async function generateVariant(
 
   try {
     // Call Vertex AI Imagen 3 using shared helper
+    // Note: seed parameter removed as it's not supported when watermark is enabled
     const data = await callVertexAIImagen(
       'imagen-3.0-generate-002',
       mutatedPrompt,
@@ -48,8 +49,7 @@ async function generateVariant(
         sampleCount: 1,
         aspectRatio: '3:4',
         personGeneration: 'allow_adult',
-        safetySetting: 'block_only_high',
-        seed: seed
+        safetySetting: 'block_only_high'
       }
     );
 
