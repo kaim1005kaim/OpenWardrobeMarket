@@ -208,12 +208,15 @@ export async function POST(req: NextRequest) {
     console.log(`[generate/variant] Updated generation_history metadata`);
 
     // If image is published, update published_items too
+    // Match by generation_data->session_id = gen_id
     const { data: publishedItems } = await supabase
       .from('published_items')
-      .select('id, metadata')
-      .eq('image_id', gen_id);
+      .select('id, metadata, generation_data')
+      .contains('generation_data', { session_id: gen_id });
 
     if (publishedItems && publishedItems.length > 0) {
+      console.log(`[generate/variant] Found ${publishedItems.length} published_items to update`);
+
       for (const item of publishedItems) {
         const pubVariants = item.metadata?.variants || [];
         const updatedPubVariants = pubVariants.filter((v: any) => v.type !== view);
@@ -232,9 +235,13 @@ export async function POST(req: NextRequest) {
             }
           })
           .eq('id', item.id);
+
+        console.log(`[generate/variant] Updated published_item ${item.id} with ${view} variant`);
       }
 
       console.log(`[generate/variant] Updated ${publishedItems.length} published_items`);
+    } else {
+      console.log(`[generate/variant] No published_items found for gen_id: ${gen_id}`);
     }
 
     return NextResponse.json({
