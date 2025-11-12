@@ -1,6 +1,6 @@
 # Open Wardrobe Market - Implementation Guide
 
-Last Updated: 2025-11-12
+Last Updated: 2025-11-12 (Session: Variant Image Fix)
 
 ## Table of Contents
 1. [Architecture Overview](#architecture-overview)
@@ -493,37 +493,97 @@ VERTEX_AI_API_KEY=AQ.Ab...  # Old API key, replaced by OAuth
 ### Common Issues
 
 1. **Variants not displaying**
-   - Check `published_items.metadata` has variants array
-   - Verify R2 URLs use custom domain (`assets.open-wardrobe-market.com`)
-   - Check browser console for image loading errors
+   - **Symptom**: Carousel appears but images fail to load
+   - **Root Cause**: R2 direct URLs (`pub-*.r2.dev`) instead of custom domain
+   - **Solution**: Use `R2_CUSTOM_DOMAIN_URL` in variant generation (Fixed in commit `909af7cd`)
+   - **Check**: Verify `published_items.metadata.variants[].r2_url` uses `assets.open-wardrobe-market.com`
+   - **Browser Console**: Look for CORS errors or 403 Forbidden responses
 
-2. **FUSION analysis fails**
-   - Verify `maxOutputTokens` is at least 8192
-   - Check image size (should be under 5MB)
-   - Ensure Vertex AI credentials are valid
+2. **FUSION analysis timeout/failure**
+   - **Symptom**: `net::ERR_TIMED_OUT` or 500 Internal Server Error
+   - **Root Causes**:
+     - Vertex AI cold start latency on first request
+     - Default 10s Vercel timeout too short
+     - Incorrect parameter position (timeout passed as systemInstruction)
+   - **Solutions**:
+     - Set `maxDuration = 60` in route config (Fixed in commit `61243c56`)
+     - Pass `undefined` for systemInstruction parameter explicitly (Fixed in commit `dd968661`)
+     - Implement retry logic with exponential backoff (1s, 2s intervals)
+   - **Verify**: Check `maxOutputTokens` is at least 8192 for FUSION analysis
 
 3. **Variant generation race condition**
-   - Fixed in commit `2beb3122`
-   - Ensure latest code is deployed
+   - **Symptom**: Only one variant (side OR back) saved, not both
+   - **Root Cause**: Concurrent updates overwriting metadata
+   - **Solution**: SELECT-then-UPDATE pattern (Fixed in commit `2beb3122`)
+   - **Ensure**: Latest code is deployed
 
 4. **Image URLs incorrect**
-   - Should use `assets.open-wardrobe-market.com`
-   - Not `pub-4215f21494de4f369c2bde9f2769dfd4.r2.dev`
+   - **Correct**: `https://assets.open-wardrobe-market.com/...`
+   - **Incorrect**: `https://pub-4215f21494de4f369c2bde9f2769dfd4.r2.dev/...`
+   - **Fix**: Set `R2_CUSTOM_DOMAIN_URL` environment variable
+   - **Code**: [app/api/generate/variant/route.ts:123](app/api/generate/variant/route.ts#L123)
+
+5. **Build errors**
+   - **Duplicate variable declaration**: Ensure no conflicting variable names (e.g., `parseStart` used twice)
+   - **TypeScript errors**: Run `npm run build` locally before deploying
+   - **Vercel build timeout**: Check build logs for slow steps
 
 ### Debug Logging
 
 Enable detailed logging by checking browser console and Vercel logs:
 
-**Browser Console**:
-```
+**Browser Console (FUSION Flow)**:
+```javascript
+// FUSION Analysis
+[handleAnalyze] Starting analysis with images: {image1Type, image1Size, image2Type, image2Size}
+[analyzeImage] Response status: 200
+[analyzeImage] FUSION spec: {palette, silhouette, materials, ...}
+
+// Generation
+[handleGenerate] Recent silhouettes: [...]
+[handleGenerate] Blended spec: {...}
+[handleGenerate] Prompt result: {prompt, selectedSilhouette, selectedDemographic, ...}
+
+// Publishing
+[handlePublish] Preparing generationData with session_id: ...
+[PublishFormPage] Variant generation useEffect triggered
+[PublishFormPage] ✅ Starting variant generation for session: ...
+[MobilePublishFormPage] 🚀 Triggering variant generation...
+[MobilePublishFormPage] Variant received: {type, r2_url, created_at}
+
+// Detail Modal
 [MobileDetailModal] Asset.metadata.variants: [...]
-[MobileFusionPage] Stage changed to: ...
+[MobileDetailModal] ✓ Adding back image: https://assets...
+[MobileDetailModal] Final variant images array: [...]
 ```
 
-**Vercel Logs**:
+**Vercel Logs (API Routes)**:
 ```
+// Variant Generation
+[generate/variant] Request for side view of gen_id: ...
+[generate/variant] Generating side view with Imagen 3 via Vertex AI
+[generate/variant] Uploaded to R2: https://assets.open-wardrobe-market.com/...
+
+// Publish Route
+[publish] Fetching variants for session: ...
+[publish] generation_history.metadata: {...}
+[publish] ✅ Found variants: 2
+[publish] Successfully saved AI analysis, embedding, and pricing
+
+// Assets Route
 [api/assets] DEBUG: Extracted R2 keys: [...]
-[generate/variant] Uploaded to R2: https://assets...
+[api/assets] DEBUG: generation_history query returned N records
+[api/assets] DEBUG: Item <id> r2Key=..., found variants=true
+```
+
+**Performance Timing Logs**:
+```
+[analyze-fusion] ⏱️ Body parsing: 2ms
+[analyze-fusion] ⏱️ Base64 cleaning: 0ms
+[analyze-fusion] ⏱️ Vertex AI Gemini analysis: 3542ms
+[analyze-fusion] ⏱️ JSON parsing & validation: 1ms
+[analyze-fusion] ⏱️ Inspiration generation: 1247ms
+[analyze-fusion] ⏱️ TOTAL REQUEST TIME: 4801ms
 ```
 
 ---
@@ -558,6 +618,58 @@ Enable detailed logging by checking browser console and Vercel logs:
 ├── migrations/
 │   └── add_metadata_to_published_items.sql
 └── IMPLEMENTATION_GUIDE.md           # This file
+```
+
+---
+
+## Recent Fixes (2025-11-12)
+
+### Session: Variant Image Display Issue
+
+**Problems Solved**:
+
+1. **Vertex AI Timeout Parameter Position** (Commit: `dd968661`)
+   - **Issue**: `timeout` option passed as `systemInstruction` parameter
+   - **Error**: `Invalid JSON payload received. Unknown name "timeout" at 'system_instruction'`
+   - **Fix**: Added explicit `undefined` for `systemInstruction` parameter when not used
+   - **Code**: [app/api/gemini/analyze-fusion/route.ts:156-157](app/api/gemini/analyze-fusion/route.ts#L156-L157)
+
+2. **Build Error - Duplicate Variable** (Commit: `61243c56`)
+   - **Issue**: `parseStart` declared twice in same scope
+   - **Fix**: Renamed second occurrence to `jsonParseStart`
+   - **Code**: [app/api/gemini/analyze-fusion/route.ts:229](app/api/gemini/analyze-fusion/route.ts#L229)
+
+3. **Variant Images Not Loading** (Commit: `909af7cd`) ✅ **MAIN FIX**
+   - **Issue**: Variant URLs using R2 direct domain (`pub-*.r2.dev`) with CORS restrictions
+   - **Symptom**: Carousel displayed but images failed to load (403 Forbidden or CORS errors)
+   - **Root Cause**: [app/api/generate/variant/route.ts:122](app/api/generate/variant/route.ts#L122) used `R2_PUBLIC_BASE_URL` instead of custom domain
+   - **Fix**: Changed to `R2_CUSTOM_DOMAIN_URL` (assets.open-wardrobe-market.com)
+   - **Before**: `https://pub-4215f21494de4f369c2bde9f2769dfd4.r2.dev/...`
+   - **After**: `https://assets.open-wardrobe-market.com/...`
+   - **Impact**: All variant images now load correctly through custom domain with proper CORS headers
+
+**Additional Improvements**:
+
+4. **Timeout Configuration** (Commit: `61243c56`)
+   - Added `maxDuration = 60` to analyze-fusion route for Vercel Pro
+   - Added AbortController timeout to Vertex AI calls (45s Gemini, 60s Imagen)
+
+5. **Retry Logic** (Commit: `ba240292`)
+   - Exponential backoff retry (3 attempts: 0s, 1s, 2s intervals)
+   - Skip retry on 4xx client errors
+   - Handles Vertex AI cold starts gracefully
+
+6. **Performance Logging** (Commit: `61243c56`)
+   - Added detailed timing logs for each step
+   - Helps identify bottlenecks in FUSION pipeline
+
+**Verification**:
+```
+✅ Variant generation succeeds
+✅ SSE delivers variants in real-time
+✅ Variants saved to published_items.metadata
+✅ DetailModal displays carousel with all views
+✅ Images load correctly from custom domain
 ```
 
 ---
