@@ -29,31 +29,73 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log('[publish] Request body:', body);
 
-    const { image_url, r2_key, title, description, tags, colors, category, price, generation_data } = body;
+    const {
+      // New format
+      posterUrl,
+      originalUrl,
+      sessionId,
+      // Old format (backwards compatibility)
+      image_url,
+      r2_key,
+      // Common fields
+      title,
+      description,
+      tags,
+      colors,
+      category,
+      price,
+      generation_data,
+      saleType
+    } = body;
 
-    if (!image_url) {
-      console.error('[publish] Missing image_url in request body');
-      return NextResponse.json({ error: 'image_url is required' }, { status: 400 });
+    // Support both old and new formats
+    const finalImageUrl = originalUrl || image_url;
+    const finalPosterUrl = posterUrl || image_url;
+
+    if (!finalImageUrl) {
+      console.error('[publish] Missing image URL in request body');
+      return NextResponse.json({ error: 'originalUrl or image_url is required' }, { status: 400 });
     }
 
     // Use provided r2_key or extract from URL
     let full_path = r2_key;
     if (!full_path) {
-      const urlParts = image_url.split('/');
+      const urlParts = finalImageUrl.split('/');
       const filename = urlParts[urlParts.length - 1];
       const folderPath = urlParts.slice(3).slice(0, -1).join('/');
       full_path = `${folderPath}/${filename}`;
     }
 
-    console.log('[publish] Looking for image with URL:', image_url);
+    console.log('[publish] Looking for image with URL:', finalImageUrl);
     console.log('[publish] R2 key:', full_path);
+
+    // Fetch variants from generation_history if sessionId provided
+    let variants: any[] = [];
+    if (sessionId) {
+      console.log('[publish] Fetching variants for session:', sessionId);
+
+      const { data: genHistory, error: genError } = await supabase
+        .from('generation_history')
+        .select('metadata')
+        .eq('id', sessionId)
+        .single();
+
+      if (genError) {
+        console.error('[publish] Failed to fetch generation_history:', genError);
+      } else if (genHistory?.metadata?.variants) {
+        variants = genHistory.metadata.variants;
+        console.log('[publish] Found variants:', variants.length);
+      } else {
+        console.log('[publish] No variants found in generation_history');
+      }
+    }
 
     // Find the images record first (more reliable than generation_history)
     const { data: imageRecords, error: imageQueryError } = await supabase
       .from('images')
       .select('*')
       .eq('user_id', user.id)
-      .eq('r2_url', image_url)
+      .eq('r2_url', finalImageUrl)
       .limit(1);
 
     if (imageQueryError) {
@@ -78,7 +120,7 @@ export async function POST(req: NextRequest) {
         .from('images')
         .insert({
           user_id: user.id,
-          r2_url: image_url,
+          r2_url: finalImageUrl,
           r2_key: full_path,
           title: title || 'Untitled Design',
           description: description || '',
@@ -175,6 +217,11 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // Create new published_items record
+      const metadata: any = {};
+      if (variants.length > 0) {
+        metadata.variants = variants;
+      }
+
       const { data: newItem, error: publishError } = await supabase
         .from('published_items')
         .insert({
@@ -187,9 +234,10 @@ export async function POST(req: NextRequest) {
           colors: colors || [],
           category: category || 'user-generated',
           is_active: true,
-          original_url: image_url,
-          poster_url: image_url,
-          sale_type: 'buyout'
+          original_url: finalImageUrl,
+          poster_url: finalPosterUrl,
+          sale_type: saleType || 'buyout',
+          metadata: metadata // Include variants
         })
         .select()
         .single();
@@ -205,11 +253,11 @@ export async function POST(req: NextRequest) {
 
     // Generate AI analysis (auto_tags, ai_description) and CLIP embedding
     try {
-      console.log('[publish] Starting AI analysis for:', image_url);
+      console.log('[publish] Starting AI analysis for:', finalImageUrl);
 
-      // Validate image_url is a valid HTTP(S) URL
-      if (!image_url || (!image_url.startsWith('http://') && !image_url.startsWith('https://'))) {
-        console.warn('[publish] Invalid image_url, skipping AI analysis:', image_url);
+      // Validate image URL is a valid HTTP(S) URL
+      if (!finalImageUrl || (!finalImageUrl.startsWith('http://') && !finalImageUrl.startsWith('https://'))) {
+        console.warn('[publish] Invalid image URL, skipping AI analysis:', finalImageUrl);
         throw new Error('Invalid image URL');
       }
 
@@ -219,8 +267,8 @@ export async function POST(req: NextRequest) {
       let base64Image = '';
 
       try {
-        console.log('[publish] Fetching image from URL:', image_url);
-        const imageResponse = await fetch(image_url);
+        console.log('[publish] Fetching image from URL:', finalImageUrl);
+        const imageResponse = await fetch(finalImageUrl);
         console.log('[publish] Image fetch response:', imageResponse.status, imageResponse.headers.get('content-type'));
 
         if (!imageResponse.ok) {
@@ -265,7 +313,7 @@ export async function POST(req: NextRequest) {
         const embeddingResponse = await fetch('http://localhost:5001/embed', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: image_url })
+          body: JSON.stringify({ url: finalImageUrl })
         });
 
         if (embeddingResponse.ok) {
@@ -359,7 +407,7 @@ export async function POST(req: NextRequest) {
           generation_data: {
             session_id: generation_data.session_id || `gen-${Date.now()}`,
             parameters: generation_data.parameters || {},
-            result_images: [image_url]
+            result_images: [finalImageUrl]
           },
           completion_status: 'completed'
         });
