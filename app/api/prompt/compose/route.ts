@@ -6,20 +6,77 @@ import { NextRequest, NextResponse } from 'next/server';
 // Relative import to avoid Vercel bundling issues
 import { composePrompt } from '../../../../src/lib/prompt/buildMobile';
 import type { Answers, DNA } from '../../../../src/lib/prompt/buildMobile';
+import { composeFusionPrompt, validateFusionSpec } from '../../../../src/lib/prompt/buildFusion';
+import type { FusionSpec } from '../../../../src/lib/prompt/buildFusion';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { answers, dna, chipsChosen, askAnswers, freeTextTags } = body;
+    const {
+      mode,
+      // STANDARD mode fields
+      answers,
+      dna,
+      chipsChosen,
+      askAnswers,
+      freeTextTags,
+      // FUSION mode fields
+      spec,
+      userId,
+      timestamp,
+      recentSilhouettes,
+      enableDiversitySampling = true
+    } = body;
 
+    // FUSION mode
+    if (mode === 'fusion') {
+      if (!spec) {
+        return NextResponse.json(
+          { error: 'spec is required for FUSION mode' },
+          { status: 400 }
+        );
+      }
+
+      if (!validateFusionSpec(spec)) {
+        return NextResponse.json(
+          { error: 'Invalid FUSION spec format' },
+          { status: 400 }
+        );
+      }
+
+      console.log('[prompt/compose] FUSION mode input:', {
+        spec,
+        userId,
+        recentSilhouettes,
+        enableDiversitySampling
+      });
+
+      const result = composeFusionPrompt(spec as FusionSpec, {
+        userId,
+        timestamp,
+        recentSilhouettes,
+        enableDiversitySampling
+      });
+
+      console.log('[prompt/compose] FUSION mode output:', {
+        promptLength: result.prompt.length,
+        selectedSilhouette: result.selectedSilhouette,
+        selectedDemographic: result.selectedDemographic,
+        selectedBackground: result.selectedBackground
+      });
+
+      return NextResponse.json(result);
+    }
+
+    // STANDARD mode (existing logic)
     if (!answers || !dna) {
       return NextResponse.json(
-        { error: 'answers and dna are required' },
+        { error: 'answers and dna are required for STANDARD mode' },
         { status: 400 }
       );
     }
 
-    console.log('[prompt/compose] Input:', {
+    console.log('[prompt/compose] STANDARD mode input:', {
       answers,
       dna,
       chipsChosen,
@@ -35,7 +92,7 @@ export async function POST(req: NextRequest) {
       freeTextTags || []
     );
 
-    console.log('[prompt/compose] Output:', result);
+    console.log('[prompt/compose] STANDARD mode output:', result);
 
     return NextResponse.json(result);
   } catch (error) {

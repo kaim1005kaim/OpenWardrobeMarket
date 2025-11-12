@@ -420,34 +420,47 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       if (!sessionData.session) throw new Error('ログインが必要です');
 
       const token = sessionData.session.access_token;
+      const userId = sessionData.session.user.id;
       const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
 
-      // Combine tags from both images
-      const combinedTags = [
-        ...image1.analysis.tags,
-        ...image2.analysis.tags,
-      ];
+      // Get recent silhouettes from user's generation history
+      const recentSilhouettes = await getRecentSilhouettes(userId, apiUrl, token);
+      console.log('[handleGenerate] Recent silhouettes:', recentSilhouettes);
 
-      // Create fusion prompt
-      const fusionPrompt = createFusionPrompt(
-        image1.analysis.description,
-        image2.analysis.description,
-        combinedTags,
-        optionalPrompt
-      );
+      // Blend two specs
+      const spec1 = image1.analysis.spec!;
+      const spec2 = image2.analysis.spec!;
+      const blendedSpec = blendFusionSpecs(spec1, spec2);
 
-      console.log('[MobileFusionPage] Fusion prompt:', fusionPrompt);
+      console.log('[handleGenerate] Blended spec:', blendedSpec);
 
-      // FUSION専用のnegativeプロンプト（背景・直喩を抑制）
-      const fusionNegative = [
-        'no city, no buildings, no torii, no streets, no signage, no text, no logos',
-        'no busy environment, no props, no crowds, no landscape',
-        'no literal objects from references, avoid scene illustration',
-        'hands not covering garment, avoid extreme poses, no motion blur',
-        'low quality, blurry, distorted, ugly, bad anatomy'
-      ].join(', ');
+      // Compose FUSION prompt with diversity controls
+      const promptResponse = await fetch(`${apiUrl}/api/prompt/compose`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          mode: 'fusion',
+          spec: blendedSpec,
+          userId,
+          timestamp: Date.now(),
+          recentSilhouettes,
+          enableDiversitySampling: true,
+        }),
+      });
 
-      // Generate image
+      if (!promptResponse.ok) {
+        throw new Error('プロンプト生成に失敗しました');
+      }
+
+      const promptResult = await promptResponse.json();
+      console.log('[handleGenerate] Prompt result:', promptResult);
+
+      const { prompt: fusionPrompt, negativePrompt: fusionNegative, selectedSilhouette } = promptResult;
+
+      // Generate image with Imagen 3
       const genRes = await fetch(`${apiUrl}/api/nano-generate`, {
         method: 'POST',
         headers: {
@@ -458,6 +471,8 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
           prompt: fusionPrompt,
           negative: fusionNegative,
           aspectRatio: '3:4',
+          mode: 'fusion',
+          selectedSilhouette, // Store for history tracking
         }),
       });
 
@@ -468,7 +483,7 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
 
       const { imageData, mimeType, key } = await genRes.json();
 
-      console.log('[MobileFusionPage] Generated:', { key, mimeType });
+      console.log('[MobileFusionPage] Generated:', { key, mimeType, selectedSilhouette });
 
       // Convert base64 to blob
       const imgBlob = base64ToBlob(imageData, mimeType);
@@ -489,6 +504,35 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       console.error('[handleGenerate] Error:', error);
       alert(error instanceof Error ? error.message : COPY.errors.generateFailed);
       setStage('preview');
+    }
+  };
+
+  // Get recent silhouettes from user's generation history
+  const getRecentSilhouettes = async (
+    userId: string,
+    apiUrl: string,
+    token: string
+  ): Promise<string[]> => {
+    try {
+      // Query generation_history for recent FUSION generations
+      const { data, error } = await supabase
+        .from('generation_history')
+        .select('metadata')
+        .eq('user_id', userId)
+        .eq('mode', 'fusion')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      const silhouettes = data
+        ?.map(item => item.metadata?.silhouette)
+        .filter(Boolean) as string[];
+
+      return silhouettes || [];
+    } catch (error) {
+      console.error('[getRecentSilhouettes] Error:', error);
+      return [];
     }
   };
 

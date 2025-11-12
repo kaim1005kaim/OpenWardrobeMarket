@@ -154,29 +154,106 @@ Generates tags and description for a single image.
 
 ## FUSION Mode
 
+FUSION mode blends two fashion images into unique AI-generated designs with advanced diversity controls to ensure variety and quality.
+
+### Diversity Control System
+
+To prevent repetitive outputs and ensure high-quality diverse results:
+
+#### 1. Silhouette Diversity
+- **Cooldown System**: Tracks recent generations to reduce repetition
+  - Window: Last 5 generations per user
+  - Penalty: 0.35x weight if same silhouette appears 2+ times
+- **Sampling**: Top-k softmax sampling (k=4, temperature=0.85)
+- **Available Silhouettes**: tailored, A-line, boxy, column, mermaid, parachute, cocoon, oversized
+
+**Implementation**: [src/lib/diversity-control.ts](src/lib/diversity-control.ts) - `applyCooldown()`, `sampleTopKSoftmax()`
+
+#### 2. Model Diversity (Demographics)
+- **Distribution**:
+  - Asian: 70%
+  - White: 15%
+  - Black: 10%
+  - Other: 5%
+- **Seeded Sampling**: Deterministic based on `userId + timestamp`
+- **Prompt Format**: "model of East Asian descent, 20s, androgynous elegance"
+
+**Implementation**: [src/lib/diversity-control.ts](src/lib/diversity-control.ts) - `sampleDemographic()`, `demographicToPrompt()`
+
+#### 3. Background Diversity
+- **Distribution**:
+  - Color background: 70% (soft gradient from palette)
+  - White studio: 30%
+- **Color Selection**: Desaturated palette colors for soft backgrounds
+- **Format**: "studio cyclorama, soft gradient background in muted {color}"
+
+**Implementation**: [src/lib/diversity-control.ts](src/lib/diversity-control.ts) - `sampleBackground()`, `backgroundToPrompt()`
+
+#### 4. Abstraction Rules
+FUSION analysis enforces strict abstraction to prevent literal object replication:
+
+**Transformation Examples**:
+- ❌ "torii gate" → ✅ "vertical pillar effect via contrast panel placement"
+- ❌ "Nike swoosh logo" → ✅ "asymmetric diagonal line as contrast piping"
+- ❌ "building facade" → ✅ "grid-like topstitch pattern, architectural seamlines"
+- ❌ "water ripples" → ✅ "irregular soft pleats suggesting fluid movement"
+
+**Implementation**: [app/api/gemini/analyze-fusion/route.ts](app/api/gemini/analyze-fusion/route.ts:8-51)
+
 ### Workflow
 
 1. **Image Upload**
    - User selects 2 images from gallery/camera
    - Images converted to base64
 
-2. **FUSION Analysis**
+2. **FUSION Analysis** ([/api/gemini/analyze-fusion](app/api/gemini/analyze-fusion/route.ts))
    - Both images analyzed with Gemini 2.5 Flash
-   - Extract: palette, silhouette, materials, motifs
+   - Extract: palette, silhouette, materials, abstract motifs
    - Generate DNA vectors for blending
+   - Return FUSION spec with abstraction rules applied
 
 3. **DNA Blending**
    - Blend two DNA vectors (hue, saturation, texture, etc.)
+   - Merge FUSION specs (palette, materials, motifs)
    - Create unified design specification
 
-4. **Prompt Generation**
-   - Convert FUSION spec to Imagen 3 prompt
-   - Include: silhouette, materials, palette, abstract motifs
-   - Add: lighting, camera, construction details
+4. **Prompt Generation** ([/api/prompt/compose](app/api/prompt/compose/route.ts))
+   - Fetch recent silhouettes from `generation_history`
+   - Apply diversity controls:
+     - Silhouette cooldown + sampling
+     - Demographic sampling (seeded by userId + timestamp)
+     - Background sampling
+   - Build Imagen 3 prompt with selected variations
+   - Return: prompt, negativePrompt, selectedSilhouette, selectedDemographic, selectedBackground
+
+**Request**:
+```json
+{
+  "mode": "fusion",
+  "spec": { /* blended FUSION spec */ },
+  "userId": "...",
+  "timestamp": 1699999999999,
+  "recentSilhouettes": ["tailored", "A-line", ...],
+  "enableDiversitySampling": true
+}
+```
+
+**Response**:
+```json
+{
+  "prompt": "FASHION EDITORIAL, full-body fashion photography...",
+  "negativePrompt": "no text, no logos, no literal objects...",
+  "selectedSilhouette": "cocoon",
+  "selectedDemographic": "asian",
+  "selectedBackground": "color",
+  "aspectRatio": "3:4"
+}
+```
 
 5. **Main Image Generation**
-   - Generate front view with Imagen 3
+   - Generate front view with Imagen 3 using diversity-controlled prompt
    - Upload to R2 storage
+   - Save `selectedSilhouette` to `generation_history.metadata.silhouette` for future cooldown
 
 6. **Variant Generation**
    - Generate `side` view (90-degree profile)

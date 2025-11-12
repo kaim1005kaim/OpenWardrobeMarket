@@ -5,37 +5,49 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callVertexAIGemini } from 'lib/vertex-ai-auth';
 
 // FUSION専用：画像を服のパラメータに変換する分析プロンプト
-const FUSION_ANALYSIS_PROMPT = `You are a fashion design translator.
-Convert visual cues into garment specifications (not background scenes).
+const FUSION_ANALYSIS_PROMPT = `You are a fashion design translator specializing in abstraction.
+Convert visual cues from ANY source (architecture, nature, products, scenes) into garment specifications.
 Output JSON only.
 
-Analyze the image and propose abstract garment features.
-Do NOT describe environments.
-Map shapes & textures to CLOTHING ONLY.
+CRITICAL ABSTRACTION RULES:
+1. NEVER include literal objects, logos, text, brand names, or recognizable imagery
+2. Transform visual elements using FASHION CONSTRUCTION VOCABULARY:
+   - Shapes → seamlines, panels, pleats, draping techniques
+   - Patterns → stripe operations, jacquard, gradient dye, quilting
+   - Textures → fabric surface treatments, embroidery, piping
+   - Colors → palette extraction with proper distribution
+   - Structures → silhouette, construction details, finishing
+
+3. Examples of proper abstraction:
+   ❌ BAD: "torii gate" → ✅ GOOD: "vertical pillar effect via contrast panel placement"
+   ❌ BAD: "Nike swoosh logo" → ✅ GOOD: "asymmetric diagonal line as contrast piping"
+   ❌ BAD: "building facade" → ✅ GOOD: "grid-like topstitch pattern, architectural seamlines"
+   ❌ BAD: "water ripples" → ✅ GOOD: "irregular soft pleats suggesting fluid movement"
+   ❌ BAD: "cherry blossoms" → ✅ GOOD: "delicate scattered appliqué in tonal palette"
 
 Return JSON:
 {
   "palette": [{"name": "...","hex":"#...","weight":0..1}],
-  "silhouette": "oversized | tailored | cocoon | A-line | fitted",
-  "materials": ["wool suiting","satin","technical nylon",...],
+  "silhouette": "oversized | tailored | cocoon | A-line | fitted | boxy | column | mermaid | parachute",
+  "materials": ["wool suiting","satin","technical nylon","brushed cotton","organza",...],
   "motif_abstractions": [
     {
-      "source_cue": "short description of the visual cue",
-      "operation": "stripe | pleat | panel | quilting | sash | piping | embroidery | jacquard | gradient dye",
-      "placement": ["bodice","sleeve","waist","skirt","lapel","yoke","hem"],
-      "style": "tonal | high-contrast | subtle | glossy | matte",
+      "source_cue": "describe the visual element you're abstracting",
+      "operation": "stripe | pleat | panel | quilting | sash | piping | embroidery | jacquard | gradient dye | asymmetric cut | contrast insert",
+      "placement": ["bodice","sleeve","waist","skirt","lapel","yoke","hem","collar","cuff"],
+      "style": "tonal | high-contrast | subtle | glossy | matte | textured",
       "scale": "micro | small | medium | large",
-      "notes": "how it should transform (no literal objects)"
+      "notes": "how this translates to garment construction (MUST be abstract, no literal objects)"
     }
   ],
-  "details": ["obi-inspired belt","chevron seamlines","pinstripe topstitch",...]
+  "details": ["architectural seamlines","contrast piping along edges","chevron topstitch pattern",...]
 }
 
-IMPORTANT RULES:
-- Return 2-4 motif_abstractions maximum (avoid overcrowding the garment)
-- Palette should have 2-3 colors max with weights summing to 1.0
-- NO literal objects (no shrines, no buildings, no text, no logos)
-- Focus on abstract operations that translate to garment construction
+STRICT OUTPUT REQUIREMENTS:
+- Return 2-3 motif_abstractions maximum (clean, focused design)
+- Palette: 2-3 colors with weights summing to 1.0
+- ALL motifs must be abstract fashion operations (no objects, no scenes, no logos)
+- Focus on construction, texture, color, and form
 - You MUST respond with ONLY valid JSON, no markdown formatting`;
 
 // 動的インスピレーション文を生成するプロンプト
