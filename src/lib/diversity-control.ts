@@ -3,23 +3,29 @@
  *
  * Implements silhouette cooldown, demographic sampling, and background variation
  * to ensure diverse and high-quality fashion outputs.
+ *
+ * Updated to support 12-16 silhouettes and detailed JP/KR demographic sampling.
  */
 
-// Silhouette types supported
-export const SILHOUETTES = [
-  "tailored",
-  "A-line",
-  "boxy",
-  "column",
-  "mermaid",
-  "parachute",
-  "cocoon",
-  "oversized"
-] as const;
+import {
+  SILHOUETTES,
+  MODEL_WEIGHTS,
+  NO_MODEL_PROBABILITY,
+  COOLDOWN_CONFIG,
+  SAMPLING_CONFIG,
+  BACKGROUND_CONFIG,
+  getAllModelWeights,
+  demographicPhrase,
+  silhouetteDescription,
+  getBaseSilhouetteWeights,
+  type Silhouette,
+  type DemographicKey
+} from './diversity-config';
 
-export type Silhouette = typeof SILHOUETTES[number];
+export type { Silhouette, DemographicKey };
+export { SILHOUETTES };
 
-// Demographic distribution configuration
+// Legacy interfaces for backward compatibility
 export interface DemographicConfig {
   asian: number;
   white: number;
@@ -34,7 +40,6 @@ export const DEFAULT_DEMOGRAPHIC_DISTRIBUTION: DemographicConfig = {
   other: 0.05
 };
 
-// Background type distribution
 export interface BackgroundConfig {
   color: number;
   white: number;
@@ -57,16 +62,16 @@ export function applyCooldown<T extends string>(
   recentHistory: T[],
   options: {
     window?: number;      // How many recent items to consider (default: 5)
-    factor?: number;      // Penalty factor for same item (default: 0.35)
+    factor?: number;      // Penalty factor per occurrence (default: 0.35)
   } = {}
 ): Map<T, number> {
-  const { window = 5, factor = 0.35 } = options;
+  const { window = COOLDOWN_CONFIG.window, factor = COOLDOWN_CONFIG.factor } = options;
 
   // Initialize with equal weights
   const weights = new Map<T, number>();
   items.forEach(item => weights.set(item, 1.0));
 
-  // Apply penalty to recently used items
+  // Count occurrences in recent window
   const recentWindow = recentHistory.slice(0, window);
   const counts = new Map<T, number>();
 
@@ -74,12 +79,10 @@ export function applyCooldown<T extends string>(
     counts.set(item, (counts.get(item) || 0) + 1);
   });
 
+  // Apply exponential penalty: weight = weight * (factor^count)
   counts.forEach((count, item) => {
-    if (count >= 2) {
-      // Heavy penalty if same item appears 2+ times in recent window
-      const currentWeight = weights.get(item) || 1.0;
-      weights.set(item, currentWeight * factor);
-    }
+    const currentWeight = weights.get(item) || 1.0;
+    weights.set(item, currentWeight * Math.pow(factor, count));
   });
 
   return weights;
@@ -89,6 +92,7 @@ export function applyCooldown<T extends string>(
  * Sample from weighted distribution using softmax with temperature
  * @param weights - Map of items to weights
  * @param options - Sampling configuration
+ * @param seed - Optional seed for deterministic sampling
  * @returns Selected item
  */
 export function sampleTopKSoftmax<T extends string>(
@@ -96,9 +100,10 @@ export function sampleTopKSoftmax<T extends string>(
   options: {
     k?: number;          // Top-k items to consider (default: 4)
     temperature?: number; // Temperature for softmax (default: 0.85)
+    seed?: string;       // Seed for deterministic sampling
   } = {}
 ): T {
-  const { k = 4, temperature = 0.85 } = options;
+  const { k = SAMPLING_CONFIG.topK, temperature = SAMPLING_CONFIG.temperature, seed } = options;
 
   // Sort by weight and take top-k
   const sorted = Array.from(weights.entries())
@@ -117,8 +122,8 @@ export function sampleTopKSoftmax<T extends string>(
     probability: score / total
   }));
 
-  // Sample
-  const rand = Math.random();
+  // Sample (with optional seed for deterministic behavior)
+  const rand = seed ? seededRandom(seed) : Math.random();
   let cumulative = 0;
 
   for (const { item, probability } of probabilities) {
@@ -133,7 +138,8 @@ export function sampleTopKSoftmax<T extends string>(
 }
 
 /**
- * Sample demographic based on configured distribution
+ * Sample demographic based on configured distribution (LEGACY)
+ * @deprecated Use sampleDetailedDemographic instead
  * @param distribution - Demographic probability distribution
  * @param seed - Optional seed for deterministic sampling (e.g., userId + timestamp)
  * @returns Demographic category
@@ -158,6 +164,45 @@ export function sampleDemographic(
 }
 
 /**
+ * Sample detailed demographic from JP/KR-focused distribution
+ * @param seed - Optional seed for deterministic sampling
+ * @returns Detailed demographic key (e.g., "jp_f_20s")
+ */
+export function sampleDetailedDemographic(seed?: string): DemographicKey {
+  const weights = getAllModelWeights();
+  const rand = seed ? seededRandom(seed) : Math.random();
+
+  let cumulative = 0;
+  const entries = Object.entries(weights) as [DemographicKey, number][];
+
+  for (const [key, weight] of entries) {
+    cumulative += weight;
+    if (rand <= cumulative) {
+      return key;
+    }
+  }
+
+  // Fallback to most common
+  return 'jp_f_20s';
+}
+
+/**
+ * Generate model phrase with "no model" probability support
+ * @param seed - Optional seed for deterministic sampling
+ * @returns Model phrase or "no visible model"
+ */
+export function sampleModelPhrase(seed?: string): string {
+  const rand = seed ? seededRandom(seed + '_nomodel') : Math.random();
+
+  if (rand < NO_MODEL_PROBABILITY) {
+    return "no visible model, garment-only composition, product-forward presentation, styled on invisible form";
+  }
+
+  const demoKey = sampleDetailedDemographic(seed);
+  return demographicPhrase(demoKey);
+}
+
+/**
  * Generate demographic prompt phrase
  * @param demographic - Demographic category
  * @returns Prompt phrase for model description
@@ -176,13 +221,16 @@ export function demographicToPrompt(demographic: keyof DemographicConfig): strin
 /**
  * Sample background type based on configured distribution
  * @param distribution - Background probability distribution
+ * @param seed - Optional seed for deterministic sampling
  * @returns Background type
  */
 export function sampleBackground(
-  distribution: BackgroundConfig = DEFAULT_BACKGROUND_DISTRIBUTION
+  distribution: BackgroundConfig = DEFAULT_BACKGROUND_DISTRIBUTION,
+  seed?: string
 ): 'color' | 'white' {
-  const rand = Math.random();
-  return rand < distribution.color ? 'color' : 'white';
+  const rand = seed ? seededRandom(seed + '_bg') : Math.random();
+  const threshold = BACKGROUND_CONFIG.colorProbability;
+  return rand < threshold ? 'color' : 'white';
 }
 
 /**

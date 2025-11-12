@@ -105,6 +105,9 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
     prompt: string;
     imageData?: string;
     mimeType?: string;
+    selectedSilhouette?: string;
+    selectedDemographic?: string;
+    selectedBackground?: string;
   } | null>(null);
   const [showButtons, setShowButtons] = useState(false);
 
@@ -492,7 +495,13 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       const promptResult = await promptResponse.json();
       console.log('[handleGenerate] Prompt result:', promptResult);
 
-      const { prompt: fusionPrompt, negativePrompt: fusionNegative, selectedSilhouette } = promptResult;
+      const {
+        prompt: fusionPrompt,
+        negativePrompt: fusionNegative,
+        selectedSilhouette,
+        selectedDemographic,
+        selectedBackground
+      } = promptResult;
 
       // Generate image with Imagen 3
       const genRes = await fetch(`${apiUrl}/api/nano-generate`, {
@@ -531,6 +540,9 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
         prompt: fusionPrompt,
         imageData,
         mimeType,
+        selectedSilhouette,
+        selectedDemographic,
+        selectedBackground,
       });
 
       setStage('revealing');
@@ -849,7 +861,11 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
                   maximal: asset.dna.minimal_maximal > 0 ? Math.abs(asset.dna.minimal_maximal) : 0,
                 },
                 ai_description: imageDescription,
-                embedding: embedding
+                embedding: embedding,
+                // Diversity control tracking
+                silhouette: asset.selectedSilhouette,
+                demographic: asset.selectedDemographic,
+                background: asset.selectedBackground
               },
               status: 'completed'
             }, {

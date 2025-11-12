@@ -8,6 +8,7 @@
 import {
   SILHOUETTES,
   type Silhouette,
+  type DemographicKey,
   applyCooldown,
   sampleTopKSoftmax,
   sampleDemographic,
@@ -15,9 +16,15 @@ import {
   sampleBackground,
   backgroundToPrompt,
   formatSilhouetteForPrompt,
+  sampleDetailedDemographic,
+  sampleModelPhrase,
   DEFAULT_DEMOGRAPHIC_DISTRIBUTION,
   DEFAULT_BACKGROUND_DISTRIBUTION
 } from '../diversity-control';
+import {
+  silhouetteDescription,
+  getBaseSilhouetteWeights
+} from '../diversity-config';
 
 export interface FusionSpec {
   palette: { name: string; hex: string; weight: number }[];
@@ -47,9 +54,13 @@ export interface FusionPromptResult {
   prompt: string;
   negativePrompt: string;
   selectedSilhouette: string;
-  selectedDemographic: string;
+  selectedDemographic: string | DemographicKey;
   selectedBackground: string;
   aspectRatio: string;
+  metadata?: {
+    silhouetteDescription?: string;
+    modelPhrase?: string;
+  };
 }
 
 const NEGATIVE_PROMPT =
@@ -76,41 +87,58 @@ export function composeFusionPrompt(
 
   // 1. Select silhouette with diversity control
   let selectedSilhouette: Silhouette;
+  let silhouetteDesc: string;
+  const seed = `${userId}-${timestamp}`;
 
   if (enableDiversitySampling) {
-    // Apply cooldown to prevent repetition
-    const weights = applyCooldown(
-      SILHOUETTES,
-      recentSilhouettes as Silhouette[],
-      { window: 5, factor: 0.35 }
-    );
+    // Start with base weights
+    const weights = getBaseSilhouetteWeights();
 
-    // If spec has silhouette suggestion, boost its weight
+    // Apply cooldown to prevent repetition
+    const cooledWeights = applyCooldown(
+      SILHOUETTES,
+      recentSilhouettes as Silhouette[]
+    );
+    cooledWeights.forEach((weight, silhouette) => {
+      weights.set(silhouette, weight);
+    });
+
+    // If spec has silhouette suggestion, boost its weight (alignment)
     if (spec.silhouette) {
       const suggested = spec.silhouette.toLowerCase() as Silhouette;
       if (SILHOUETTES.includes(suggested)) {
         const currentWeight = weights.get(suggested) || 1.0;
-        weights.set(suggested, currentWeight * 1.5);
+        weights.set(suggested, currentWeight + 0.2); // Add boost
       }
     }
 
-    selectedSilhouette = sampleTopKSoftmax(weights, { k: 4, temperature: 0.85 });
+    // Sample with seed for reproducibility
+    selectedSilhouette = sampleTopKSoftmax(weights, { seed });
   } else {
     // Use spec silhouette or fallback
     const suggested = spec.silhouette?.toLowerCase() as Silhouette;
     selectedSilhouette = SILHOUETTES.includes(suggested) ? suggested : 'tailored';
   }
 
-  // 2. Select demographic
-  const seed = `${userId}-${timestamp}`;
-  const demographic = enableDiversitySampling
-    ? sampleDemographic(DEFAULT_DEMOGRAPHIC_DISTRIBUTION, seed)
-    : 'asian';
-  const modelPhrase = demographicToPrompt(demographic);
+  silhouetteDesc = silhouetteDescription(selectedSilhouette);
+
+  // 2. Select demographic (detailed JP/KR-focused)
+  let demographic: DemographicKey | string;
+  let modelPhrase: string;
+
+  if (enableDiversitySampling) {
+    // Use new detailed demographic sampling
+    modelPhrase = sampleModelPhrase(seed);
+    demographic = sampleDetailedDemographic(seed);
+  } else {
+    // Legacy fallback
+    demographic = 'asian';
+    modelPhrase = demographicToPrompt('asian');
+  }
 
   // 3. Select background
   const backgroundType = enableDiversitySampling
-    ? sampleBackground(DEFAULT_BACKGROUND_DISTRIBUTION)
+    ? sampleBackground(DEFAULT_BACKGROUND_DISTRIBUTION, seed)
     : 'white';
   const backgroundPhrase = backgroundToPrompt(
     backgroundType,
@@ -136,14 +164,15 @@ export function composeFusionPrompt(
   // 7. Build details list
   const detailsDesc = spec.details.slice(0, 4).join(', ');
 
-  // 8. Compose final prompt
+  // 8. Compose final prompt with enhanced silhouette description
   const prompt = `FASHION EDITORIAL, full-body fashion photography, ${aspectRatio} composition, centered model.
 
 GARMENT FOCUS: High-end fashion design, studio presentation, product-forward photography.
 
 BACKGROUND: ${backgroundPhrase}
 
-SILHOUETTE: ${formatSilhouetteForPrompt(selectedSilhouette)}
+SILHOUETTE: ${selectedSilhouette} silhouette
+Description: ${silhouetteDesc}
 
 MATERIALS: ${materialsDesc}, luxurious fabric quality
 
@@ -166,7 +195,7 @@ QUALITY: High resolution, editorial fashion photography standard, impeccable tai
 
 ${spec.inspiration ? `\nCREATIVE DIRECTION: ${spec.inspiration}` : ''}
 
-CRITICAL: All design elements must be abstract fashion operations (seamlines, panels, pleats, embroidery, etc.). NO literal objects, logos, text, or recognizable imagery from source materials.`;
+CRITICAL: All design elements must be abstract fashion operations (seamlines, panels, pleats, embroidery, etc.). NO literal objects, logos, text, or recognizable imagery from source materials. NO cultural symbols, NO traditional patterns, NO recognizable motifs - only abstract geometric and construction-based design language.`;
 
   return {
     prompt,
@@ -174,7 +203,11 @@ CRITICAL: All design elements must be abstract fashion operations (seamlines, pa
     selectedSilhouette,
     selectedDemographic: demographic,
     selectedBackground: backgroundType,
-    aspectRatio
+    aspectRatio,
+    metadata: {
+      silhouetteDescription: silhouetteDesc,
+      modelPhrase
+    }
   };
 }
 
