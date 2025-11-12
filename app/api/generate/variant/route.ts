@@ -27,20 +27,53 @@ type VariantType = 'side' | 'back';
  */
 function mutateForView(basePrompt: string, view: VariantType): string {
   const viewInstructions = {
-    side: `SIDE PROFILE VIEW: Model facing 90 degrees to the left or right. Camera captures the full side silhouette from shoulder to toe. The model's face should be in profile (not looking at camera). Show the side seam, sleeve construction, and garment depth clearly. This is NOT a front view - we should see the side of the body and garment only.`,
-    back: `BACK VIEW: Model facing completely away from camera (180 degrees). Camera captures the full back from shoulders to heels. Show back details: rear construction, closures, hemline, and any back design elements. The model should be facing away - we should NOT see their face or front of the garment.`
+    side: `MANDATORY CAMERA ANGLE - SIDE PROFILE VIEW:
+- Model MUST be turned 90 degrees (perpendicular to camera)
+- Camera positioned at model's left or right side
+- We see ONLY the side of the body (shoulder, arm, hip, leg from the side)
+- Model's face is in PROFILE (side of face visible, NOT front)
+- FORBIDDEN: Front view, three-quarter view, or face looking at camera
+- Show: side seam, sleeve construction from side, garment depth and layers
+- Photograph the SIDE SILHOUETTE, not the front`,
+
+    back: `MANDATORY CAMERA ANGLE - BACK VIEW:
+- Model MUST be facing 180 degrees away from camera (back to camera)
+- Camera positioned directly behind the model
+- We see ONLY the back (shoulders, back, rear, legs from behind)
+- Model's face is NOT VISIBLE (facing away completely)
+- FORBIDDEN: Front view, side view, or any view of the face
+- Show: back construction, rear seamlines, closures, back hemline, neckline from behind
+- Photograph the BACK of the garment, not the front or sides`
   };
 
-  return `${basePrompt}
+  // Remove any existing camera angle instructions from base prompt
+  const cleanedPrompt = basePrompt
+    .replace(/CAMERA:.*?(?=\n\n|\n[A-Z]+:|$)/gs, '')
+    .replace(/camera angle.*?(?=\n\n|\n[A-Z]+:|$)/gis, '')
+    .trim();
 
-CRITICAL INSTRUCTION - CAMERA ANGLE:
+  return `${cleanedPrompt}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  CRITICAL OVERRIDE - CAMERA ANGLE ONLY  ⚠️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ${viewInstructions[view]}
 
-CONSISTENCY REQUIREMENTS:
-- Keep exact same outfit, colors, materials, patterns, and styling
-- Keep exact same lighting and studio background
-- Only change: camera angle/viewpoint
-- DO NOT change the garment design or details`;
+CAMERA SPECIFICATION:
+- ${view === 'side' ? '90-degree side angle' : '180-degree back angle'}
+- ${view === 'side' ? 'Model perpendicular to camera' : 'Model back to camera'}
+- ${view === 'side' ? 'Profile view ONLY' : 'Rear view ONLY'}
+
+CONSISTENCY (DO NOT CHANGE):
+- Same exact garment design, colors, materials, patterns
+- Same lighting setup and studio background
+- Same model, pose stance, and styling
+- ONLY CHANGE: Camera position to ${view} view
+
+VERIFICATION:
+✓ If front of garment or face is visible → WRONG, try again
+✓ If ${view === 'side' ? 'side profile' : 'back'} is primary view → CORRECT`;
 }
 
 /**
@@ -53,8 +86,14 @@ async function generateVariant(
 ): Promise<{ imageUrl: string; imageData: string }> {
   const mutatedPrompt = mutateForView(prompt, view);
 
+  // Create strong negative prompt to prevent front view
+  const negativePrompt = view === 'side'
+    ? 'front view, frontal pose, face looking at camera, forward facing, three-quarter view, frontal angle, facing camera'
+    : 'front view, frontal pose, face visible, side view, face looking at camera, forward facing, profile view, face from front';
+
   console.log(`[generate/variant] Generating ${view} view with Imagen 3 via Vertex AI`);
   console.log(`[generate/variant] Prompt (first 200 chars):`, mutatedPrompt.slice(0, 200));
+  console.log(`[generate/variant] Negative prompt:`, negativePrompt);
 
   try {
     // Call Vertex AI Imagen 3 using shared helper
@@ -66,7 +105,10 @@ async function generateVariant(
         sampleCount: 1,
         aspectRatio: '3:4',
         personGeneration: 'allow_adult',
-        safetySetting: 'block_only_high'
+        safetySetting: 'block_only_high',
+        negativePrompt: negativePrompt,
+        // Increase guidance scale to better follow prompt
+        guidanceScale: 30
       }
     );
 
