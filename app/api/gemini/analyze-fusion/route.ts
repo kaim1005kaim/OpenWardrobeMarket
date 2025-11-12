@@ -148,9 +148,9 @@ export async function POST(req: NextRequest) {
 
     // Parse analysis JSON
     let spec: FusionAnalysisResult;
-    try {
-      let jsonText = analysisText.trim();
+    let jsonText = analysisText.trim();
 
+    try {
       // Remove markdown code blocks
       if (jsonText.startsWith('```json')) {
         jsonText = jsonText.replace(/^```json\n/, '').replace(/\n```$/, '');
