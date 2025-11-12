@@ -30,18 +30,23 @@ export async function GET(req: NextRequest) {
       controller.enqueue(new TextEncoder().encode(initialMessage));
 
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      supabase
-        .from('generation_history')
-        .select('variants')
-        .eq('id', genId)
-        .single()
-        .then(({ data }) => {
+
+      (async () => {
+        try {
+          const { data } = await supabase
+            .from('generation_history')
+            .select('variants')
+            .eq('id', genId)
+            .single();
+
           if (data?.variants) {
             const message = `data: ${JSON.stringify({ type: 'initial_state', variants: data.variants })}\n\n`;
             controller.enqueue(new TextEncoder().encode(message));
           }
-        })
-        .catch(err => console.error('[variants-stream] Error fetching initial state:', err));
+        } catch (err) {
+          console.error('[variants-stream] Error fetching initial state:', err);
+        }
+      })();
 
       const keepAlive = setInterval(() => {
         try {
