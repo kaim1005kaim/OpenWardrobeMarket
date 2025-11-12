@@ -1,5 +1,6 @@
 export const runtime = 'nodejs';
 export const revalidate = 0;
+export const maxDuration = 60; // 60 seconds max for FUSION analysis (requires Vercel Pro plan, otherwise defaults to 10s)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { callVertexAIGemini } from 'lib/vertex-ai-auth';
@@ -91,10 +92,15 @@ interface FusionAnalysisResult {
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    console.log('[analyze-fusion] Request received');
+  const startTime = Date.now();
 
+  try {
+    console.log('[analyze-fusion] Request received at', new Date().toISOString());
+
+    const parseStart = Date.now();
     const body = await req.json();
+    console.log(`[analyze-fusion] ⏱️ Body parsing: ${Date.now() - parseStart}ms`);
+
     const { imageData, mimeType, generateInspiration = true } = body;
 
     console.log('[analyze-fusion] Request body keys:', Object.keys(body));
@@ -110,9 +116,11 @@ export async function POST(req: NextRequest) {
     console.log('[analyze-fusion] Analyzing with Vertex AI Gemini 2.5 FUSION prompt...');
 
     // Remove data URL prefix if present
+    const cleanStart = Date.now();
     const base64Data = imageData.includes(',')
       ? imageData.split(',')[1]
       : imageData;
+    console.log(`[analyze-fusion] ⏱️ Base64 cleaning: ${Date.now() - cleanStart}ms`);
 
     console.log('[analyze-fusion] base64Data length after cleaning:', base64Data.length);
 
@@ -122,6 +130,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 1: Analyze image with FUSION prompt using Vertex AI
+    const geminiStart = Date.now();
+    console.log('[analyze-fusion] 🚀 Starting Vertex AI Gemini call...');
+
     const analysisResult = await callVertexAIGemini(
       'gemini-2.5-flash',
       [
@@ -141,8 +152,11 @@ export async function POST(req: NextRequest) {
       {
         temperature: 0.4,
         maxOutputTokens: 8192,
-      }
+      },
+      { timeout: 45000 } // 45s timeout for Gemini vision analysis
     );
+
+    console.log(`[analyze-fusion] ⏱️ Vertex AI Gemini analysis: ${Date.now() - geminiStart}ms`);
 
     // Validate response structure
     console.log('[analyze-fusion] Checking response structure...');
@@ -209,9 +223,10 @@ export async function POST(req: NextRequest) {
     }
 
     const analysisText = firstPart.text;
-    console.log('[analyze-fusion] Analysis raw response:', analysisText);
+    console.log('[analyze-fusion] Analysis raw response (first 500 chars):', analysisText.substring(0, 500));
 
     // Parse analysis JSON
+    const parseStart = Date.now();
     let spec: FusionAnalysisResult;
     let jsonText = analysisText.trim();
 
@@ -230,6 +245,7 @@ export async function POST(req: NextRequest) {
       jsonText = jsonText.replace(/(\d+)\s*\n\s*\{/g, '$1},\n    {');
 
       spec = JSON.parse(jsonText);
+      console.log(`[analyze-fusion] ⏱️ JSON parsing & validation: ${Date.now() - parseStart}ms`);
     } catch (parseError) {
       console.error('[analyze-fusion] Failed to parse analysis JSON:', parseError);
       console.error('[analyze-fusion] Attempted to parse:', jsonText.substring(0, 500));
@@ -263,6 +279,7 @@ export async function POST(req: NextRequest) {
     // Step 2: Generate inspiration text (optional)
     if (generateInspiration) {
       console.log('[analyze-fusion] Generating dynamic inspiration text...');
+      const inspirationStart = Date.now();
 
       const inspirationPrompt = INSPIRATION_PROMPT.replace(
         '{spec}',
@@ -280,16 +297,19 @@ export async function POST(req: NextRequest) {
         {
           temperature: 0.8,
           maxOutputTokens: 256,
-        }
+        },
+        { timeout: 20000 } // 20s timeout for inspiration generation (text-only)
       );
 
       const inspirationText = inspirationResult.candidates[0].content.parts[0].text.trim();
       console.log('[analyze-fusion] Generated inspiration:', inspirationText);
+      console.log(`[analyze-fusion] ⏱️ Inspiration generation: ${Date.now() - inspirationStart}ms`);
 
       spec.inspiration = inspirationText;
     }
 
     console.log('[analyze-fusion] Final spec:', spec);
+    console.log(`[analyze-fusion] ⏱️ TOTAL REQUEST TIME: ${Date.now() - startTime}ms`);
 
     return NextResponse.json(spec);
   } catch (error) {

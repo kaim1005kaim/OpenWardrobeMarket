@@ -228,7 +228,8 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
     apiUrl: string,
     token: string,
     base64: string,
-    mimeType: string
+    mimeType: string,
+    retries = 2 // Retry up to 2 times (total 3 attempts)
   ): Promise<{ tags: string[]; description: string; dna: Partial<DNA>; spec: FusionSpec }> => {
     const imageData = base64.includes(',') ? base64.split(',')[1] : base64;
 
@@ -236,48 +237,80 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
     console.log('[analyzeImage] Image data length:', imageData.length);
     console.log('[analyzeImage] MIME type:', mimeType);
 
-    const response = await fetch(`${apiUrl}/api/gemini/analyze-fusion`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        imageData,
-        mimeType,
-        generateInspiration: true, // 動的インスピレーション文を生成
-      }),
-    });
+    let lastError: Error | null = null;
 
-    console.log('[analyzeImage] Response status:', response.status);
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // 1s, 2s, 4s max
+          console.log(`[analyzeImage] Retry attempt ${attempt}/${retries} after ${backoffMs}ms backoff...`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+        }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[analyzeImage] Error response:', errorText);
-      throw new Error(`画像解析に失敗しました (${response.status})`);
+        const response = await fetch(`${apiUrl}/api/gemini/analyze-fusion`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            imageData,
+            mimeType,
+            generateInspiration: true, // 動的インスピレーション文を生成
+          }),
+        });
+
+        console.log('[analyzeImage] Response status:', response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[analyzeImage] Error response:', errorText);
+          throw new Error(`画像解析に失敗しました (${response.status})`);
+        }
+
+        const spec: FusionSpec = await response.json();
+        console.log('[analyzeImage] FUSION spec:', spec);
+
+        // Success - return immediately
+        if (attempt > 0) {
+          console.log(`[analyzeImage] ✓ Success on retry attempt ${attempt}`);
+        }
+        return {
+          tags: [
+            spec.silhouette,
+            ...spec.materials.slice(0, 3),
+            ...spec.palette.slice(0, 2).map(c => c.name),
+            ...spec.details.slice(0, 3)
+          ].filter(Boolean),
+          description: spec.inspiration || `${spec.silhouette} design with ${spec.materials.join(', ')}`,
+          dna: fusionSpecToDNA(spec),
+          spec
+        };
+      } catch (error) {
+        lastError = error as Error;
+        console.error(`[analyzeImage] Attempt ${attempt + 1}/${retries + 1} failed:`, error);
+
+        // Don't retry on 4xx errors (client errors)
+        if (error instanceof Error && error.message.includes('(4')) {
+          console.error('[analyzeImage] Client error detected, not retrying');
+          throw error;
+        }
+
+        // If this was the last attempt, throw
+        if (attempt === retries) {
+          throw new Error(
+            `画像解析に失敗しました。${retries + 1}回試行しましたが成功しませんでした。\n` +
+            `最後のエラー: ${lastError?.message || '不明なエラー'}`
+          );
+        }
+      }
     }
 
-    const spec: FusionSpec = await response.json();
-    console.log('[analyzeImage] FUSION spec:', spec);
-
-    // FUSIONスペックから従来のタグと説明を生成（後方互換性のため）
-    const tags = [
-      spec.silhouette,
-      ...spec.materials.slice(0, 3),
-      ...spec.palette.slice(0, 2).map(c => c.name),
-      ...spec.details.slice(0, 3)
-    ].filter(Boolean);
-
-    const description = spec.inspiration ||
-      `${spec.silhouette} design with ${spec.materials.join(', ')}`;
-
-    // FUSIONスペックからDNAを生成
-    const dna = fusionSpecToDNA(spec);
-
-    return { tags, description, dna, spec };
+    // Should never reach here, but TypeScript needs this
+    throw lastError || new Error('Unknown error during image analysis');
   };
 
-  // FUSIONスペックからDNAパラメータを生成
+  // Extract this function to avoid duplication
   const fusionSpecToDNA = (spec: FusionSpec): Partial<DNA> => {
     const dna: Partial<DNA> = {};
 
@@ -320,6 +353,7 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
 
     return dna;
   };
+
 
   // Convert tags to DNA parameters (legacy function - kept for compatibility)
   const tagsToDNA = (tags: string[]): Partial<DNA> => {

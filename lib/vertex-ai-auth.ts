@@ -59,7 +59,8 @@ export async function callVertexAIGemini(
   modelId: string,
   contents: any[],
   generationConfig?: any,
-  systemInstruction?: any
+  systemInstruction?: any,
+  options?: { timeout?: number }
 ): Promise<any> {
   const projectId = process.env.GOOGLE_CLOUD_PROJECT;
 
@@ -80,23 +81,39 @@ export async function callVertexAIGemini(
     requestBody.systemInstruction = systemInstruction;
   }
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody)
-  });
+  // Add timeout with AbortController (default 30s)
+  const timeoutMs = options?.timeout || 30000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Vertex AI Gemini API error: ${response.status} - ${errorText}`);
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Vertex AI Gemini API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('[callVertexAIGemini] Full response structure:', JSON.stringify(result, null, 2));
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Vertex AI Gemini API timeout after ${timeoutMs}ms`);
+    }
+    throw error;
   }
-
-  const result = await response.json();
-  console.log('[callVertexAIGemini] Full response structure:', JSON.stringify(result, null, 2));
-  return result;
 }
 
 /**
@@ -105,7 +122,8 @@ export async function callVertexAIGemini(
 export async function callVertexAIImagen(
   modelId: string,
   prompt: string,
-  parameters?: any
+  parameters?: any,
+  options?: { timeout?: number }
 ): Promise<any> {
   const projectId = process.env.GOOGLE_CLOUD_PROJECT;
 
@@ -122,19 +140,35 @@ export async function callVertexAIImagen(
     parameters: parameters || {}
   };
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody)
-  });
+  // Add timeout with AbortController (default 60s for image generation)
+  const timeoutMs = options?.timeout || 60000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Vertex AI Imagen API error: ${response.status} - ${errorText}`);
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Vertex AI Imagen API error: ${response.status} - ${errorText}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Vertex AI Imagen API timeout after ${timeoutMs}ms`);
+    }
+    throw error;
   }
-
-  return response.json();
 }
