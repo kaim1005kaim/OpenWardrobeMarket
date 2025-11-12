@@ -40,9 +40,24 @@ async function generateVariant(
   console.log(`[generate/variant] Generating ${view} view with Imagen 3`);
   console.log(`[generate/variant] Prompt (first 200 chars):`, mutatedPrompt.slice(0, 200));
 
-  // Initialize Vertex AI client
+  // Initialize Vertex AI client with explicit credentials
+  let credentials;
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    try {
+      const credentialsJson = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+      credentials = {
+        client_email: credentialsJson.client_email,
+        private_key: credentialsJson.private_key,
+      };
+      console.log('[generate/variant] Using credentials from GOOGLE_APPLICATION_CREDENTIALS_JSON');
+    } catch (error) {
+      console.error('[generate/variant] Failed to parse credentials JSON:', error);
+    }
+  }
+
   const client = new PredictionServiceClient({
-    apiEndpoint: 'us-central1-aiplatform.googleapis.com'
+    apiEndpoint: 'us-central1-aiplatform.googleapis.com',
+    credentials,
   });
 
   const endpoint = `projects/${googleCloudProject}/locations/us-central1/publishers/google/models/imagen-3.0-generate-001`;
