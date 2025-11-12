@@ -4,11 +4,12 @@ export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { PredictionServiceClient } from '@google-cloud/aiplatform';
+import { GoogleAuth } from 'google-auth-library';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const googleCloudProject = process.env.GOOGLE_CLOUD_PROJECT!;
+const googleCredentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON!;
 
 type VariantType = 'side' | 'back';
 
@@ -28,7 +29,7 @@ function mutateForView(basePrompt: string, view: VariantType): string {
 }
 
 /**
- * Generate variant using Vertex AI Imagen 3
+ * Generate variant using Vertex AI Imagen 3 REST API
  */
 async function generateVariant(
   prompt: string,
@@ -37,72 +38,78 @@ async function generateVariant(
 ): Promise<{ imageUrl: string; imageData: string }> {
   const mutatedPrompt = mutateForView(prompt, view);
 
-  console.log(`[generate/variant] Generating ${view} view with Imagen 3`);
+  console.log(`[generate/variant] Generating ${view} view with Imagen 3 REST API`);
   console.log(`[generate/variant] Prompt (first 200 chars):`, mutatedPrompt.slice(0, 200));
 
-  // Initialize Vertex AI client with explicit credentials
-  let credentials;
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-    try {
-      const credentialsJson = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-      credentials = {
-        client_email: credentialsJson.client_email,
-        private_key: credentialsJson.private_key,
-      };
-      console.log('[generate/variant] Using credentials from GOOGLE_APPLICATION_CREDENTIALS_JSON');
-    } catch (error) {
-      console.error('[generate/variant] Failed to parse credentials JSON:', error);
-    }
-  }
+  // Vertex AI Imagen 3 endpoint (using latest version 002)
+  const endpoint = `https://us-central1-aiplatform.googleapis.com/v1/projects/${googleCloudProject}/locations/us-central1/publishers/google/models/imagen-3.0-generate-002:predict`;
 
-  const client = new PredictionServiceClient({
-    apiEndpoint: 'us-central1-aiplatform.googleapis.com',
-    credentials,
-  });
-
-  const endpoint = `projects/${googleCloudProject}/locations/us-central1/publishers/google/models/imagen-3.0-generate-001`;
-
-  // Prepare request for Imagen 3
-  const instance = {
-    structValue: {
-      fields: {
-        prompt: {
-          stringValue: mutatedPrompt
-        }
+  const requestBody = {
+    instances: [
+      {
+        prompt: mutatedPrompt
       }
+    ],
+    parameters: {
+      sampleCount: 1,
+      aspectRatio: '3:4',
+      personGeneration: 'allow_adult',
+      safetySetting: 'block_only_high',
+      seed: seed
     }
-  };
-
-  const parameters = {
-    structValue: {
-      fields: {
-        sampleCount: { numberValue: 1 },
-        aspectRatio: { stringValue: '3:4' },
-        personGeneration: { stringValue: 'allow_adult' },
-        safetySetting: { stringValue: 'block_only_high' }
-      }
-    }
-  };
-
-  const request = {
-    endpoint,
-    instances: [instance],
-    parameters
   };
 
   try {
-    const [response] = await client.predict(request);
+    console.log('[generate/variant] Getting OAuth access token...');
 
-    console.log('[generate/variant] Vertex AI response received');
+    // Get OAuth 2.0 access token using service account credentials
+    const credentials = JSON.parse(googleCredentialsJson);
 
-    if (!response.predictions || response.predictions.length === 0) {
+    // Fix private key format - replace literal \n with actual newlines
+    if (credentials.private_key) {
+      credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+    }
+
+    const auth = new GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/cloud-platform']
+    });
+
+    const client = await auth.getClient();
+    const accessToken = await client.getAccessToken();
+
+    if (!accessToken.token) {
+      throw new Error('Failed to get access token');
+    }
+
+    console.log('[generate/variant] Access token obtained, calling Vertex AI Imagen 3...');
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[generate/variant] Vertex AI error:', response.status, errorText);
+      throw new Error(`Vertex AI API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('[generate/variant] Response received');
+
+    if (!data.predictions || data.predictions.length === 0) {
       throw new Error('No predictions returned from Imagen 3');
     }
 
-    const prediction = response.predictions[0];
+    const prediction = data.predictions[0];
 
-    // Extract image data from prediction
-    const imageData = prediction.structValue?.fields?.bytesBase64Encoded?.stringValue;
+    // Extract base64 image data
+    const imageData = prediction.bytesBase64Encoded;
 
     if (!imageData) {
       console.error('[generate/variant] Prediction structure:', JSON.stringify(prediction, null, 2));
