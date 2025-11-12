@@ -82,12 +82,19 @@ export async function POST(req: NextRequest) {
 
       if (genError) {
         console.error('[publish] Failed to fetch generation_history:', genError);
-      } else if (genHistory?.metadata?.variants) {
-        variants = genHistory.metadata.variants;
-        console.log('[publish] Found variants:', variants.length);
       } else {
-        console.log('[publish] No variants found in generation_history');
+        console.log('[publish] generation_history.metadata:', JSON.stringify(genHistory?.metadata || {}, null, 2));
+
+        if (genHistory?.metadata?.variants) {
+          variants = genHistory.metadata.variants;
+          console.log('[publish] ✅ Found variants:', variants.length);
+        } else {
+          console.warn('[publish] ⚠️ No variants found in generation_history.metadata');
+          console.warn('[publish] Available metadata keys:', Object.keys(genHistory?.metadata || {}));
+        }
       }
+    } else {
+      console.warn('[publish] ⚠️ No sessionId provided, cannot fetch variants');
     }
 
     // Find the images record first (more reliable than generation_history)
