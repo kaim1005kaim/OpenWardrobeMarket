@@ -7,11 +7,11 @@ export const maxDuration = 300; // 5 minutes for retries
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { callVertexAIImagen } from '../../../../../lib/vertex-ai-auth';
+import { callVertexAIImagen } from 'lib/vertex-ai-auth';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import type { DesignTokens, VariantMetadata } from '../../../../src/types/garment-spec';
 import type { ViewValidation } from '../../../../src/types/garment-spec';
-import { isSameDesign } from '../../../../../lib/similarity-check';
+import { isSameDesign } from 'lib/similarity-check';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;

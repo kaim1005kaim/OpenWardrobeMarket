@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { callVertexAIGemini } from '../../../../../lib/vertex-ai-auth';
+import { callVertexAIGemini } from 'lib/vertex-ai-auth';
 import type { DesignTokens } from '../../../../src/types/garment-spec';
 
 export const maxDuration = 60;
