@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       ],
       {
         temperature: 0.3,
-        maxOutputTokens: 512,
+        maxOutputTokens: 2048,
       }
     );
 
