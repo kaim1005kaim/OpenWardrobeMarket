@@ -71,13 +71,24 @@ export function MobileDetailModal({
       const variants = asset.metadata.variants;
       console.log('[MobileDetailModal] Found variants:', variants);
 
-      if (variants.side?.status === 'completed' && variants.side?.r2_url) {
-        console.log('[MobileDetailModal] Adding side image:', variants.side.r2_url);
-        images.push({ type: 'side', url: variants.side.r2_url });
-      }
-      if (variants.back?.status === 'completed' && variants.back?.r2_url) {
-        console.log('[MobileDetailModal] Adding back image:', variants.back.r2_url);
-        images.push({ type: 'back', url: variants.back.r2_url });
+      // variants is an array: [{ type: 'side', r2_url: '...', status: 'completed' }, ...]
+      if (Array.isArray(variants)) {
+        variants.forEach((variant: any) => {
+          if (variant.status === 'completed' && variant.r2_url) {
+            console.log(`[MobileDetailModal] Adding ${variant.type} image:`, variant.r2_url);
+            images.push({ type: variant.type, url: variant.r2_url });
+          }
+        });
+      } else {
+        // Backward compatibility: object format { side: {...}, back: {...} }
+        if (variants.side?.status === 'completed' && variants.side?.r2_url) {
+          console.log('[MobileDetailModal] Adding side image:', variants.side.r2_url);
+          images.push({ type: 'side', url: variants.side.r2_url });
+        }
+        if (variants.back?.status === 'completed' && variants.back?.r2_url) {
+          console.log('[MobileDetailModal] Adding back image:', variants.back.r2_url);
+          images.push({ type: 'back', url: variants.back.r2_url });
+        }
       }
     } else {
       console.log('[MobileDetailModal] No variants found in metadata');
