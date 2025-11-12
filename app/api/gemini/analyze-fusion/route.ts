@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 export const revalidate = 0;
 
 import { NextRequest, NextResponse } from 'next/server';
-import { callVertexAIGemini } from '../../../../lib/vertex-ai-auth';
+import { callVertexAIGemini } from '../../../lib/vertex-ai-auth';
 
 // FUSION専用：画像を服のパラメータに変換する分析プロンプト
 const FUSION_ANALYSIS_PROMPT = `You are a fashion design translator.
