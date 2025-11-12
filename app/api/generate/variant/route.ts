@@ -5,9 +5,20 @@ export const maxDuration = 60;
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { callVertexAIImagen } from 'lib/vertex-ai-auth';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const r2Client = new S3Client({
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  region: 'auto',
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+  forcePathStyle: true,
+});
 
 type VariantType = 'side' | 'back';
 
@@ -87,25 +98,25 @@ async function uploadToR2(
   genId: string,
   view: VariantType
 ): Promise<string> {
-  const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://open-wardrobe-market.com';
+  const filename = `${genId}_${view}.png`;
+  const key = `${userId}/${filename}`;
 
-  const response = await fetch(`${apiUrl}/api/upload-to-r2`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      imageData,
-      userId,
-      filename: `${genId}_${view}.png`
-    })
+  // Convert base64 to buffer
+  const buffer = Buffer.from(imageData, 'base64');
+
+  const command = new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET!,
+    Key: key,
+    Body: buffer,
+    ContentType: 'image/png',
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[generate/variant] R2 upload failed:', errorText);
-    throw new Error(`R2 upload failed: ${response.status}`);
-  }
+  await r2Client.send(command);
 
-  const { url } = await response.json();
+  const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL!;
+  const url = `${publicBaseUrl}/${key}`;
+
+  console.log(`[generate/variant] Uploaded to R2: ${url}`);
   return url;
 }
 
