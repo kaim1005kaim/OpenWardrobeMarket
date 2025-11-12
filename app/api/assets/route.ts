@@ -134,20 +134,22 @@ export async function GET(request: Request) {
 
       console.log('[api/assets] Published items count:', publishedData?.length || 0);
 
-      // Get session_ids from generation_data to fetch variants from generation_history
-      const sessionIds = publishedData
-        .map((item: any) => item.generation_data?.session_id)
+      // Get R2 keys (image_id) to fetch variants from generation_history
+      // Note: published_items.generation_data does not exist, so we search by R2 key instead
+      const r2Keys = publishedData
+        .map((item: any) => item.image_id)
         .filter(Boolean);
 
-      console.log('[api/assets] DEBUG: Extracted session_ids:', sessionIds);
-      console.log('[api/assets] DEBUG: First 3 items generation_data:', publishedData.slice(0, 3).map((i: any) => ({ id: i.id, generation_data: i.generation_data })));
+      console.log('[api/assets] DEBUG: Extracted R2 keys:', r2Keys.slice(0, 3));
+      console.log('[api/assets] DEBUG: Total items:', publishedData.length);
 
-      let variantsMap = new Map<string, any>();
-      if (sessionIds.length > 0) {
+      let variantsMap = new Map<string, any>(); // Maps R2 key -> variants
+      if (r2Keys.length > 0) {
+        // Search generation_history where metadata contains the R2 key
         const { data: genHistoryData, error: genHistoryError } = await supabase
           .from('generation_history')
-          .select('id, metadata')
-          .in('id', sessionIds);
+          .select('id, metadata, generation_data')
+          .not('metadata->>variants', 'is', null);
 
         console.log('[api/assets] DEBUG: generation_history query returned', genHistoryData?.length || 0, 'records');
         if (genHistoryError) {
@@ -156,10 +158,14 @@ export async function GET(request: Request) {
 
         if (genHistoryData) {
           genHistoryData.forEach((gen: any) => {
-            console.log(`[api/assets] DEBUG: gen_history id=${gen.id}, has variants=${!!gen.metadata?.variants}`);
-            if (gen.metadata?.variants) {
-              console.log(`[api/assets] DEBUG: Variants for ${gen.id}:`, JSON.stringify(gen.metadata.variants));
-              variantsMap.set(gen.id, gen.metadata.variants);
+            // Extract r2_key from generation_data or metadata
+            const r2Key = gen.generation_data?.r2_key || gen.metadata?.r2_key;
+
+            console.log(`[api/assets] DEBUG: gen_history id=${gen.id}, r2_key=${r2Key}, has variants=${!!gen.metadata?.variants}`);
+
+            if (r2Key && gen.metadata?.variants && r2Keys.includes(r2Key)) {
+              console.log(`[api/assets] DEBUG: Mapping ${r2Key} to variants:`, JSON.stringify(gen.metadata.variants));
+              variantsMap.set(r2Key, gen.metadata.variants);
             }
           });
         }
@@ -182,12 +188,12 @@ export async function GET(request: Request) {
           }
         }
 
-        // Get variants from generation_history if available
-        const sessionId = item.generation_data?.session_id;
-        const variants = sessionId ? variantsMap.get(sessionId) : null;
+        // Get variants from generation_history using R2 key (image_id)
+        const r2Key = item.image_id;
+        const variants = r2Key ? variantsMap.get(r2Key) : null;
 
-        if (sessionId) {
-          console.log(`[api/assets] DEBUG: Item ${item.id} sessionId=${sessionId}, found variants=${!!variants}`);
+        if (r2Key) {
+          console.log(`[api/assets] DEBUG: Item ${item.id} r2Key=${r2Key}, found variants=${!!variants}`);
           if (variants) {
             console.log(`[api/assets] DEBUG: Item ${item.id} variants:`, JSON.stringify(variants));
           }
