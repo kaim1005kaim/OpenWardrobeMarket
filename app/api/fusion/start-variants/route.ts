@@ -20,12 +20,11 @@ interface StartVariantsRequest {
 }
 
 /**
- * Emit SSE event (imported dynamically to avoid circular dependency)
+ * Emit SSE event
  */
 async function emitProgress(genId: string, data: any) {
   try {
-    // Import dynamically to avoid issues
-    const { emitVariantProgress } = await import('../variants-stream/route');
+    const { emitVariantProgress } = await import('lib/sse-emitter');
     emitVariantProgress(genId, data);
   } catch (err) {
     console.error('[start-variants] Failed to emit progress:', err);
