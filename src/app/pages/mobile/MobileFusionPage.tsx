@@ -830,6 +830,9 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
           console.log('[handlePublish] Attempting to save generation_history with session_id:', sessionKey);
           console.log('[handlePublish] Tags to save:', autoTags);
 
+          // Generate seed for reproducible variants
+          const mainSeed = Math.floor(Math.random() * 1000000);
+
           const { data: savedGen, error: saveError } = await supabase
             .from('generation_history')
             .upsert({
@@ -837,10 +840,12 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
               user_id: user.user.id,
               prompt: asset.prompt,
               negative_prompt: '',
-              seed: Math.floor(Math.random() * 1000000),
+              seed: mainSeed,
+              seed_main: mainSeed, // Store for variant generation
               r2_key: asset.key,
               r2_url: finalUrl,
               tags: autoTags, // Save tags for auto-tags API
+              mode: 'fusion',
               generation_data: {
                 mode: 'fusion',
                 prompt: asset.prompt,
@@ -881,6 +886,43 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
             console.log('[handlePublish] ✅ Successfully saved to generation_history!');
             console.log('[handlePublish] Saved tags:', autoTags);
             console.log('[handlePublish] Saved record:', savedGen);
+
+            // Extract design tokens for variant generation (background task)
+            console.log('[handlePublish] Starting design token extraction...');
+            fetch(`${apiUrl}/api/fusion/extract-tokens`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                imageUrl: finalUrl,
+                seed: mainSeed,
+                demographic: asset.selectedDemographic || 'jp_f_20s'
+              })
+            })
+              .then(async (tokenRes) => {
+                if (tokenRes.ok) {
+                  const { tokens } = await tokenRes.json();
+                  console.log('[handlePublish] Design tokens extracted:', tokens);
+
+                  // Update generation_history with design tokens
+                  await supabase
+                    .from('generation_history')
+                    .update({
+                      design_tokens: tokens,
+                      demographic: tokens.demographic
+                    })
+                    .eq('id', sessionKey);
+
+                  console.log('[handlePublish] ✅ Design tokens saved to generation_history');
+                } else {
+                  console.error('[handlePublish] Token extraction failed:', tokenRes.status);
+                }
+              })
+              .catch((err) => {
+                console.error('[handlePublish] Token extraction error:', err);
+              });
           }
         }
       } catch (saveError) {
@@ -891,6 +933,7 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
       console.log('[handlePublish] Preparing generationData with session_id:', sessionKey);
       const generationData = {
         session_id: sessionKey,
+        mode: 'fusion', // Add mode for variant detection
         prompt: asset.prompt,
         parameters: {
           mode: 'fusion',
