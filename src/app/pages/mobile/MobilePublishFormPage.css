@@ -146,6 +146,29 @@
   border-bottom: 1px solid #00000010;
 }
 
+.publish-form-header button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease;
+}
+
+.publish-form-header button:active {
+  opacity: 0.6;
+}
+
+.publish-form-header .logo-btn {
+  font-family: 'Trajan Pro 3', 'Cinzel', serif;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  font-weight: 300;
+}
+
 .publish-form-content {
   padding: 80px 20px 100px;
   max-width: 600px;
@@ -154,11 +177,12 @@
 
 .publish-form-title {
   font-family: 'Noto Sans CJK JP', 'Noto Sans JP', sans-serif;
-  font-size: 20px;
-  font-weight: 500;
-  color: #000;
-  margin: 0 0 24px 0;
-  text-align: left;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: #333333;
+  margin: 0 0 32px 0;
+  text-align: center;
 }
 
 .preview-container {
