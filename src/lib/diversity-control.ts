@@ -172,17 +172,22 @@ export function sampleDetailedDemographic(seed?: string): DemographicKey {
   const weights = getAllModelWeights();
   const rand = seed ? seededRandom(seed) : Math.random();
 
+  console.log('[sampleDetailedDemographic] Random value:', rand, 'Seed:', seed);
+
   let cumulative = 0;
   const entries = Object.entries(weights) as [DemographicKey, number][];
 
   for (const [key, weight] of entries) {
     cumulative += weight;
+    console.log(`[sampleDetailedDemographic] Checking ${key}: weight=${weight}, cumulative=${cumulative}, rand=${rand}`);
     if (rand <= cumulative) {
+      console.log(`[sampleDetailedDemographic] Selected:`, key);
       return key;
     }
   }
 
   // Fallback to most common
+  console.log('[sampleDetailedDemographic] Fallback to jp_f_20s');
   return 'jp_f_20s';
 }
 

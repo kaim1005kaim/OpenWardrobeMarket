@@ -23,7 +23,9 @@ const r2Client = new S3Client({
 
 type VariantType = 'side' | 'back';
 
-const MAX_ATTEMPTS = 3;
+// Temporarily set to 1 to avoid quota exhaustion
+// TODO: Increase to 3 after quota increase
+const MAX_ATTEMPTS = 1;
 
 /**
  * Build prompt for SIDE/BACK view with strict view enforcement
@@ -117,7 +119,10 @@ async function generateVariantWithValidation(
   userId: string,
   genId: string
 ): Promise<string> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5173';
+  // Use full domain URL for production, fallback to localhost for development
+  const apiUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5173');
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     console.log(`[variant] Attempt ${attempt}/${MAX_ATTEMPTS} for ${view} view...`);
