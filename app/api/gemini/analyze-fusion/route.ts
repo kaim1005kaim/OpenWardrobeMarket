@@ -85,6 +85,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { imageData, mimeType, generateInspiration = true } = body;
 
+    console.log('[analyze-fusion] Request body keys:', Object.keys(body));
+    console.log('[analyze-fusion] imageData type:', typeof imageData);
+    console.log('[analyze-fusion] imageData length:', imageData?.length || 0);
+    console.log('[analyze-fusion] mimeType:', mimeType);
+
     if (!imageData) {
       console.error('[analyze-fusion] Missing imageData');
       return NextResponse.json({ error: 'Missing imageData' }, { status: 400 });
@@ -96,6 +101,8 @@ export async function POST(req: NextRequest) {
     const base64Data = imageData.includes(',')
       ? imageData.split(',')[1]
       : imageData;
+
+    console.log('[analyze-fusion] base64Data length after cleaning:', base64Data.length);
 
     if (base64Data.length < 100) {
       console.error('[analyze-fusion] Image data too small');
@@ -151,6 +158,20 @@ export async function POST(req: NextRequest) {
     if (candidate?.finishReason === 'MAX_TOKENS') {
       console.error('[analyze-fusion] Response truncated due to MAX_TOKENS');
       console.error('[analyze-fusion] usageMetadata:', JSON.stringify(analysisResult.usageMetadata, null, 2));
+
+      // Check if image was actually processed
+      const promptDetails = analysisResult.usageMetadata?.promptTokensDetails || [];
+      const hasImage = promptDetails.some((d: any) => d.modality === 'IMAGE');
+
+      if (!hasImage) {
+        console.error('[analyze-fusion] CRITICAL: Image data was not included in the request to Vertex AI!');
+        console.error('[analyze-fusion] This might be due to request size limits or network issues.');
+        return NextResponse.json(
+          { error: 'Image upload failed. Please try with a smaller image (under 200KB).' },
+          { status: 413 }
+        );
+      }
+
       return NextResponse.json(
         { error: 'Response truncated due to token limit. Please try with a simpler image or shorter prompt.' },
         { status: 500 }
