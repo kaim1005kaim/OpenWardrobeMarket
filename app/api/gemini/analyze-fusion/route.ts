@@ -226,7 +226,7 @@ export async function POST(req: NextRequest) {
     console.log('[analyze-fusion] Analysis raw response (first 500 chars):', analysisText.substring(0, 500));
 
     // Parse analysis JSON
-    const parseStart = Date.now();
+    const jsonParseStart = Date.now();
     let spec: FusionAnalysisResult;
     let jsonText = analysisText.trim();
 
@@ -245,7 +245,7 @@ export async function POST(req: NextRequest) {
       jsonText = jsonText.replace(/(\d+)\s*\n\s*\{/g, '$1},\n    {');
 
       spec = JSON.parse(jsonText);
-      console.log(`[analyze-fusion] ⏱️ JSON parsing & validation: ${Date.now() - parseStart}ms`);
+      console.log(`[analyze-fusion] ⏱️ JSON parsing & validation: ${Date.now() - jsonParseStart}ms`);
     } catch (parseError) {
       console.error('[analyze-fusion] Failed to parse analysis JSON:', parseError);
       console.error('[analyze-fusion] Attempted to parse:', jsonText.substring(0, 500));
