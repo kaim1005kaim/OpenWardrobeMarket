@@ -122,7 +122,16 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
 
   // Start variant generation and SSE subscription
   useEffect(() => {
-    if (!generationData?.session_id) return;
+    console.log('[PublishFormPage] Variant generation useEffect triggered');
+    console.log('[PublishFormPage] generationData:', generationData);
+    console.log('[PublishFormPage] session_id:', generationData?.session_id);
+
+    if (!generationData?.session_id) {
+      console.warn('[PublishFormPage] ⚠️ No session_id, skipping variant generation');
+      return;
+    }
+
+    console.log('[PublishFormPage] ✅ Starting variant generation for session:', generationData.session_id);
 
     const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
     const genId = generationData.session_id;
@@ -177,7 +186,12 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
     // Trigger variant generation in background
     (async () => {
       try {
+        console.log('[MobilePublishFormPage] 🚀 Triggering variant generation...');
+        console.log('[MobilePublishFormPage] API URL:', apiUrl);
+        console.log('[MobilePublishFormPage] gen_id:', genId);
+
         // Generate side view
+        console.log('[MobilePublishFormPage] Requesting SIDE variant...');
         fetch(`${apiUrl}/api/generate/variant`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -185,6 +199,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
         }).catch(err => console.warn('[MobilePublishFormPage] Side generation failed:', err));
 
         // Generate back view
+        console.log('[MobilePublishFormPage] Requesting BACK variant...');
         fetch(`${apiUrl}/api/generate/variant`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
