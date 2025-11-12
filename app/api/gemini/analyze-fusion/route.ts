@@ -150,15 +150,24 @@ export async function POST(req: NextRequest) {
     let spec: FusionAnalysisResult;
     try {
       let jsonText = analysisText.trim();
+
+      // Remove markdown code blocks
       if (jsonText.startsWith('```json')) {
         jsonText = jsonText.replace(/^```json\n/, '').replace(/\n```$/, '');
       } else if (jsonText.startsWith('```')) {
         jsonText = jsonText.replace(/^```\n/, '').replace(/\n```$/, '');
       }
 
+      // Clean up common JSON syntax errors from LLM responses
+      // Fix trailing commas before closing brackets/braces
+      jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
+      // Fix missing commas between properties (like "0.4\n    {" -> "0.4},\n    {")
+      jsonText = jsonText.replace(/(\d+)\s*\n\s*\{/g, '$1},\n    {');
+
       spec = JSON.parse(jsonText);
     } catch (parseError) {
       console.error('[analyze-fusion] Failed to parse analysis JSON:', parseError);
+      console.error('[analyze-fusion] Attempted to parse:', jsonText.substring(0, 500));
       return NextResponse.json(
         { error: 'Invalid analysis format', rawResponse: analysisText.substring(0, 200) },
         { status: 500 }
