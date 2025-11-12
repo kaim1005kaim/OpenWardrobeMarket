@@ -145,13 +145,14 @@ export async function GET(request: Request) {
 
       let variantsMap = new Map<string, any>(); // Maps R2 key -> variants
       if (r2Keys.length > 0) {
-        // Search generation_history where metadata contains the R2 key
+        // Search generation_history where variants column exists (FUSION generations only)
         const { data: genHistoryData, error: genHistoryError } = await supabase
           .from('generation_history')
-          .select('id, metadata, generation_data')
-          .not('metadata->>variants', 'is', null);
+          .select('id, metadata, generation_data, variants, mode')
+          .eq('mode', 'fusion')
+          .not('variants', 'is', null);
 
-        console.log('[api/assets] DEBUG: generation_history query returned', genHistoryData?.length || 0, 'records');
+        console.log('[api/assets] DEBUG: generation_history FUSION query returned', genHistoryData?.length || 0, 'records');
         if (genHistoryError) {
           console.error('[api/assets] DEBUG: generation_history query error:', genHistoryError);
         }
@@ -161,11 +162,11 @@ export async function GET(request: Request) {
             // Extract r2_key from generation_data or metadata
             const r2Key = gen.generation_data?.r2_key || gen.metadata?.r2_key;
 
-            console.log(`[api/assets] DEBUG: gen_history id=${gen.id}, r2_key=${r2Key}, has variants=${!!gen.metadata?.variants}`);
+            console.log(`[api/assets] DEBUG: FUSION gen id=${gen.id}, r2_key=${r2Key}, has variants=${!!gen.variants}`);
 
-            if (r2Key && gen.metadata?.variants && r2Keys.includes(r2Key)) {
-              console.log(`[api/assets] DEBUG: Mapping ${r2Key} to variants:`, JSON.stringify(gen.metadata.variants));
-              variantsMap.set(r2Key, gen.metadata.variants);
+            if (r2Key && gen.variants && r2Keys.includes(r2Key)) {
+              console.log(`[api/assets] DEBUG: Mapping ${r2Key} to variants:`, JSON.stringify(gen.variants));
+              variantsMap.set(r2Key, gen.variants);
             }
           });
         }
@@ -205,7 +206,7 @@ export async function GET(request: Request) {
             height: 1536,
             mime_type: 'image/png'
           }),
-          variants: variants || item.metadata?.variants
+          variants: variants
         };
 
         if (finalMetadata.variants) {
