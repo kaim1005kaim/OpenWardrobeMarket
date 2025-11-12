@@ -27,14 +27,20 @@ type VariantType = 'side' | 'back';
  */
 function mutateForView(basePrompt: string, view: VariantType): string {
   const viewInstructions = {
-    side: 'full-body, side profile view (90-degree angle), same outfit, same lighting, consistent styling. Show the side silhouette clearly.',
-    back: 'full-body, back view (180-degree), same outfit, same lighting, consistent styling. Show the back design clearly.'
+    side: `SIDE PROFILE VIEW: Model facing 90 degrees to the left or right. Camera captures the full side silhouette from shoulder to toe. The model's face should be in profile (not looking at camera). Show the side seam, sleeve construction, and garment depth clearly. This is NOT a front view - we should see the side of the body and garment only.`,
+    back: `BACK VIEW: Model facing completely away from camera (180 degrees). Camera captures the full back from shoulders to heels. Show back details: rear construction, closures, hemline, and any back design elements. The model should be facing away - we should NOT see their face or front of the garment.`
   };
 
   return `${basePrompt}
 
-[VIEW ANGLE] ${viewInstructions[view]}
-[CONSISTENCY] Keep all design details, colors, materials, and styling consistent with the main front view. Only change the camera angle.`;
+CRITICAL INSTRUCTION - CAMERA ANGLE:
+${viewInstructions[view]}
+
+CONSISTENCY REQUIREMENTS:
+- Keep exact same outfit, colors, materials, patterns, and styling
+- Keep exact same lighting and studio background
+- Only change: camera angle/viewpoint
+- DO NOT change the garment design or details`;
 }
 
 /**
