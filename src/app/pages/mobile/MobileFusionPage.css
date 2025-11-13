@@ -516,11 +516,11 @@
 
 .reveal-viewer {
   width: 100%;
-  aspect-ratio: 3/4;
+  height: 400px;
   position: relative;
-  border-radius: 16px;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+  background: #f5f5f5;
 }
 
 /* Responsive */

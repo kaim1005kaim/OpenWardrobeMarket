@@ -1106,12 +1106,12 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
               }}
             >
               <div style={{
-                width: 'calc(60vh * 3 / 4)', // 3:4 aspect ratio (960:1280) based on height
-                height: '60vh',
-                maxWidth: '100%',
+                width: '100%',
+                height: '400px',
+                maxWidth: '480px',
                 position: 'relative',
               }}>
-              <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden', background: '#f5f5f5' }}>
                 <GlassRevealCanvas
                   key={sessionKey}
                   imageUrl={displayUrl}
