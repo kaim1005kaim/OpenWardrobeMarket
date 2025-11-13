@@ -141,10 +141,14 @@ async function emitProgress(genId: string, data: any) {
  * Generate one variant based on job_id
  */
 export async function POST(req: NextRequest) {
+  let job_id: string | undefined;
+
   try {
-    const { job_id } = await req.json();
+    const body = await req.json();
+    job_id = body.job_id;
 
     if (!job_id) {
+      console.error('[variants-generate] Missing job_id in request body:', body);
       return NextResponse.json(
         { error: 'Missing required field: job_id' },
         { status: 400 }
@@ -191,19 +195,33 @@ export async function POST(req: NextRequest) {
     let tokens: DesignTokens = job.design_tokens;
 
     if (!tokens) {
-      console.log(`[variants-generate] design_tokens not in job, fetching from generation_history...`);
+      console.log(`[variants-generate] design_tokens not in job, fetching from generation_history for gen_id=${job.gen_id}...`);
       const { data: genData, error: genError } = await supabase
         .from('generation_history')
         .select('design_tokens')
         .eq('id', job.gen_id)
         .single();
 
-      if (genError || !genData?.design_tokens) {
+      if (genError) {
+        console.error(`[variants-generate] Failed to fetch generation_history:`, genError);
+        throw new Error(`Failed to fetch generation_history: ${genError.message}`);
+      }
+
+      if (!genData?.design_tokens) {
+        console.error(`[variants-generate] design_tokens is null in generation_history for gen_id=${job.gen_id}`);
         throw new Error('Design tokens not found. Run extract-tokens first.');
       }
 
       tokens = genData.design_tokens;
-      console.log(`[variants-generate] ✅ Fetched design_tokens from generation_history`);
+      console.log(`[variants-generate] ✅ Fetched design_tokens from generation_history:`, {
+        garment_type: tokens.garment_type,
+        colors: tokens.palette_hex.length
+      });
+    } else {
+      console.log(`[variants-generate] Using design_tokens from job:`, {
+        garment_type: tokens.garment_type,
+        colors: tokens.palette_hex.length
+      });
     }
 
     // Build prompt
@@ -303,10 +321,35 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[variants-generate] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+
+    console.error('[variants-generate] Error:', {
+      message: errorMessage,
+      stack: errorStack,
+      job_id
+    });
+
+    // Update job status to failed if we have job_id
+    if (job_id) {
+      try {
+        await supabase
+          .from('variants_jobs')
+          .update({
+            status: 'failed',
+            error_message: errorMessage,
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', job_id);
+
+        console.log(`[variants-generate] Marked job ${job_id} as failed`);
+      } catch (updateError) {
+        console.error('[variants-generate] Failed to update job status:', updateError);
+      }
+    }
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
