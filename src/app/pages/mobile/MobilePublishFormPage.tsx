@@ -146,6 +146,33 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
     const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
     const genId = generationData.session_id;
 
+    // IMPORTANT: Wait for design_tokens to be extracted before starting variant generation
+    const waitForDesignTokens = async (): Promise<boolean> => {
+      console.log('[PublishFormPage] Waiting for design_tokens...');
+      const maxWaitTime = 30000; // 30 seconds max
+      const pollInterval = 1000; // Check every 1 second
+      const startTime = Date.now();
+
+      while (Date.now() - startTime < maxWaitTime) {
+        const { data } = await supabase
+          .from('generation_history')
+          .select('design_tokens')
+          .eq('id', genId)
+          .single();
+
+        if (data?.design_tokens) {
+          console.log('[PublishFormPage] ✅ Design tokens ready!');
+          return true;
+        }
+
+        console.log('[PublishFormPage] ⏳ Design tokens not ready yet, waiting...');
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+
+      console.error('[PublishFormPage] ❌ Timeout waiting for design_tokens');
+      return false;
+    };
+
     // Add skeleton loaders for side and back
     setVariants(prev => [
       ...prev,
@@ -202,9 +229,18 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       eventSource.close();
     };
 
-    // Step 1: Create variant jobs
+    // Step 1: Wait for design tokens, then create variant jobs
     (async () => {
       try {
+        // Wait for design_tokens to be available
+        const tokensReady = await waitForDesignTokens();
+
+        if (!tokensReady) {
+          console.error('[MobilePublishFormPage] ❌ Design tokens not ready, cannot generate variants');
+          setVariants(prev => prev.map(v => ({ ...v, status: 'failed' })));
+          return;
+        }
+
         console.log('[MobilePublishFormPage] 🚀 Creating variant jobs...');
         const response = await fetch(`${apiUrl}/api/fusion/start-variants`, {
           method: 'POST',
@@ -239,6 +275,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
 
       } catch (err) {
         console.error('[MobilePublishFormPage] Failed to create variant jobs:', err);
+        setVariants(prev => prev.map(v => ({ ...v, status: 'failed' })));
       }
     })();
 
