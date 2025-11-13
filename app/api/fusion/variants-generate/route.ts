@@ -194,12 +194,13 @@ export async function POST(req: NextRequest) {
 
     // Get design tokens from job, or fetch from generation_history if not available
     let tokens: DesignTokens = job.design_tokens;
+    let demographic = job.demographic;
 
     if (!tokens) {
       console.log(`[variants-generate] design_tokens not in job, fetching from generation_history for gen_id=${job.gen_id}...`);
       const { data: genData, error: genError } = await supabase
         .from('generation_history')
-        .select('design_tokens')
+        .select('design_tokens, demographic')
         .eq('id', job.gen_id)
         .single();
 
@@ -214,14 +215,29 @@ export async function POST(req: NextRequest) {
       }
 
       tokens = genData.design_tokens;
+      // IMPORTANT: Use demographic from generation_history (user's toggle selection)
+      demographic = genData.demographic || job.demographic;
       console.log(`[variants-generate] ✅ Fetched design_tokens from generation_history:`, {
         garment_type: tokens.garment_type,
-        colors: tokens.palette_hex.length
+        colors: tokens.palette_hex.length,
+        demographic
       });
     } else {
+      // Even if tokens are in job, fetch demographic from generation_history to respect user's selection
+      const { data: genData } = await supabase
+        .from('generation_history')
+        .select('demographic')
+        .eq('id', job.gen_id)
+        .single();
+
+      if (genData?.demographic) {
+        demographic = genData.demographic;
+      }
+
       console.log(`[variants-generate] Using design_tokens from job:`, {
         garment_type: tokens.garment_type,
-        colors: tokens.palette_hex.length
+        colors: tokens.palette_hex.length,
+        demographic
       });
     }
 
@@ -230,7 +246,7 @@ export async function POST(req: NextRequest) {
       tokens,
       job.base_prompt,
       job.type,
-      job.demographic
+      demographic
     );
 
     console.log(`[variants-generate] Generating ${job.type} with Imagen 3...`);

@@ -907,15 +907,15 @@ export function MobileFusionPage({ onNavigate, onStartPublish }: MobileFusionPag
                   console.log('[handlePublish] Design tokens extracted:', tokens);
 
                   // Update generation_history with design tokens
+                  // DO NOT overwrite demographic - keep user's toggle selection
                   await supabase
                     .from('generation_history')
                     .update({
-                      design_tokens: tokens,
-                      demographic: tokens.demographic
+                      design_tokens: tokens
                     })
                     .eq('id', sessionKey);
 
-                  console.log('[handlePublish] ✅ Design tokens saved to generation_history');
+                  console.log('[handlePublish] ✅ Design tokens saved to generation_history (demographic preserved)');
                 } else {
                   console.error('[handlePublish] Token extraction failed:', tokenRes.status);
                 }

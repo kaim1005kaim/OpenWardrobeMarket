@@ -62,9 +62,17 @@ export async function GET(req: NextRequest) {
 
           const currentVariants = genData?.variants || [];
 
+          // Check how many jobs are expected (count pending/processing/completed/failed jobs)
+          const { data: jobs, error: jobsError } = await supabase
+            .from('variants_jobs')
+            .select('status')
+            .eq('gen_id', genId);
+
+          const expectedJobCount = jobs?.length || 2; // Default to 2 (side + back)
+
           // Send update if state changed
           if (JSON.stringify(currentVariants) !== JSON.stringify(lastVariantsState)) {
-            console.log(`[variants-stream] Variants updated for ${genId}:`, currentVariants);
+            console.log(`[variants-stream] Variants updated for ${genId}:`, currentVariants, `(${currentVariants.length}/${expectedJobCount})`);
             lastVariantsState = currentVariants;
 
             const message = `data: ${JSON.stringify({ type: 'variants_update', variants: currentVariants })}\n\n`;
@@ -75,8 +83,9 @@ export async function GET(req: NextRequest) {
               v.status === 'completed' || v.status === 'failed'
             );
 
-            if (allDone && currentVariants.length > 0) {
-              console.log(`[variants-stream] All variants completed for ${genId}`);
+            // IMPORTANT: Only send all_complete when we have results for all expected jobs
+            if (allDone && currentVariants.length >= expectedJobCount) {
+              console.log(`[variants-stream] All variants completed for ${genId} (${currentVariants.length}/${expectedJobCount})`);
               const doneMsg = `data: ${JSON.stringify({ type: 'all_complete', variants: currentVariants })}\n\n`;
               controller.enqueue(new TextEncoder().encode(doneMsg));
 
