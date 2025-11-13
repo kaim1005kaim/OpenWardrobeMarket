@@ -120,7 +120,8 @@ async function uploadToR2(
     })
   );
 
-  const url = `https://owm-assets.kaim.me/${key}`;
+  const publicBaseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL || process.env.R2_PUBLIC_BASE_URL || 'https://assets.open-wardrobe-market.com';
+  const url = `${publicBaseUrl}/${key}`;
   return { key, url };
 }
 
