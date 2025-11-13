@@ -32,21 +32,21 @@ uniform bool  u_leftToRight;
 float hash(float x){ return fract(sin(x*43758.5453)*1e4); }
 
 void main(){
-  // object-fit: cover 風のUV計算（画像全体を覆う、はみ出た部分をトリミング）
+  // object-fit: contain 風のUV計算（画像全体を表示、余白は背景色）
   float canvasAspect = u_res.x / u_res.y;
   float imageAspect = u_imgRes.x / u_imgRes.y;
 
-  // Cover: 画像がキャンバス全体を覆うようにスケール（はみ出た部分はトリミング）
+  // Contain: 画像全体が収まるようにスケール（余白ができる）
   vec2 scale = vec2(1.0);
   if (canvasAspect > imageAspect) {
-    // キャンバスが横長 → 画像を横幅に合わせる（上下がはみ出る）
-    scale.y = imageAspect / canvasAspect;
-  } else {
-    // キャンバスが縦長 → 画像を縦幅に合わせる（左右がはみ出る）
+    // キャンバスが横長 → 画像を縦幅に合わせる（左右に余白）
     scale.x = canvasAspect / imageAspect;
+  } else {
+    // キャンバスが縦長 → 画像を横幅に合わせる（上下に余白）
+    scale.y = imageAspect / canvasAspect;
   }
 
-  vec2 coverUv = (vUv - 0.5) / scale + 0.5;
+  vec2 coverUv = (vUv - 0.5) * scale + 0.5;
 
   float idx = floor(vUv.x * u_stripes);
   float s   = idx / (u_stripes - 1.0);  // 0..1 左→右

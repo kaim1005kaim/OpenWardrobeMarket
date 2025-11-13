@@ -1107,7 +1107,8 @@ export function MobileCreatePage({ onNavigate, onStartPublish }: MobileCreatePag
             >
               <div style={{
                 width: '100%',
-                height: '400px',
+                aspectRatio: '3/4',
+                maxHeight: '70vh',
                 maxWidth: '480px',
                 position: 'relative',
               }}>
