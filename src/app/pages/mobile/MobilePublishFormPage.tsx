@@ -124,7 +124,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
     fetchAiData();
   }, [generationData?.session_id, imageUrl]);
 
-  // Start FUSION variant generation and SSE subscription
+  // Start FUSION variant generation (new architecture: job-based)
   useEffect(() => {
     console.log('[PublishFormPage] Variant generation useEffect triggered');
     console.log('[PublishFormPage] generationData:', generationData);
@@ -153,7 +153,7 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       { type: 'back', url: '', status: 'loading' }
     ]);
 
-    // Start SSE connection to FUSION variants stream
+    // Start SSE connection to FUSION variants stream (notification-only)
     const eventSource = new EventSource(`${apiUrl}/api/fusion/variants-stream?genId=${genId}`);
 
     eventSource.onmessage = (e) => {
@@ -163,8 +163,9 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
 
         if (data.type === 'connected') {
           console.log('[MobilePublishFormPage] SSE connected');
-        } else if (data.type === 'initial_state' && data.variants) {
-          // Load existing variants from database
+        } else if (data.type === 'variants_update' && data.variants) {
+          // Variant state updated from database poll
+          console.log('[MobilePublishFormPage] Variants updated:', data.variants);
           data.variants.forEach((v: any) => {
             if (v.r2_url && v.status === 'completed') {
               setVariants(prev =>
@@ -174,31 +175,22 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
                     : existing
                 )
               );
+            } else if (v.status === 'failed') {
+              setVariants(prev =>
+                prev.map(existing =>
+                  existing.type === v.type
+                    ? { ...existing, status: 'failed' }
+                    : existing
+                )
+              );
             }
           });
-        } else if (data.type === 'variant_update' && data.view) {
-          // Update progress
-          console.log(`[MobilePublishFormPage] ${data.view} status: ${data.status}`);
-        } else if (data.type === 'variant_complete' && data.variant) {
-          // Variant completed
-          console.log('[MobilePublishFormPage] Variant completed:', data.variant);
-          setVariants(prev =>
-            prev.map(v =>
-              v.type === data.variant.type
-                ? { type: v.type, url: data.variant.r2_url, status: 'completed' }
-                : v
-            )
-          );
-        } else if (data.type === 'variant_failed' && data.view) {
-          // Variant failed
-          console.error('[MobilePublishFormPage] Variant failed:', data.view, data.error);
-          setVariants(prev =>
-            prev.map(v =>
-              v.type === data.view
-                ? { ...v, status: 'failed' }
-                : v
-            )
-          );
+        } else if (data.type === 'all_complete') {
+          console.log('[MobilePublishFormPage] All variants completed');
+          eventSource.close();
+        } else if (data.type === 'timeout') {
+          console.warn('[MobilePublishFormPage] SSE stream timed out');
+          eventSource.close();
         }
       } catch (err) {
         console.error('[MobilePublishFormPage] SSE parse error:', err);
@@ -210,10 +202,10 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
       eventSource.close();
     };
 
-    // Trigger variant generation in background
+    // Step 1: Create variant jobs
     (async () => {
       try {
-        console.log('[MobilePublishFormPage] 🚀 Starting FUSION variant generation...');
+        console.log('[MobilePublishFormPage] 🚀 Creating variant jobs...');
         const response = await fetch(`${apiUrl}/api/fusion/start-variants`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -225,12 +217,28 @@ export function MobilePublishFormPage({ onNavigate, onPublish, imageUrl, generat
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to start variants: ${response.status}`);
+          throw new Error(`Failed to create variant jobs: ${response.status}`);
         }
 
-        console.log('[MobilePublishFormPage] Variant generation started successfully');
+        const { jobs } = await response.json();
+        console.log('[MobilePublishFormPage] ✅ Created jobs:', jobs);
+
+        // Step 2: Trigger actual generation for each job
+        for (const job of jobs) {
+          console.log(`[MobilePublishFormPage] Triggering generation for job ${job.id} (${job.type})...`);
+
+          // Fire and forget - don't await (generation happens in background)
+          fetch(`${apiUrl}/api/fusion/variants-generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_id: job.id })
+          }).catch(err => {
+            console.error(`[MobilePublishFormPage] Failed to trigger ${job.type} generation:`, err);
+          });
+        }
+
       } catch (err) {
-        console.error('[MobilePublishFormPage] Failed to start variant generation:', err);
+        console.error('[MobilePublishFormPage] Failed to create variant jobs:', err);
       }
     })();
 

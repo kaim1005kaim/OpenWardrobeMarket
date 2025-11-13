@@ -1,10 +1,11 @@
 /**
- * SSE Stream for Variant Generation Progress
- * Client connects to receive real-time updates as SIDE/BACK variants are generated
+ * SSE Stream for Variant Generation Progress (Notification-Only)
+ * Polls database and streams updates - does NOT perform generation
+ * Auto-closes after 90 seconds to avoid timeout
  */
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
+export const maxDuration = 120; // 2 minutes max (safety buffer)
 
 import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -12,6 +13,9 @@ import { activeStreams } from 'lib/sse-emitter';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const POLL_INTERVAL_MS = 5000; // Poll every 5 seconds
+const MAX_DURATION_MS = 90000; // Auto-close after 90 seconds
 
 export async function GET(req: NextRequest) {
   const genId = req.nextUrl.searchParams.get('genId');
@@ -25,40 +29,84 @@ export async function GET(req: NextRequest) {
   const stream = new ReadableStream({
     start(controller) {
       activeStreams.set(genId, controller);
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+      // Send connection confirmation
       const initialMessage = `data: ${JSON.stringify({ type: 'connected', genId })}\n\n`;
       controller.enqueue(new TextEncoder().encode(initialMessage));
 
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      let lastVariantsState: any = null;
+      const startTime = Date.now();
 
-      (async () => {
+      // Poll database for variant updates
+      const pollInterval = setInterval(async () => {
         try {
-          const { data } = await supabase
+          // Check if exceeded max duration
+          if (Date.now() - startTime > MAX_DURATION_MS) {
+            console.log(`[variants-stream] Max duration reached for ${genId}, closing stream`);
+            const timeoutMsg = `data: ${JSON.stringify({ type: 'timeout', message: 'Stream auto-closed after 90s' })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(timeoutMsg));
+            clearInterval(pollInterval);
+            clearInterval(keepAlive);
+            activeStreams.delete(genId);
+            controller.close();
+            return;
+          }
+
+          // Fetch current variants state from generation_history
+          const { data: genData } = await supabase
             .from('generation_history')
             .select('variants')
             .eq('id', genId)
             .single();
 
-          if (data?.variants) {
-            const message = `data: ${JSON.stringify({ type: 'initial_state', variants: data.variants })}\n\n`;
+          const currentVariants = genData?.variants || [];
+
+          // Send update if state changed
+          if (JSON.stringify(currentVariants) !== JSON.stringify(lastVariantsState)) {
+            console.log(`[variants-stream] Variants updated for ${genId}:`, currentVariants);
+            lastVariantsState = currentVariants;
+
+            const message = `data: ${JSON.stringify({ type: 'variants_update', variants: currentVariants })}\n\n`;
             controller.enqueue(new TextEncoder().encode(message));
+
+            // Check if all variants completed or failed
+            const allDone = currentVariants.every((v: any) =>
+              v.status === 'completed' || v.status === 'failed'
+            );
+
+            if (allDone && currentVariants.length > 0) {
+              console.log(`[variants-stream] All variants completed for ${genId}`);
+              const doneMsg = `data: ${JSON.stringify({ type: 'all_complete', variants: currentVariants })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(doneMsg));
+
+              // Close stream after completion
+              clearInterval(pollInterval);
+              clearInterval(keepAlive);
+              activeStreams.delete(genId);
+              controller.close();
+            }
           }
         } catch (err) {
-          console.error('[variants-stream] Error fetching initial state:', err);
+          console.error('[variants-stream] Polling error:', err);
         }
-      })();
+      }, POLL_INTERVAL_MS);
 
+      // Keep-alive ping
       const keepAlive = setInterval(() => {
         try {
           controller.enqueue(new TextEncoder().encode(': ping\n\n'));
         } catch (err) {
           clearInterval(keepAlive);
+          clearInterval(pollInterval);
         }
       }, 15000);
 
+      // Handle client disconnect
       req.signal.addEventListener('abort', () => {
         console.log(`[variants-stream] Client disconnected for ${genId}`);
         clearInterval(keepAlive);
+        clearInterval(pollInterval);
         activeStreams.delete(genId);
         try {
           controller.close();
