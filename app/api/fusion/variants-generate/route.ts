@@ -187,10 +187,23 @@ export async function POST(req: NextRequest) {
       progress: 'Starting generation...'
     });
 
-    // Get design tokens
-    const tokens: DesignTokens = job.design_tokens;
+    // Get design tokens from job, or fetch from generation_history if not available
+    let tokens: DesignTokens = job.design_tokens;
+
     if (!tokens) {
-      throw new Error('Design tokens not found. Run extract-tokens first.');
+      console.log(`[variants-generate] design_tokens not in job, fetching from generation_history...`);
+      const { data: genData, error: genError } = await supabase
+        .from('generation_history')
+        .select('design_tokens')
+        .eq('id', job.gen_id)
+        .single();
+
+      if (genError || !genData?.design_tokens) {
+        throw new Error('Design tokens not found. Run extract-tokens first.');
+      }
+
+      tokens = genData.design_tokens;
+      console.log(`[variants-generate] ✅ Fetched design_tokens from generation_history`);
     }
 
     // Build prompt
@@ -291,23 +304,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('[variants-generate] Error:', error);
-
-    // Try to mark job as failed
-    try {
-      const { job_id } = await req.json();
-      if (job_id) {
-        await supabase
-          .from('variants_jobs')
-          .update({
-            status: 'failed',
-            error_message: error instanceof Error ? error.message : 'Unknown error',
-            completed_at: new Date().toISOString()
-          })
-          .eq('id', job_id);
-      }
-    } catch (updateError) {
-      console.error('[variants-generate] Failed to update job status:', updateError);
-    }
 
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
