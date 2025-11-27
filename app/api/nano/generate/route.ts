@@ -1,11 +1,13 @@
 export const runtime = 'nodejs';
 export const revalidate = 0;
+export const maxDuration = 120; // 2 minutes for FUSION triptych generation
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { randomUUID } from 'node:crypto';
+import { splitTriptych } from '../../../../src/lib/image-processing/triptych-splitter';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -26,25 +28,41 @@ const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL!;
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Verify user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
+    // v2.0 TEMPORARY: Allow anonymous access for FUSION migration
+    // TODO: Re-enable authentication check before production launch
+    let user: any = null;
 
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const {
+        data: { user: authenticatedUser },
+        error: authError,
+      } = await supabase.auth.getUser(token);
+
+      if (!authError && authenticatedUser) {
+        user = authenticatedUser;
+      }
+    }
+
+    // If no authenticated user, use anonymous user ID
+    if (!user) {
+      user = { id: 'anonymous' };
+      console.log('[nano/generate] Anonymous user request');
     }
 
     const body = await req.json();
-    const { prompt, negative, aspectRatio, answers, dna, parentAssetId } = body;
+    const {
+      prompt,
+      negative,
+      aspectRatio,
+      answers,
+      dna,
+      parentAssetId,
+      enableTriptych = false, // v2.0: Enable 3-panel generation
+      fusionConcept // v2.0: Design philosophy for metadata
+    } = body;
 
     if (!prompt || !dna) {
       return NextResponse.json(
@@ -58,6 +76,8 @@ export async function POST(req: NextRequest) {
       prompt,
       aspectRatio,
       parentAssetId,
+      enableTriptych,
+      fusionConcept: fusionConcept ? fusionConcept.substring(0, 100) + '...' : null
     });
 
     // Generate image with Gemini using @google/genai
@@ -72,12 +92,17 @@ export async function POST(req: NextRequest) {
       cleanNegative ? `. Negative: ${cleanNegative}` : ''
     }`;
 
-    console.log('[nano/generate] Full prompt:', fullPrompt);
+    // v2.0: For FUSION mode with triptych, generate 16:9 horizontal image
+    const targetAspectRatio = enableTriptych ? '16:9' : (aspectRatio || '3:4');
 
+    console.log('[nano/generate] Full prompt:', fullPrompt);
+    console.log('[nano/generate] Target aspect ratio:', targetAspectRatio);
+
+    // v2.0: Use Nano Banana Pro (Gemini 3 Pro Image Preview) for professional quality
     const resp = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-3-pro-image-preview',
       contents: fullPrompt,
-      generationConfig: { imageConfig: { aspectRatio: aspectRatio || '3:4' } },
+      generationConfig: { imageConfig: { aspectRatio: targetAspectRatio } },
     } as any);
 
     const parts: any[] = resp.candidates?.[0]?.content?.parts ?? [];
@@ -88,28 +113,96 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No image generated' }, { status: 500 });
     }
 
-    // Upload to R2
+    // v2.0: If triptych mode, split the image into 3 panels
+    let triptychPanels: any = null;
+    if (enableTriptych) {
+      console.log('[nano/generate] Splitting into triptych panels...');
+      try {
+        const panels = await splitTriptych(inline.data);
+        triptychPanels = panels;
+        console.log('[nano/generate] Successfully split into 3 panels');
+      } catch (error) {
+        console.error('[nano/generate] Failed to split triptych:', error);
+        return NextResponse.json(
+          { error: 'Failed to split triptych image' },
+          { status: 500 }
+        );
+      }
+    }
+
+    // v2.0: Upload to R2 (either single image or triptych panels)
     const mimeType = inline.mimeType || 'image/png';
-    const ext = mimeType.includes('webp') ? 'webp' : 'png';
+    const ext = mimeType.includes('webp') ? 'webp' : 'jpg';
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const key = `generated/${user.id}/${yyyy}/${mm}/${Date.now()}_${randomUUID()}.${ext}`;
 
-    const buffer = Buffer.from(inline.data, 'base64');
+    let imageUrl: string;
+    let key: string;
+    let triptychUrls: any = null;
 
-    await r2.send(
-      new PutObjectCommand({
-        Bucket: R2_BUCKET,
-        Key: key,
-        Body: buffer,
-        ContentType: mimeType,
-      })
-    );
+    if (enableTriptych && triptychPanels) {
+      // Upload 3 separate panels
+      const baseKey = `generated/${user.id}/${yyyy}/${mm}/${Date.now()}_${randomUUID()}`;
 
-    const imageUrl = `${R2_PUBLIC_BASE_URL}/${key}`;
+      const panelUploads = await Promise.all([
+        // Front panel
+        r2.send(
+          new PutObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: `${baseKey}_front.jpg`,
+            Body: triptychPanels.front.buffer,
+            ContentType: 'image/jpeg',
+          })
+        ),
+        // Side panel
+        r2.send(
+          new PutObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: `${baseKey}_side.jpg`,
+            Body: triptychPanels.side.buffer,
+            ContentType: 'image/jpeg',
+          })
+        ),
+        // Back panel
+        r2.send(
+          new PutObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: `${baseKey}_back.jpg`,
+            Body: triptychPanels.back.buffer,
+            ContentType: 'image/jpeg',
+          })
+        )
+      ]);
 
-    console.log('[nano/generate] Uploaded to R2:', imageUrl);
+      triptychUrls = {
+        front: `${R2_PUBLIC_BASE_URL}/${baseKey}_front.jpg`,
+        side: `${R2_PUBLIC_BASE_URL}/${baseKey}_side.jpg`,
+        back: `${R2_PUBLIC_BASE_URL}/${baseKey}_back.jpg`
+      };
+
+      // Use front panel as primary image
+      imageUrl = triptychUrls.front;
+      key = `${baseKey}_front.jpg`;
+
+      console.log('[nano/generate] Uploaded triptych panels to R2:', triptychUrls);
+    } else {
+      // Single image upload (legacy mode)
+      key = `generated/${user.id}/${yyyy}/${mm}/${Date.now()}_${randomUUID()}.${ext}`;
+      const buffer = Buffer.from(inline.data, 'base64');
+
+      await r2.send(
+        new PutObjectCommand({
+          Bucket: R2_BUCKET,
+          Key: key,
+          Body: buffer,
+          ContentType: mimeType,
+        })
+      );
+
+      imageUrl = `${R2_PUBLIC_BASE_URL}/${key}`;
+      console.log('[nano/generate] Uploaded to R2:', imageUrl);
+    }
 
     // Save to generation_history with DNA
     const { data: historyRecord, error: historyError } = await supabase
@@ -147,6 +240,12 @@ export async function POST(req: NextRequest) {
           width: 1024,
           height: aspectRatio === '3:4' ? 1365 : 1024,
           mime_type: mimeType,
+          // v2.0: Triptych metadata
+          ...(enableTriptych && triptychUrls ? {
+            triptych: true,
+            triptych_urls: triptychUrls,
+            fusion_concept: fusionConcept
+          } : {})
         },
       })
       .select()
@@ -167,6 +266,11 @@ export async function POST(req: NextRequest) {
       url: imageUrl,
       key: key,
       historyId: historyRecord?.id,
+      // v2.0: Include triptych URLs if available
+      ...(enableTriptych && triptychUrls ? {
+        triptych: true,
+        triptych_urls: triptychUrls
+      } : {})
     });
   } catch (error: any) {
     console.error('[nano/generate] Error:', error);

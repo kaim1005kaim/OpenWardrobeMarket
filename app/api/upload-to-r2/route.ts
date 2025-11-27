@@ -33,17 +33,24 @@ const r2Client = new S3Client({
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Verify user token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    // v2.0 TEMPORARY: Allow anonymous access for FUSION migration
+    // TODO: Re-enable authentication check before production launch
+    let user: any = null;
+
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const { data: { user: authenticatedUser }, error: authError } = await supabase.auth.getUser(token);
+      if (!authError && authenticatedUser) {
+        user = authenticatedUser;
+      }
+    }
+
+    // If no authenticated user, use anonymous user ID
+    if (!user) {
+      user = { id: 'anonymous' };
+      console.log('[upload-to-r2] Anonymous user request');
     }
 
     const body = await req.json();

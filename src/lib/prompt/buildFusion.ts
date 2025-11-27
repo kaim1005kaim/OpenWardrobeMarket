@@ -37,9 +37,15 @@ export interface FusionSpec {
     style: string;
     scale: string;
     notes: string;
+    emotional_intent?: string; // v2.0
   }[];
   details: string[];
   inspiration?: string;
+
+  // v2.0 Emotional Interpretation Fields
+  fusion_concept?: string; // 1-3 sentence design philosophy
+  emotional_keywords?: string[]; // 3-6 mood/feeling keywords
+  dominant_trait_analysis?: string; // Strategy for combining images A & B
 }
 
 export interface FusionPromptOptions {
@@ -168,39 +174,59 @@ export function composeFusionPrompt(
   // 7. Build details list
   const detailsDesc = spec.details.slice(0, 4).join(', ');
 
-  // 8. Compose final prompt with enhanced silhouette description
-  const prompt = `FASHION EDITORIAL, full-body fashion photography, ${aspectRatio} composition, centered model.
+  // 8. Build emotional keywords phrase (v2.0)
+  const emotionalPhrase = spec.emotional_keywords && spec.emotional_keywords.length > 0
+    ? spec.emotional_keywords.join(', ')
+    : '';
 
-GARMENT FOCUS: High-end fashion design, studio presentation, product-forward photography.
+  // 9. Compose Nano Banana Pro structured prompt (v2.0)
+  // Following structured JSON format for better AI comprehension
+  const prompt = `FASHION EDITORIAL GENERATION - Nano Banana Pro Format v2.0
 
-BACKGROUND: ${backgroundPhrase}
+=== SUBJECT (Core Design Concept) ===
+Design Philosophy: ${spec.fusion_concept || 'Modern fashion fusion concept'}
+Emotional Essence: ${emotionalPhrase || 'contemporary, refined, editorial'}
+${spec.dominant_trait_analysis ? `Fusion Strategy: ${spec.dominant_trait_analysis}` : ''}
 
-SILHOUETTE: ${selectedSilhouette} silhouette
-Description: ${silhouetteDesc}
+Garment Type: Full-body fashion design
+Silhouette: ${selectedSilhouette} silhouette - ${silhouetteDesc}
 
-MATERIALS: ${materialsDesc}, luxurious fabric quality
+=== COMPOSITION (Framing & Layout) ===
+Format: ${aspectRatio} vertical composition
+Framing: Full-body centered model, fashion editorial presentation
+Perspective: Eye-level, 50-85mm equivalent focal length
+Focus: Product-forward photography, garment as hero
 
-COLOR PALETTE: ${paletteDesc}
-Use these colors in garment construction with soft, editorial tonality.
+=== STYLE (Visual Language) ===
+Mood Keywords: ${emotionalPhrase}
+Photography Style: High-end fashion editorial, studio presentation
+Quality: Impeccable tailoring and finishing visible, editorial standard
 
-ABSTRACT DESIGN ELEMENTS (NO LITERAL OBJECTS):
+Color Palette: ${paletteDesc}
+Materials: ${materialsDesc}, luxurious fabric quality
+
+Abstract Design Elements (NO literal objects):
 - ${motifsDesc}
 
-CONSTRUCTION DETAILS: ${detailsDesc}
-Clean seamlines, couture finishing, refined drape and structure.
+Construction Details: ${detailsDesc}
+Clean seamlines, couture finishing, refined drape and structure
 
-LIGHTING: Soft editorial lighting, high CRI (Color Rendering Index), subtle specular highlights to reveal fabric texture and construction quality.
+=== TECHNICAL CONTROLS ===
+Lighting: Soft editorial lighting, high CRI (Color Rendering Index), subtle specular highlights to reveal fabric texture and construction quality
+Background: ${backgroundPhrase}
+Model: ${modelPhrase}, minimal styling, neutral expression, professional pose showcasing garment construction
+Image Quality: High resolution, sharp focus on garment with subtle background separation
 
-CAMERA: 50-85mm equivalent focal length, eye-level perspective, fashion editorial style, sharp focus on garment with subtle background separation.
+${spec.inspiration ? `\n=== CREATIVE DIRECTION ===\n${spec.inspiration}` : ''}
+${optionalPrompt ? `\n=== ADDITIONAL NOTES ===\n${optionalPrompt}` : ''}
 
-MODEL: ${modelPhrase}, minimal styling, neutral expression, professional pose showcasing garment construction.
-
-QUALITY: High resolution, editorial fashion photography standard, impeccable tailoring and finishing visible.
-
-${spec.inspiration ? `\nCREATIVE DIRECTION: ${spec.inspiration}` : ''}
-${optionalPrompt ? `\nADDITIONAL DIRECTION: ${optionalPrompt}` : ''}
-
-CRITICAL: All design elements must be abstract fashion operations (seamlines, panels, pleats, embroidery, etc.). NO literal objects, logos, text, or recognizable imagery from source materials. NO cultural symbols, NO traditional patterns, NO recognizable motifs - only abstract geometric and construction-based design language.`;
+=== CRITICAL CONSTRAINTS ===
+- All design elements must be ABSTRACT fashion operations (seamlines, panels, pleats, embroidery, quilting, piping, etc.)
+- NO literal objects, logos, text, or recognizable imagery from source materials
+- NO cultural symbols, NO traditional patterns, NO recognizable motifs
+- Only abstract geometric and construction-based design language
+- Single model, one person only, no multiple people
+- Clean minimal background, focus on garment`;
 
   return {
     prompt,
