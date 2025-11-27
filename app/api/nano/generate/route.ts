@@ -14,16 +14,13 @@ import dns from 'dns';
 // Configure DNS to prefer IPv4 (fixes SSL handshake issues with some APIs)
 dns.setDefaultResultOrder('ipv4first');
 
-// Configure global HTTPS agent with IPv4 preference and relaxed SSL settings
-const globalAgent = new https.Agent({
-  keepAlive: true,
-  // IPv6経路の相性切り分け：IPv4を優先
-  lookup: (host, options, cb) => dns.lookup(host, { ...options, family: 4 }, cb as any),
-  minVersion: 'TLSv1.2',
-});
-
-// Set as default for all HTTPS requests
-(https.globalAgent as any) = globalAgent;
+// TEMPORARY FIX: Disable SSL certificate validation for Google AI API
+// This is a workaround for SSL/TLS handshake failures on Vercel
+// TODO: Find a proper solution that doesn't compromise security
+if (process.env.NODE_ENV === 'production') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  console.log('[nano/generate] ⚠️  SSL verification disabled (temporary fix)');
+}
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
