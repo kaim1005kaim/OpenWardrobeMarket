@@ -299,6 +299,10 @@ export async function POST(req: NextRequest) {
     console.log('[nano/generate] Created asset:', assetRecord.id);
 
     return NextResponse.json({
+      // Mobile app compatibility
+      generationId: assetRecord.id,
+      imageUrl: imageUrl,
+      // Legacy fields
       id: assetRecord.id,
       url: imageUrl,
       key: key,
@@ -306,7 +310,10 @@ export async function POST(req: NextRequest) {
       // v2.0: Include triptych URLs if available
       ...(enableTriptych && triptychUrls ? {
         triptych: true,
-        triptych_urls: triptychUrls
+        triptych_urls: triptychUrls,
+        frontUrl: triptychUrls.front,
+        sideUrl: triptychUrls.side,
+        backUrl: triptychUrls.back,
       } : {})
     });
   } catch (error: any) {
