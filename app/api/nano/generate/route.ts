@@ -18,16 +18,18 @@ dns.setDefaultResultOrder('ipv4first');
 // This is a workaround for SSL/TLS handshake failures on Vercel
 // TODO: Find a proper solution that doesn't compromise security
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-console.log('[nano/generate] ⚠️  SSL verification disabled (temporary fix)');
 
-// Create custom HTTPS agent with relaxed SSL settings
-const customAgent = new https.Agent({
+// Override global HTTPS agent to bypass SSL issues
+const originalHttpsAgent = https.globalAgent;
+https.globalAgent = new https.Agent({
   rejectUnauthorized: false,
   requestCert: false,
   secureProtocol: 'TLS_method',
   ciphers: 'ALL',
   minVersion: 'TLSv1',
 });
+
+console.log('[nano/generate] ⚠️  SSL verification disabled with custom global HTTPS agent (temporary fix)');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -101,11 +103,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Generate image with Gemini using @google/genai
-    // Use custom HTTPS agent to bypass SSL issues
-    const ai = new GoogleGenAI({
-      apiKey: process.env.GOOGLE_API_KEY!,
-      httpAgent: customAgent as any,
-    });
+    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
     const cleanNegative = (negative || '')
       .replace(/no watermark|no signature/gi, '')
