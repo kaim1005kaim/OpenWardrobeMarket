@@ -3,7 +3,6 @@ export const revalidate = 0;
 export const maxDuration = 120; // 2 minutes for FUSION triptych generation
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { randomUUID } from 'node:crypto';
@@ -102,9 +101,7 @@ export async function POST(req: NextRequest) {
       fusionConcept: fusionConcept ? fusionConcept.substring(0, 100) + '...' : null
     });
 
-    // Generate image with Gemini using @google/genai
-    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
-
+    // Generate image with Gemini using direct REST API (bypasses @google/genai SSL issues)
     const cleanNegative = (negative || '')
       .replace(/no watermark|no signature/gi, '')
       .replace(/,,/g, ',')
@@ -120,13 +117,31 @@ export async function POST(req: NextRequest) {
     console.log('[nano/generate] Full prompt:', fullPrompt);
     console.log('[nano/generate] Target aspect ratio:', targetAspectRatio);
 
-    // v2.0: Use Nano Banana Pro (Gemini 3 Pro Image Preview) for professional quality
-    const resp = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
-      contents: fullPrompt,
-      generationConfig: { imageConfig: { aspectRatio: targetAspectRatio } },
-    } as any);
+    // v2.0: Use Nano Banana Pro (Gemini 3 Pro Image Preview) via REST API
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${process.env.GOOGLE_API_KEY!}`;
 
+    const fetchResp = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: fullPrompt }],
+        }],
+        generationConfig: {
+          imageConfig: { aspectRatio: targetAspectRatio },
+        },
+      }),
+    });
+
+    if (!fetchResp.ok) {
+      const errorText = await fetchResp.text();
+      console.error('[nano/generate] Google AI API error:', errorText);
+      throw new Error(`Google AI API error: ${fetchResp.status}`);
+    }
+
+    const resp = await fetchResp.json();
     const parts: any[] = resp.candidates?.[0]?.content?.parts ?? [];
     const inline = parts.find((p: any) => p.inlineData)?.inlineData;
 
