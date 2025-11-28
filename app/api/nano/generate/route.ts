@@ -178,155 +178,46 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // v2.0: Upload to R2 (either single image or triptych panels)
+    // v2.0 WORKAROUND: Return base64 instead of uploading to R2 (Vercel SSL issues)
+    // The mobile app will handle R2 upload via /api/upload-to-r2
     const mimeType = inline.mimeType || 'image/png';
-    const ext = mimeType.includes('webp') ? 'webp' : 'jpg';
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
 
-    let imageUrl: string;
-    let key: string;
-    let triptychUrls: any = null;
+    console.log('[nano/generate] Returning base64 image data (R2 upload bypassed due to Vercel SSL issues)');
 
     if (enableTriptych && triptychPanels) {
-      // Upload 3 separate panels
-      const baseKey = `generated/${user.id}/${yyyy}/${mm}/${Date.now()}_${randomUUID()}`;
-
-      const panelUploads = await Promise.all([
-        // Front panel
-        r2.send(
-          new PutObjectCommand({
-            Bucket: R2_BUCKET,
-            Key: `${baseKey}_front.jpg`,
-            Body: triptychPanels.front.buffer,
-            ContentType: 'image/jpeg',
-          })
-        ),
-        // Side panel
-        r2.send(
-          new PutObjectCommand({
-            Bucket: R2_BUCKET,
-            Key: `${baseKey}_side.jpg`,
-            Body: triptychPanels.side.buffer,
-            ContentType: 'image/jpeg',
-          })
-        ),
-        // Back panel
-        r2.send(
-          new PutObjectCommand({
-            Bucket: R2_BUCKET,
-            Key: `${baseKey}_back.jpg`,
-            Body: triptychPanels.back.buffer,
-            ContentType: 'image/jpeg',
-          })
-        )
-      ]);
-
-      triptychUrls = {
-        front: `${R2_PUBLIC_BASE_URL}/${baseKey}_front.jpg`,
-        side: `${R2_PUBLIC_BASE_URL}/${baseKey}_side.jpg`,
-        back: `${R2_PUBLIC_BASE_URL}/${baseKey}_back.jpg`
-      };
-
-      // Use front panel as primary image
-      imageUrl = triptychUrls.front;
-      key = `${baseKey}_front.jpg`;
-
-      console.log('[nano/generate] Uploaded triptych panels to R2:', triptychUrls);
-    } else {
-      // Single image upload (legacy mode)
-      key = `generated/${user.id}/${yyyy}/${mm}/${Date.now()}_${randomUUID()}.${ext}`;
-      const buffer = Buffer.from(inline.data, 'base64');
-
-      await r2.send(
-        new PutObjectCommand({
-          Bucket: R2_BUCKET,
-          Key: key,
-          Body: buffer,
-          ContentType: mimeType,
-        })
-      );
-
-      imageUrl = `${R2_PUBLIC_BASE_URL}/${key}`;
-      console.log('[nano/generate] Uploaded to R2:', imageUrl);
-    }
-
-    // Save to generation_history with DNA
-    const { data: historyRecord, error: historyError } = await supabase
-      .from('generation_history')
-      .insert({
-        user_id: user.id,
-        image_url: imageUrl,
-        image_path: key,
-        prompt: prompt,
-        dna: dna,
-        parent_asset_id: parentAssetId || null,
-        is_public: false,
-      })
-      .select()
-      .single();
-
-    if (historyError) {
-      console.error('[nano/generate] Failed to save to generation_history:', historyError);
-    } else {
-      console.log('[nano/generate] Saved to generation_history:', historyRecord.id);
-    }
-
-    // Save to assets table with DNA and lineage
-    const { data: assetRecord, error: assetError } = await supabase
-      .from('assets')
-      .insert({
-        user_id: user.id,
-        final_url: imageUrl,
-        final_key: key,
-        status: 'private',
-        dna: dna,
-        parent_asset_id: parentAssetId || null,
-        lineage_tags: parentAssetId ? ['remix'] : [],
-        metadata: {
-          width: 1024,
-          height: aspectRatio === '3:4' ? 1365 : 1024,
-          mime_type: mimeType,
-          // v2.0: Triptych metadata
-          ...(enableTriptych && triptychUrls ? {
-            triptych: true,
-            triptych_urls: triptychUrls,
-            fusion_concept: fusionConcept
-          } : {})
-        },
-      })
-      .select()
-      .single();
-
-    if (assetError) {
-      console.error('[nano/generate] Failed to save to assets:', assetError);
-      return NextResponse.json(
-        { error: 'Failed to save asset: ' + assetError.message },
-        { status: 500 }
-      );
-    }
-
-    console.log('[nano/generate] Created asset:', assetRecord.id);
-
-    return NextResponse.json({
-      // Mobile app compatibility
-      generationId: assetRecord.id,
-      imageUrl: imageUrl,
-      // Legacy fields
-      id: assetRecord.id,
-      url: imageUrl,
-      key: key,
-      historyId: historyRecord?.id,
-      // v2.0: Include triptych URLs if available
-      ...(enableTriptych && triptychUrls ? {
+      // Return triptych panels as base64
+      return NextResponse.json({
+        success: true,
         triptych: true,
-        triptych_urls: triptychUrls,
-        frontUrl: triptychUrls.front,
-        sideUrl: triptychUrls.side,
-        backUrl: triptychUrls.back,
-      } : {})
-    });
+        imageData: {
+          front: triptychPanels.front.base64,
+          side: triptychPanels.side.base64,
+          back: triptychPanels.back.base64,
+        },
+        mimeType: 'image/jpeg',
+        metadata: {
+          prompt,
+          dna,
+          parentAssetId,
+          fusionConcept,
+          aspectRatio: targetAspectRatio,
+        },
+      });
+    } else {
+      // Return single image as base64
+      return NextResponse.json({
+        success: true,
+        triptych: false,
+        imageData: inline.data,
+        mimeType: mimeType,
+        metadata: {
+          prompt,
+          dna,
+          parentAssetId,
+          aspectRatio: targetAspectRatio,
+        },
+      });
+    }
   } catch (error: any) {
     console.error('[nano/generate] Error:', error);
     return NextResponse.json(

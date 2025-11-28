@@ -7,27 +7,35 @@ import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
 import https from 'https';
 import dns from 'dns';
 import { createClient } from '@supabase/supabase-js';
+import { randomUUID } from 'node:crypto';
+
+// Configure DNS to prefer IPv4
+dns.setDefaultResultOrder('ipv4first');
+
+// TEMPORARY FIX: Disable SSL certificate validation
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// Use same R2 client configuration as r2-presign (with SSL/TLS fix)
+// Use enhanced SSL bypass configuration (same as nano/generate)
 const r2Client = new S3Client({
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  endpoint: process.env.R2_S3_ENDPOINT!,
   region: 'auto',
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
   },
-  forcePathStyle: true,
   requestHandler: new NodeHttpHandler({
     httpsAgent: new https.Agent({
-      keepAlive: true,
-      // IPv6経路の相性切り分け：IPv4を優先
-      lookup: (host, options, cb) => dns.lookup(host, { ...options, family: 4 }, cb),
+      rejectUnauthorized: false,
+      requestCert: false,
+      checkServerIdentity: () => undefined,
+      maxVersion: 'TLSv1.3',
       minVersion: 'TLSv1.2',
     }),
   }),
+  tls: false, // Disable TLS verification at SDK level
 });
 
 export async function POST(req: NextRequest) {
@@ -54,14 +62,21 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { imageData, mimeType, key } = body;
+    const { imageData, mimeType, metadata } = body;
 
-    if (!imageData || !mimeType || !key) {
+    if (!imageData || !mimeType) {
       return NextResponse.json(
-        { error: 'Missing required fields: imageData, mimeType, key' },
+        { error: 'Missing required fields: imageData, mimeType' },
         { status: 400 }
       );
     }
+
+    // Generate R2 key
+    const ext = mimeType.includes('webp') ? 'webp' : 'jpg';
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const key = `generated/${user.id}/${yyyy}/${mm}/${Date.now()}_${randomUUID()}.${ext}`;
 
     console.log('[upload-to-r2] Uploading to R2:', key);
 
@@ -78,17 +93,68 @@ export async function POST(req: NextRequest) {
 
     await r2Client.send(command);
 
-    // Generate public URL using custom domain (supports public access)
-    // NEXT_PUBLIC_R2_PUBLIC_BASE_URL = assets.open-wardrobe-market.com (has public access)
-    // R2_PUBLIC_BASE_URL = pub-*.r2.dev (returns 401 for server-side fetches)
-    const publicBaseUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL || process.env.R2_PUBLIC_BASE_URL || 'https://assets.open-wardrobe-market.com';
+    // Generate public URL
+    const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL!;
     const finalUrl = `${publicBaseUrl}/${key}`;
 
     console.log('[upload-to-r2] Upload successful:', finalUrl);
 
+    // Create Supabase client for DB operations
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // Save to generation_history
+    const { data: historyRecord, error: historyError } = await supabase
+      .from('generation_history')
+      .insert({
+        user_id: user.id,
+        image_url: finalUrl,
+        image_path: key,
+        prompt: metadata?.prompt || '',
+        dna: metadata?.dna || null,
+        parent_asset_id: metadata?.parentAssetId || null,
+        is_public: false,
+      })
+      .select()
+      .single();
+
+    if (historyError) {
+      console.error('[upload-to-r2] Failed to save to generation_history:', historyError);
+    }
+
+    // Save to assets table
+    const { data: assetRecord, error: assetError } = await supabase
+      .from('assets')
+      .insert({
+        user_id: user.id,
+        final_url: finalUrl,
+        final_key: key,
+        status: 'private',
+        dna: metadata?.dna || null,
+        parent_asset_id: metadata?.parentAssetId || null,
+        lineage_tags: metadata?.parentAssetId ? ['remix'] : [],
+        metadata: {
+          width: 1024,
+          height: metadata?.aspectRatio === '3:4' ? 1365 : 1024,
+          mime_type: mimeType,
+        },
+      })
+      .select()
+      .single();
+
+    if (assetError) {
+      console.error('[upload-to-r2] Failed to save to assets:', assetError);
+      return NextResponse.json(
+        { error: 'Failed to save asset: ' + assetError.message },
+        { status: 500 }
+      );
+    }
+
+    console.log('[upload-to-r2] Created asset:', assetRecord.id);
+
     return NextResponse.json({
       success: true,
-      url: finalUrl,
+      generationId: assetRecord.id,
+      imageUrl: finalUrl,
       key,
     });
 
