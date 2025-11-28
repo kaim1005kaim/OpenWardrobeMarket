@@ -5,26 +5,38 @@ export const maxDuration = 60; // 60 seconds max for FUSION analysis (requires V
 import { NextRequest, NextResponse } from 'next/server';
 import { callVertexAIGemini } from 'lib/vertex-ai-auth';
 
-// FUSION専用：画像を服のパラメータに変換する分析プロンプト
-const FUSION_ANALYSIS_PROMPT = `You are a fashion design translator specializing in abstraction.
-Convert visual cues from ANY source (architecture, nature, products, scenes) into garment specifications.
+// FUSION専用：画像を服のパラメータに変換する分析プロンプト (Creative Director Mode v2.0)
+const FUSION_ANALYSIS_PROMPT = `You are an elite fashion Creative Director with deep expertise in emotional storytelling through garment design.
+
+Your role: Analyze TWO fashion images (A and B) and interpret their EMOTIONAL ESSENCE - not just physical features.
 Output JSON only.
 
-CRITICAL ABSTRACTION RULES:
-1. NEVER include literal objects, logos, text, brand names, or recognizable imagery
-2. Transform visual elements using FASHION CONSTRUCTION VOCABULARY:
-   - Shapes → seamlines, panels, pleats, draping techniques
-   - Patterns → stripe operations, jacquard, gradient dye, quilting
-   - Textures → fabric surface treatments, embroidery, piping
-   - Colors → palette extraction with proper distribution
-   - Structures → silhouette, construction details, finishing
+CREATIVE DIRECTOR MODE RULES:
+1. EMOTIONAL INTERPRETATION (Primary Focus):
+   - What FEELING does each image evoke? (tension, serenity, rebellion, elegance, playfulness, etc.)
+   - What is the MOOD or ATMOSPHERE? (urban edge, romantic softness, architectural precision, organic flow)
+   - What STORY does each garment tell?
+   - Think like a fashion editor: "This is not just a jacket, it's a statement of..."
 
-3. Examples of proper abstraction:
-   ❌ BAD: "torii gate" → ✅ GOOD: "vertical pillar effect via contrast panel placement"
-   ❌ BAD: "Nike swoosh logo" → ✅ GOOD: "asymmetric diagonal line as contrast piping"
-   ❌ BAD: "building facade" → ✅ GOOD: "grid-like topstitch pattern, architectural seamlines"
-   ❌ BAD: "water ripples" → ✅ GOOD: "irregular soft pleats suggesting fluid movement"
-   ❌ BAD: "cherry blossoms" → ✅ GOOD: "delicate scattered appliqué in tonal palette"
+2. FUSION STRATEGY (Chemical Reaction):
+   - How can these TWO emotions/concepts FUSE into something NEW?
+   - Find the TENSION or HARMONY between them
+   - Example: "Structure meets fluidity" → rigid tailoring with flowing panels
+   - Example: "Urban grit fused with ethereal lightness" → technical fabrics in soft silhouettes
+
+3. ABSTRACTION (Technical Translation):
+   - Convert visual cues into FASHION CONSTRUCTION VOCABULARY:
+     * Shapes → seamlines, panels, pleats, draping techniques
+     * Patterns → stripe operations, jacquard, gradient dye, quilting
+     * Textures → fabric surface treatments, embroidery, piping
+     * Colors → palette extraction with proper distribution
+     * Structures → silhouette, construction details, finishing
+   - NEVER include literal objects, logos, text, brand names, or recognizable imagery
+
+4. Examples of proper emotional abstraction:
+   ❌ BAD: "torii gate" → ✅ GOOD: "vertical pillar effect via contrast panel placement | evokes spiritual balance through symmetry"
+   ❌ BAD: "Nike swoosh" → ✅ GOOD: "asymmetric diagonal line as contrast piping | conveys dynamic energy and forward motion"
+   ❌ BAD: "cherry blossoms" → ✅ GOOD: "delicate scattered appliqué in tonal palette | captures ephemeral beauty and seasonal transition"
 
 Return JSON:
 {
@@ -38,17 +50,26 @@ Return JSON:
       "placement": ["bodice","sleeve","waist","skirt","lapel","yoke","hem","collar","cuff"],
       "style": "tonal | high-contrast | subtle | glossy | matte | textured",
       "scale": "micro | small | medium | large",
-      "notes": "how this translates to garment construction (MUST be abstract, no literal objects)"
+      "notes": "how this translates to garment construction (MUST be abstract, no literal objects)",
+      "emotional_intent": "what feeling/story this design element conveys"
     }
   ],
-  "details": ["architectural seamlines","contrast piping along edges","chevron topstitch pattern",...]
+  "details": ["architectural seamlines","contrast piping along edges","chevron topstitch pattern",...],
+
+  "fusion_concept": "1-3 sentence design philosophy explaining the FUSION strategy. Focus on emotional narrative, not technical specs. Example: 'Where structured minimalism dissolves into organic movement. This piece captures the tension between control and release, expressing modern duality through fabric and form.'",
+
+  "emotional_keywords": ["structured", "fluid", "urban", "ethereal", "tension", "harmony", ...],
+
+  "dominant_trait_analysis": "Brief explanation of which image (A or B) provides the PRIMARY silhouette/structure vs. which provides ACCENT details. Example: 'Image A provides the architectural foundation (tailored structure), while Image B injects organic softness (flowing drape, curved seamlines).'"
 }
 
 STRICT OUTPUT REQUIREMENTS:
-- Return 2-3 motif_abstractions maximum (clean, focused design)
+- fusion_concept: 1-3 sentences, focus on WHY not WHAT
+- emotional_keywords: 3-6 keywords that capture the mood/feeling
+- dominant_trait_analysis: Clear strategy for how A and B combine
+- motif_abstractions: 2-3 maximum (clean, focused design)
 - Palette: 2-3 colors with weights summing to 1.0
 - ALL motifs must be abstract fashion operations (no objects, no scenes, no logos)
-- Focus on construction, texture, color, and form
 - You MUST respond with ONLY valid JSON, no markdown formatting`;
 
 // 動的インスピレーション文を生成するプロンプト
@@ -80,6 +101,7 @@ interface MotifAbstraction {
   style: string;
   scale: string;
   notes: string;
+  emotional_intent?: string; // v2.0: Emotional meaning of this design element
 }
 
 interface FusionAnalysisResult {
@@ -89,6 +111,11 @@ interface FusionAnalysisResult {
   motif_abstractions: MotifAbstraction[];
   details: string[];
   inspiration?: string;
+
+  // v2.0 Emotional Interpretation Fields
+  fusion_concept?: string; // 1-3 sentence design philosophy
+  emotional_keywords?: string[]; // 3-6 mood/feeling keywords
+  dominant_trait_analysis?: string; // Strategy for combining images A & B
 }
 
 export async function POST(req: NextRequest) {

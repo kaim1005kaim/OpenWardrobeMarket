@@ -1,13 +1,9 @@
 import { Router } from "express";
-import { GoogleGenAI } from "@google/genai";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 
 export const router = Router();
-
-// ---- Clients (process.envは --env-file で読まれる前提) ----
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
 
 // 認証付きでユーザーを見る用（フロントから Authorization: Bearer <access_token> が来る前提）
 function supabaseForAuth(token?: string) {
@@ -55,16 +51,35 @@ router.post("/nano-generate", async (req, res) => {
 
     console.log('[Nano Banana] Generating image for user:', user.id);
 
-    // --- 画像生成（Nano Banana） ---
+    // --- 画像生成（Nano Banana）REST API直接呼び出し ---
     const fullPrompt = `${prompt}${negative ? `. ${negative}` : ""}`;
     console.log('[Nano Banana] Prompt:', fullPrompt);
 
-    const resp = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
-      contents: fullPrompt,
-      generationConfig: { imageConfig: { aspectRatio } }, // 任意
+    // Use REST API instead of SDK
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${process.env.GOOGLE_API_KEY!}`;
+
+    const fetchResp = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: fullPrompt }],
+        }],
+        generationConfig: {
+          imageConfig: { aspectRatio }
+        },
+      }),
     });
 
+    if (!fetchResp.ok) {
+      const errorText = await fetchResp.text();
+      console.error('[Nano Banana] Google AI API error:', errorText);
+      return res.status(500).json({ error: `Google AI API error: ${fetchResp.status}` });
+    }
+
+    const resp = await fetchResp.json();
     const parts: any[] = resp.candidates?.[0]?.content?.parts ?? [];
     const inline = parts.find(p => p.inlineData)?.inlineData;
     if (!inline?.data) {
