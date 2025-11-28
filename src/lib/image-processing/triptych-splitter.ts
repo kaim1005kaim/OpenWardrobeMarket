@@ -78,6 +78,7 @@ export async function splitTriptych(
     });
 
     // Extract and resize each panel
+    // Use 'inside' fit to preserve the entire image without cropping heads
     const [frontBuffer, sideBuffer, backBuffer] = await Promise.all([
       // Front panel (left 1/3)
       sharp(imageBuffer)
@@ -88,8 +89,8 @@ export async function splitTriptych(
           height: panelHeight
         })
         .resize(targetWidth, targetHeight, {
-          fit: 'cover',
-          position: 'center'
+          fit: 'inside',
+          background: { r: 255, g: 255, b: 255, alpha: 1 }
         })
         .jpeg({ quality: 95 })
         .toBuffer(),
@@ -103,8 +104,8 @@ export async function splitTriptych(
           height: panelHeight
         })
         .resize(targetWidth, targetHeight, {
-          fit: 'cover',
-          position: 'center'
+          fit: 'inside',
+          background: { r: 255, g: 255, b: 255, alpha: 1 }
         })
         .jpeg({ quality: 95 })
         .toBuffer(),
@@ -118,8 +119,8 @@ export async function splitTriptych(
           height: panelHeight
         })
         .resize(targetWidth, targetHeight, {
-          fit: 'cover',
-          position: 'center'
+          fit: 'inside',
+          background: { r: 255, g: 255, b: 255, alpha: 1 }
         })
         .jpeg({ quality: 95 })
         .toBuffer()
