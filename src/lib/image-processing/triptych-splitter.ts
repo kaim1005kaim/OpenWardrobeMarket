@@ -61,31 +61,46 @@ export async function splitTriptych(
       aspectRatio: (originalWidth / originalHeight).toFixed(2)
     });
 
-    // Calculate panel dimensions
+    // v3.5: Calculate panel dimensions with trim ratio to remove white borders
     // For 16:9 input (e.g., 1920x1080), each panel will be 640x1080 (which is ~3:5)
     // We'll then resize to 3:4 (1024x1365)
-    const panelWidth = Math.floor(originalWidth / 3);
+
+    // 1. Base panel width (1/3 of total width)
+    const basePanelWidth = Math.floor(originalWidth / 3);
     const panelHeight = originalHeight;
+
+    // 2. Trim setting: Remove white borders by cropping from left and right
+    // 0.05 (5%) means we remove 5% from left + 5% from right = 10% total, keeping center 90%
+    // Increase to 0.08 if white lines are still visible
+    const TRIM_RATIO = 0.05;
+    const trimPixels = Math.floor(basePanelWidth * TRIM_RATIO);
+
+    // 3. Actual crop width after trimming
+    const cropWidth = basePanelWidth - (trimPixels * 2);
 
     // Calculate target width to maintain 3:4 aspect ratio
     const targetWidth = Math.floor(targetHeight * 3 / 4);
 
     console.log('[triptych-splitter] Panel dimensions:', {
-      rawPanelWidth: panelWidth,
-      rawPanelHeight: panelHeight,
+      originalWidth,
+      originalHeight,
+      basePanelWidth,
+      trimPixels,
+      cropWidth,
       targetWidth,
-      targetHeight
+      targetHeight,
+      trimRatio: `${TRIM_RATIO * 100}%`
     });
 
-    // Extract and resize each panel
+    // Extract and resize each panel with trim applied
     // Use 'inside' fit to preserve the entire image without cropping heads
     const [frontBuffer, sideBuffer, backBuffer] = await Promise.all([
-      // Front panel (left 1/3)
+      // Front panel (left 1/3): Start from left edge + trimPixels
       sharp(imageBuffer)
         .extract({
-          left: 0,
+          left: 0 + trimPixels,
           top: 0,
-          width: panelWidth,
+          width: cropWidth,
           height: panelHeight
         })
         .resize(targetWidth, targetHeight, {
@@ -95,12 +110,12 @@ export async function splitTriptych(
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // Side panel (middle 1/3)
+      // Side panel (middle 1/3): Start from center section + trimPixels
       sharp(imageBuffer)
         .extract({
-          left: panelWidth,
+          left: basePanelWidth + trimPixels,
           top: 0,
-          width: panelWidth,
+          width: cropWidth,
           height: panelHeight
         })
         .resize(targetWidth, targetHeight, {
@@ -110,12 +125,12 @@ export async function splitTriptych(
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // Back panel (right 1/3)
+      // Back panel (right 1/3): Start from right section + trimPixels
       sharp(imageBuffer)
         .extract({
-          left: panelWidth * 2,
+          left: (basePanelWidth * 2) + trimPixels,
           top: 0,
-          width: panelWidth,
+          width: cropWidth,
           height: panelHeight
         })
         .resize(targetWidth, targetHeight, {

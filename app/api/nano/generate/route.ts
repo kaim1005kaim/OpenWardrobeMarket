@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
       .replace(/,,/g, ',')
       .trim();
 
-    // v3.1: FUSION Character Sheet - Generate triptych with proper framing
+    // v3.5: FUSION Character Sheet - Generate triptych with headroom and footroom
     let fullPrompt: string;
     if (enableTriptych) {
       // Fashion Character Sheet format for perfect identity consistency
@@ -136,10 +136,12 @@ The image must be split into 3 vertical sections:
 - CENTER: Full-body SIDE VIEW (90-degree profile, facing right)
 - RIGHT: Full-body BACK VIEW (Straight standing pose, back to camera)
 
-[FRAMING CRITERIA]
-- Camera Distance: LONG SHOT (Wide shot capturing head to toe)
-- HEADROOM: Include clear empty space above the model's head
-- DO NOT CROP THE HEAD. The entire head and hair must be fully visible
+[FRAMING & COMPOSITION]
+- Camera Distance: EXTREME LONG SHOT (Capture full body from head to toe with ample space)
+- HEADROOM: Leave 15% empty space above the model's head. DO NOT CUT THE HEAD.
+- FOOTROOM: Show the full feet and shoes with ground shadow. Do not cut the feet.
+- VISUAL SEPARATION: Use thin white lines to separate the three panels.
+- The entire head and hair must be fully visible with generous padding
 - Leave padding at the top and bottom of the frame
 - Text labels "FRONT", "SIDE", "BACK" are allowed at the bottom of each panel
 
@@ -153,9 +155,9 @@ The image must be split into 3 vertical sections:
 ${prompt}
 
 [QUALITY]
-Hyper-realistic texture, 8k resolution, fashion magazine quality.
+Hyper-realistic texture, 8k resolution, studio lighting, fashion magazine quality.
 Background: Clean neutral studio background (white or light grey).
-Negative: cropped head, cut off head, out of frame, close up, portrait shot, partial head, zooming in${cleanNegative ? `, ${cleanNegative}` : ''}
+Negative: cropped head, cut off head, cut off feet, out of frame, close up, portrait shot, partial head, partial feet, zooming in${cleanNegative ? `, ${cleanNegative}` : ''}
       `.trim();
     } else {
       // Legacy single image mode
