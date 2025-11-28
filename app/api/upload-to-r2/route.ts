@@ -22,6 +22,7 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const r2Client = new S3Client({
   endpoint: process.env.R2_S3_ENDPOINT!,
   region: 'auto',
+  forcePathStyle: true, // Avoid bucket-in-hostname to prevent TLS CN mismatch
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,

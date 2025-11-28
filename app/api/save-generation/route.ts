@@ -29,6 +29,12 @@ export async function POST(req: NextRequest) {
       console.log('[save-generation] Anonymous user request');
     }
 
+    // user_idはUUID参照なので、匿名の場合や不正UUIDはnullで保存する
+    const userId =
+      typeof user?.id === 'string' && /^[0-9a-fA-F-]{36}$/.test(user.id)
+        ? user.id
+        : null;
+
     const body = await req.json();
     const { imageUrl, imageKey, metadata } = body;
 
@@ -45,7 +51,7 @@ export async function POST(req: NextRequest) {
     const { data: historyRecord, error: historyError } = await supabase
       .from('generation_history')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         image_url: imageUrl,
         image_path: imageKey,
         prompt: metadata?.prompt || '',
@@ -64,9 +70,14 @@ export async function POST(req: NextRequest) {
     const { data: assetRecord, error: assetError} = await supabase
       .from('assets')
       .insert({
-        user_id: user.id,
+        user_id: userId,
+        title: metadata?.title || 'Generated Design',
+        description: metadata?.prompt || '',
+        tags: Array.isArray(metadata?.tags) ? metadata?.tags : [],
         final_url: imageUrl,
         final_key: imageKey,
+        raw_key: imageKey, // rawとfinalを同一にしておく（生成画像）
+        raw_url: null,
         status: 'private',
         dna: metadata?.dna || null,
         parent_asset_id: metadata?.parentAssetId || null,
@@ -76,6 +87,8 @@ export async function POST(req: NextRequest) {
           height: metadata?.aspectRatio === '3:4' ? 1365 : 1024,
           mime_type: 'image/jpeg',
         },
+        likes_count: 0,
+        file_size: metadata?.fileSize ?? null,
       })
       .select()
       .single();
