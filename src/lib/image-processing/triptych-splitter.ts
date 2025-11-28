@@ -29,12 +29,12 @@ export interface TriptychResult {
  * Split a 16:9 image into 3 equal vertical panels (3:4 each)
  *
  * @param base64Image - Base64-encoded image data (with or without data URL prefix)
- * @param targetHeight - Target height for output images (default: 1365px for 3:4 at 1024px width)
+ * @param targetHeight - Target height for output images (default: 1600px for 3:4 at 1200px width)
  * @returns Object with 3 panel buffers
  */
 export async function splitTriptych(
   base64Image: string,
-  targetHeight: number = 1365
+  targetHeight: number = 1600
 ): Promise<TriptychResult> {
   try {
     // Remove data URL prefix if present
