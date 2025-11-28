@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
         maxOutputTokens: 8192,
       },
       undefined, // systemInstruction
-      { timeout: 45000 } // 45s timeout for Gemini vision analysis
+      { timeout: 55000 } // 55s timeout for Gemini vision analysis (maxDuration is 60s)
     );
 
     console.log(`[analyze-fusion] ⏱️ Vertex AI Gemini analysis: ${Date.now() - geminiStart}ms`);
