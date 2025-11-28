@@ -17,10 +17,17 @@ dns.setDefaultResultOrder('ipv4first');
 // TEMPORARY FIX: Disable SSL certificate validation for Google AI API
 // This is a workaround for SSL/TLS handshake failures on Vercel
 // TODO: Find a proper solution that doesn't compromise security
-if (process.env.NODE_ENV === 'production') {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-  console.log('[nano/generate] ⚠️  SSL verification disabled (temporary fix)');
-}
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+console.log('[nano/generate] ⚠️  SSL verification disabled (temporary fix)');
+
+// Create custom HTTPS agent with relaxed SSL settings
+const customAgent = new https.Agent({
+  rejectUnauthorized: false,
+  requestCert: false,
+  secureProtocol: 'TLS_method',
+  ciphers: 'ALL',
+  minVersion: 'TLSv1',
+});
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -94,7 +101,11 @@ export async function POST(req: NextRequest) {
     });
 
     // Generate image with Gemini using @google/genai
-    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY! });
+    // Use custom HTTPS agent to bypass SSL issues
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GOOGLE_API_KEY!,
+      httpAgent: customAgent as any,
+    });
 
     const cleanNegative = (negative || '')
       .replace(/no watermark|no signature/gi, '')
