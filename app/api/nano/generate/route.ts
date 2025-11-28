@@ -55,7 +55,11 @@ const r2 = new S3Client({
 });
 
 const R2_BUCKET = process.env.R2_BUCKET!;
-const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL!;
+// Use public domain URL (fallback to NEXT_PUBLIC_R2_PUBLIC_BASE_URL or hardcoded public URL)
+const R2_PUBLIC_BASE_URL =
+  process.env.NEXT_PUBLIC_R2_PUBLIC_BASE_URL ||
+  process.env.R2_PUBLIC_BASE_URL ||
+  'https://assets.open-wardrobe-market.com';
 
 export async function POST(req: NextRequest) {
   try {
