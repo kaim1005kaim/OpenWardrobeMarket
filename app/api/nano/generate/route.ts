@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
       .replace(/,,/g, ',')
       .trim();
 
-    // v3.5: FUSION Character Sheet - Generate triptych with headroom and footroom
+    // v3.6: FUSION Character Sheet - Generate triptych WITHOUT text labels
     let fullPrompt: string;
     if (enableTriptych) {
       // Fashion Character Sheet format for perfect identity consistency
@@ -143,7 +143,12 @@ The image must be split into 3 vertical sections:
 - VISUAL SEPARATION: Use thin white lines to separate the three panels.
 - The entire head and hair must be fully visible with generous padding
 - Leave padding at the top and bottom of the frame
-- Text labels "FRONT", "SIDE", "BACK" are allowed at the bottom of each panel
+
+[CLEAN IMAGE RULES - CRITICAL]
+- NO TEXT. NO LABELS. NO TYPOGRAPHY. NO WATERMARKS.
+- DO NOT write "FRONT", "SIDE", "BACK" or any other text on the image.
+- Keep the background completely clean, empty, and free of any writing or symbols.
+- NO logos, NO brand names, NO signatures, NO captions.
 
 [CRITICAL CONSISTENCY]
 - The model MUST be the EXACT SAME person in all three panels
@@ -157,7 +162,7 @@ ${prompt}
 [QUALITY]
 Hyper-realistic texture, 8k resolution, studio lighting, fashion magazine quality.
 Background: Clean neutral studio background (white or light grey).
-Negative: cropped head, cut off head, cut off feet, out of frame, close up, portrait shot, partial head, partial feet, zooming in${cleanNegative ? `, ${cleanNegative}` : ''}
+Negative: text, label, word, writing, signature, watermark, typography, caption, title, letter, alphabet, logo, brand name, cropped head, cut off head, cut off feet, out of frame, close up, portrait shot, partial head, partial feet, zooming in${cleanNegative ? `, ${cleanNegative}` : ''}
       `.trim();
     } else {
       // Legacy single image mode
