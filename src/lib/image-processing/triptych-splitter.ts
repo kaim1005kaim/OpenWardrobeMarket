@@ -92,8 +92,7 @@ export async function splitTriptych(
       trimRatio: `${TRIM_RATIO * 100}%`
     });
 
-    // Extract and resize each panel with trim applied
-    // Use 'inside' fit to preserve the entire image without cropping heads
+    // v3.7: Extract, auto-trim white background, then resize to target height (preserve aspect ratio)
     const [frontBuffer, sideBuffer, backBuffer] = await Promise.all([
       // Front panel (left 1/3): Start from left edge + trimPixels
       sharp(imageBuffer)
@@ -103,9 +102,14 @@ export async function splitTriptych(
           width: cropWidth,
           height: panelHeight
         })
-        .resize(targetWidth, targetHeight, {
+        .trim({
+          background: { r: 245, g: 245, b: 243 }, // Match background color
+          threshold: 15 // Tolerance for background detection
+        })
+        .resize({
+          height: targetHeight,
           fit: 'inside',
-          background: { r: 255, g: 255, b: 255, alpha: 1 }
+          withoutEnlargement: false
         })
         .jpeg({ quality: 95 })
         .toBuffer(),
@@ -118,9 +122,14 @@ export async function splitTriptych(
           width: cropWidth,
           height: panelHeight
         })
-        .resize(targetWidth, targetHeight, {
+        .trim({
+          background: { r: 245, g: 245, b: 243 },
+          threshold: 15
+        })
+        .resize({
+          height: targetHeight,
           fit: 'inside',
-          background: { r: 255, g: 255, b: 255, alpha: 1 }
+          withoutEnlargement: false
         })
         .jpeg({ quality: 95 })
         .toBuffer(),
@@ -133,9 +142,14 @@ export async function splitTriptych(
           width: cropWidth,
           height: panelHeight
         })
-        .resize(targetWidth, targetHeight, {
+        .trim({
+          background: { r: 245, g: 245, b: 243 },
+          threshold: 15
+        })
+        .resize({
+          height: targetHeight,
           fit: 'inside',
-          background: { r: 255, g: 255, b: 255, alpha: 1 }
+          withoutEnlargement: false
         })
         .jpeg({ quality: 95 })
         .toBuffer()
