@@ -24,9 +24,6 @@ const originalHttpsAgent = https.globalAgent;
 https.globalAgent = new https.Agent({
   rejectUnauthorized: false,
   requestCert: false,
-  secureProtocol: 'TLS_method',
-  ciphers: 'ALL',
-  minVersion: 'TLSv1',
 });
 
 console.log('[nano/generate] ⚠️  SSL verification disabled with custom global HTTPS agent (temporary fix)');
