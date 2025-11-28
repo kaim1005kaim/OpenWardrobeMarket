@@ -201,9 +201,27 @@ Negative: cropped head, cut off head, out of frame, close up, portrait shot, par
 
     // v2.0: If triptych mode, split the image into 3 panels
     let triptychPanels: any = null;
+    let originalImageUrl: string | null = null;
+
     if (enableTriptych) {
       console.log('[nano/generate] Splitting into triptych panels...');
       try {
+        // v3.3: Upload original 16:9 image to R2 for debugging
+        const originalImageBuffer = Buffer.from(inline.data, 'base64');
+        const originalKey = `fusion/${user.id}/debug/${Date.now()}-original-16x9.jpg`;
+
+        await r2.send(
+          new PutObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: originalKey,
+            Body: originalImageBuffer,
+            ContentType: 'image/jpeg',
+          })
+        );
+
+        originalImageUrl = `${R2_PUBLIC_BASE_URL}/${originalKey}`;
+        console.log('[nano/generate] 🖼️  ORIGINAL 16:9 IMAGE URL:', originalImageUrl);
+
         const panels = await splitTriptych(inline.data);
         // Convert Buffers to base64
         triptychPanels = {
@@ -253,6 +271,7 @@ Negative: cropped head, cut off head, out of frame, close up, portrait shot, par
           parentAssetId,
           fusionConcept,
           aspectRatio: targetAspectRatio,
+          originalImageUrl, // v3.3: Include original 16:9 image URL for debugging
         },
       });
     } else {
