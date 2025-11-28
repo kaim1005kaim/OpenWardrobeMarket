@@ -8,7 +8,9 @@ import { callVertexAIGemini } from 'lib/vertex-ai-auth';
 // FUSION専用：画像を服のパラメータに変換する分析プロンプト (Creative Director Mode v2.0)
 const FUSION_ANALYSIS_PROMPT = `You are an elite fashion Creative Director with deep expertise in emotional storytelling through garment design.
 
-Your role: Analyze TWO fashion images (A and B) and interpret their EMOTIONAL ESSENCE - not just physical features.
+Your role: Analyze the provided fashion image(s) and interpret their EMOTIONAL ESSENCE - not just physical features.
+If ONE image is provided, extract its core fashion DNA.
+If TWO images (A and B) are provided, interpret how they can FUSE together.
 Output JSON only.
 
 CREATIVE DIRECTOR MODE RULES:
@@ -19,8 +21,9 @@ CREATIVE DIRECTOR MODE RULES:
    - Think like a fashion editor: "This is not just a jacket, it's a statement of..."
 
 2. FUSION STRATEGY (Chemical Reaction):
-   - How can these TWO emotions/concepts FUSE into something NEW?
-   - Find the TENSION or HARMONY between them
+   - For ONE image: Extract the core emotional/aesthetic DNA
+   - For TWO images: How can these emotions/concepts FUSE into something NEW?
+   - Find the TENSION or HARMONY between elements
    - Example: "Structure meets fluidity" → rigid tailoring with flowing panels
    - Example: "Urban grit fused with ethereal lightness" → technical fabrics in soft silhouettes
 
@@ -60,17 +63,18 @@ Return JSON:
 
   "emotional_keywords": ["structured", "fluid", "urban", "ethereal", "tension", "harmony", ...],
 
-  "dominant_trait_analysis": "Brief explanation of which image (A or B) provides the PRIMARY silhouette/structure vs. which provides ACCENT details. Example: 'Image A provides the architectural foundation (tailored structure), while Image B injects organic softness (flowing drape, curved seamlines).'"
+  "dominant_trait_analysis": "For TWO images: Brief explanation of which image (A or B) provides the PRIMARY silhouette/structure vs. which provides ACCENT details. For ONE image: Describe the dominant traits that define this garment. Example: 'Image A provides the architectural foundation (tailored structure), while Image B injects organic softness (flowing drape, curved seamlines).'"
 }
 
 STRICT OUTPUT REQUIREMENTS:
 - fusion_concept: 1-3 sentences, focus on WHY not WHAT
 - emotional_keywords: 3-6 keywords that capture the mood/feeling
-- dominant_trait_analysis: Clear strategy for how A and B combine
+- dominant_trait_analysis: For TWO images: strategy for combining A+B. For ONE image: core defining traits
 - motif_abstractions: 2-3 maximum (clean, focused design)
 - Palette: 2-3 colors with weights summing to 1.0
 - ALL motifs must be abstract fashion operations (no objects, no scenes, no logos)
-- You MUST respond with ONLY valid JSON, no markdown formatting`;
+- You MUST respond with ONLY valid JSON, no markdown formatting
+- IMPORTANT: If only ONE image is provided, still generate a complete, valid fashion spec based on that single image`;
 
 // 動的インスピレーション文を生成するプロンプト
 const INSPIRATION_PROMPT = `You are a poetic fashion copywriter.
