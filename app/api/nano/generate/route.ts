@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       .replace(/,,/g, ',')
       .trim();
 
-    // v3.0: FUSION Character Sheet - Generate triptych in a single 16:9 image
+    // v3.1: FUSION Character Sheet - Generate triptych with proper framing
     let fullPrompt: string;
     if (enableTriptych) {
       // Fashion Character Sheet format for perfect identity consistency
@@ -132,8 +132,12 @@ The image must be split into 3 vertical sections:
 - CENTER: Full-body SIDE VIEW (90-degree profile, facing right)
 - RIGHT: Full-body BACK VIEW (Straight standing pose, back to camera)
 
-DO NOT include close-ups or head shots. Only full-body views.
-Text labels "FRONT", "SIDE", "BACK" are allowed at the bottom of each panel.
+[FRAMING CRITERIA]
+- Camera Distance: LONG SHOT (Wide shot capturing head to toe)
+- HEADROOM: Include clear empty space above the model's head
+- DO NOT CROP THE HEAD. The entire head and hair must be fully visible
+- Leave padding at the top and bottom of the frame
+- Text labels "FRONT", "SIDE", "BACK" are allowed at the bottom of each panel
 
 [CRITICAL CONSISTENCY]
 - The model MUST be the EXACT SAME person in all three panels
@@ -147,7 +151,7 @@ ${prompt}
 [QUALITY]
 Hyper-realistic texture, 8k resolution, fashion magazine quality.
 Background: Clean neutral studio background (white or light grey).
-${cleanNegative ? `Negative: ${cleanNegative}` : ''}
+Negative: cropped head, cut off head, out of frame, close up, portrait shot, partial head, zooming in${cleanNegative ? `, ${cleanNegative}` : ''}
       `.trim();
     } else {
       // Legacy single image mode
