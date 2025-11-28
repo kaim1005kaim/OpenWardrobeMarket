@@ -167,8 +167,22 @@ export async function POST(req: NextRequest) {
       console.log('[nano/generate] Splitting into triptych panels...');
       try {
         const panels = await splitTriptych(inline.data);
-        triptychPanels = panels;
-        console.log('[nano/generate] Successfully split into 3 panels');
+        // Convert Buffers to base64
+        triptychPanels = {
+          front: {
+            ...panels.front,
+            base64: panels.front.buffer.toString('base64'),
+          },
+          side: {
+            ...panels.side,
+            base64: panels.side.buffer.toString('base64'),
+          },
+          back: {
+            ...panels.back,
+            base64: panels.back.buffer.toString('base64'),
+          },
+        };
+        console.log('[nano/generate] Successfully split into 3 panels with base64 conversion');
       } catch (error) {
         console.error('[nano/generate] Failed to split triptych:', error);
         return NextResponse.json(
