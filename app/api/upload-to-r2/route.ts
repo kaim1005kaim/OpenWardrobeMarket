@@ -99,9 +99,6 @@ export async function POST(req: NextRequest) {
 
     console.log('[upload-to-r2] Upload successful:', finalUrl);
 
-    // Create Supabase client for DB operations
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-
     // Save to generation_history
     const { data: historyRecord, error: historyError } = await supabase
       .from('generation_history')
