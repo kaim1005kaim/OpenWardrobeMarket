@@ -118,11 +118,45 @@ export async function POST(req: NextRequest) {
       .replace(/,,/g, ',')
       .trim();
 
-    const fullPrompt = `${prompt} | single model | one person only | clean minimal background | fashion lookbook style | full body composition | professional fashion photography${
-      cleanNegative ? `. Negative: ${cleanNegative}` : ''
-    }`;
+    // v3.0: FUSION Character Sheet - Generate triptych in a single 16:9 image
+    let fullPrompt: string;
+    if (enableTriptych) {
+      // Fashion Character Sheet format for perfect identity consistency
+      fullPrompt = `
+Create a photorealistic FASHION CHARACTER SHEET.
+Format: Horizontal Triptych (3 side-by-side panels) with Aspect Ratio 16:9.
 
-    // v2.0: For FUSION mode with triptych, generate 16:9 horizontal image
+[LAYOUT REQUIREMENTS]
+The image must be split into 3 vertical sections:
+- LEFT: Full-body FRONT VIEW (Straight standing pose, facing camera)
+- CENTER: Full-body SIDE VIEW (90-degree profile, facing right)
+- RIGHT: Full-body BACK VIEW (Straight standing pose, back to camera)
+
+DO NOT include close-ups or head shots. Only full-body views.
+Text labels "FRONT", "SIDE", "BACK" are allowed at the bottom of each panel.
+
+[CRITICAL CONSISTENCY]
+- The model MUST be the EXACT SAME person in all three panels
+- The outfit MUST be IDENTICAL in material, color, and design details across all views
+- Skin texture and fabric details must be hyper-realistic
+- Maintain perfect identity and clothing consistency
+
+[DESIGN SPECIFICATIONS]
+${prompt}
+
+[QUALITY]
+Hyper-realistic texture, 8k resolution, fashion magazine quality.
+Background: Clean neutral studio background (white or light grey).
+${cleanNegative ? `Negative: ${cleanNegative}` : ''}
+      `.trim();
+    } else {
+      // Legacy single image mode
+      fullPrompt = `${prompt} | single model | one person only | clean minimal background | fashion lookbook style | full body composition | professional fashion photography${
+        cleanNegative ? `. Negative: ${cleanNegative}` : ''
+      }`;
+    }
+
+    // v3.0: For FUSION mode with triptych, generate 16:9 horizontal image
     const targetAspectRatio = enableTriptych ? '16:9' : (aspectRatio || '3:4');
 
     console.log('[nano/generate] Full prompt:', fullPrompt);
