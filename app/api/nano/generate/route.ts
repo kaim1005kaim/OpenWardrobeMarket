@@ -5,6 +5,7 @@ export const maxDuration = 120; // 2 minutes for FUSION triptych generation
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
 import { randomUUID } from 'node:crypto';
 import { splitTriptych } from '../../../../src/lib/image-processing/triptych-splitter';
 import https from 'https';
@@ -33,7 +34,7 @@ console.log('[nano/generate] ⚠️  SSL verification disabled with custom globa
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// R2 configuration
+// R2 configuration with custom HTTPS agent
 const r2 = new S3Client({
   region: 'auto',
   endpoint: process.env.R2_S3_ENDPOINT!,
@@ -41,6 +42,9 @@ const r2 = new S3Client({
     accessKeyId: process.env.R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
   },
+  requestHandler: new NodeHttpHandler({
+    httpsAgent: https.globalAgent,
+  }),
 });
 
 const R2_BUCKET = process.env.R2_BUCKET!;
