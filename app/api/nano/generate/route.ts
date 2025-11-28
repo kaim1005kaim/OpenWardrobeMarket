@@ -43,8 +43,15 @@ const r2 = new S3Client({
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
   },
   requestHandler: new NodeHttpHandler({
-    httpsAgent: https.globalAgent,
+    httpsAgent: new https.Agent({
+      rejectUnauthorized: false,
+      requestCert: false,
+      checkServerIdentity: () => undefined,
+      maxVersion: 'TLSv1.3',
+      minVersion: 'TLSv1.2',
+    }),
   }),
+  tls: false, // Disable TLS verification at SDK level
 });
 
 const R2_BUCKET = process.env.R2_BUCKET!;
