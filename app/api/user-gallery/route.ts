@@ -88,8 +88,8 @@ export async function GET(request: Request) {
         const publishedItems = (result.data || []).map((item) => ({
           id: item.id,
           title: item.title,
-          src: item.image_url || '',
-          r2_url: item.image_url,
+          src: item.original_url || item.poster_url || item.image_url || '',
+          r2_url: item.original_url || item.poster_url || item.image_url || '',
           tags: item.tags || [],
           colors: item.colors || [],
           width: item.metadata?.width || 800,
