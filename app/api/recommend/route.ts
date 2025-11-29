@@ -107,7 +107,7 @@ async function getPersonalizedRecommendations(userId: string, limit: number) {
     let query = supabase
       .from('published_items')
       .select('*')
-      .eq('is_public', true)
+      .eq('is_active', true)
       .neq('user_id', userId)
       .order('likes', { ascending: false })
       .limit(limit);
@@ -135,7 +135,7 @@ async function getTrendingItems(limit: number) {
     const { data } = await supabase
       .from('published_items')
       .select('*')
-      .eq('is_public', true)
+      .eq('is_active', true)
       .order('likes', { ascending: false })
       .limit(limit);
 
@@ -161,7 +161,7 @@ async function getSimilarItems(itemId: string, limit: number) {
     const { data } = await supabase
       .from('published_items')
       .select('*')
-      .eq('is_public', true)
+      .eq('is_active', true)
       .neq('id', itemId)
       .or(
         `tags.cs.{${(referenceItem.tags || []).join(',')}},colors.cs.{${(
@@ -204,7 +204,7 @@ async function getNewItems(limit: number) {
     const { data } = await supabase
       .from('published_items')
       .select('*')
-      .eq('is_public', true)
+      .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -220,7 +220,7 @@ async function getCategoryRecommendations(categories: string[], limit: number) {
     const { data } = await supabase
       .from('published_items')
       .select('*')
-      .eq('is_public', true)
+      .eq('is_active', true)
       .contains('tags', categories)
       .order('likes', { ascending: false })
       .limit(limit);
