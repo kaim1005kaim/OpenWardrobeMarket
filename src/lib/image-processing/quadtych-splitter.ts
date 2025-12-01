@@ -65,42 +65,65 @@ export async function splitQuadtych(
       expectedRatio: '2.33 (21:9)'
     });
 
-    // Calculate panel dimensions - divide image into exactly 4 equal parts
-    // For 21:9 input (e.g., 1584x672), each panel will be 396x672
-    // We'll resize to 9:16 (900x1600) for perfect mobile fit
+    // Gemini generates 21:9 images with white line separators between panels
+    // For 1584x672, the separators are at approximately: 437px, 811px, 1189px (4px wide each)
+    // Panel widths: MAIN=437px, FRONT=370px, SIDE=374px, BACK=391px (unequal!)
 
-    // 1. Base panel width (1/4 of total width) - no trimming to avoid overlap
-    const basePanelWidth = Math.floor(originalWidth / 4);
+    // Calculate approximate separator positions based on observed pattern
+    // MAIN panel is ~27.6% of width, other panels are ~23.4%, 23.6%, 24.7%
+    const separator1 = Math.round(originalWidth * 0.276);  // ~437px for 1584px
+    const separator2 = Math.round(originalWidth * 0.512);  // ~811px
+    const separator3 = Math.round(originalWidth * 0.750);  // ~1189px
+    const separatorWidth = 4; // White line width
+
     const panelHeight = originalHeight;
-
-    // 2. Calculate target width to maintain 9:16 aspect ratio
     const targetWidth = Math.floor(targetHeight * 9 / 16);
 
-    console.log('[quadtych-splitter] Panel dimensions:', {
+    console.log('[quadtych-splitter] Panel extraction coordinates:', {
       originalWidth,
       originalHeight,
-      basePanelWidth,
-      panelHeight,
+      separator1,
+      separator2,
+      separator3,
+      separatorWidth,
+      mainWidth: separator1,
+      frontWidth: separator2 - separator1 - separatorWidth,
+      sideWidth: separator3 - separator2 - separatorWidth,
+      backWidth: originalWidth - separator3 - separatorWidth,
       targetWidth,
       targetHeight,
       outputAspectRatio: '9:16'
     });
 
-    // Extract 4 panels with precise boundaries (no trimming to avoid bleed)
-    // Each panel is exactly 1/4 of the total width
+    // Extract 4 panels with precise separator boundaries
     const getExtractRegion = (panelIndex: number) => {
-      const left = basePanelWidth * panelIndex;
-      const width = basePanelWidth;
+      let left: number, width: number;
 
-      // Ensure last panel doesn't exceed image bounds
-      const adjustedWidth = (left + width > originalWidth)
-        ? originalWidth - left
-        : width;
+      switch (panelIndex) {
+        case 0: // MAIN
+          left = 0;
+          width = separator1;
+          break;
+        case 1: // FRONT
+          left = separator1 + separatorWidth;
+          width = separator2 - separator1 - separatorWidth;
+          break;
+        case 2: // SIDE
+          left = separator2 + separatorWidth;
+          width = separator3 - separator2 - separatorWidth;
+          break;
+        case 3: // BACK
+          left = separator3 + separatorWidth;
+          width = originalWidth - separator3 - separatorWidth;
+          break;
+        default:
+          throw new Error(`Invalid panel index: ${panelIndex}`);
+      }
 
       return {
         left,
         top: 0,
-        width: adjustedWidth,
+        width,
         height: panelHeight
       };
     };
