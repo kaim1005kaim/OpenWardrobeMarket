@@ -97,15 +97,17 @@ export async function splitQuadtych(
     });
 
     // Extract 4 panels with auto-trim and resize
+    // Ensure extraction stays within bounds by clamping values
+    const safeExtract = (panelIndex: number) => {
+      const left = Math.max(0, Math.min((basePanelWidth * panelIndex) + trimPixels, originalWidth - cropWidth));
+      const width = Math.min(cropWidth, originalWidth - left);
+      return { left, top: 0, width, height: panelHeight };
+    };
+
     const [mainBuffer, frontBuffer, sideBuffer, backBuffer] = await Promise.all([
       // PANEL 1: MAIN (Hero shot with editorial background)
       sharp(imageBuffer)
-        .extract({
-          left: 0 + trimPixels,
-          top: 0,
-          width: cropWidth,
-          height: panelHeight
-        })
+        .extract(safeExtract(0))
         .resize({
           width: targetWidth,
           height: targetHeight,
@@ -117,12 +119,7 @@ export async function splitQuadtych(
 
       // PANEL 2: FRONT (Technical spec on white background)
       sharp(imageBuffer)
-        .extract({
-          left: basePanelWidth + trimPixels,
-          top: 0,
-          width: cropWidth,
-          height: panelHeight
-        })
+        .extract(safeExtract(1))
         .trim({
           background: { r: 255, g: 255, b: 255 }, // White background
           threshold: 20 // Tolerance for background detection
@@ -137,12 +134,7 @@ export async function splitQuadtych(
 
       // PANEL 3: SIDE (90° profile on white background)
       sharp(imageBuffer)
-        .extract({
-          left: (basePanelWidth * 2) + trimPixels,
-          top: 0,
-          width: cropWidth,
-          height: panelHeight
-        })
+        .extract(safeExtract(2))
         .trim({
           background: { r: 255, g: 255, b: 255 },
           threshold: 20
@@ -157,12 +149,7 @@ export async function splitQuadtych(
 
       // PANEL 4: BACK (Rear view on white background)
       sharp(imageBuffer)
-        .extract({
-          left: (basePanelWidth * 3) + trimPixels,
-          top: 0,
-          width: cropWidth,
-          height: panelHeight
-        })
+        .extract(safeExtract(3))
         .trim({
           background: { r: 255, g: 255, b: 255 },
           threshold: 20
