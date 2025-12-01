@@ -83,86 +83,87 @@ export async function splitQuadtych(
       bufferSize: rawBuffer.length
     });
 
-    // Detect MAIN→FRONT separator (white line in 20-40% range)
-    // Strategy: Find white line clusters (4px width), pick the earliest valid one
+    // EDGE DETECTION APPROACH (色変化検出)
+    // Strategy: Detect transition from complex MAIN background to white/uniform FRONT background
     const searchStart = Math.floor(originalWidth * 0.20);
     const searchEnd = Math.floor(originalWidth * 0.40);
-    const verticalSamplePoints = 20; // Increased sampling for better accuracy
-    const whiteThreshold = 240; // RGB values > 240 considered white
-    const minWhiteLineWidth = 3; // Minimum 3px wide white line
+    const verticalSamplePoints = 30; // High-res vertical sampling
 
-    let separator1 = Math.round(originalWidth * 0.276); // Fallback to percentage if detection fails
-    let whiteCandidates: Array<{ position: number; width: number; confidence: number }> = [];
+    let separator1 = Math.round(originalWidth * 0.276); // Fallback
+    let edgeCandidates: Array<{ position: number; score: number }> = [];
 
-    console.log('[quadtych-splitter] Scanning for MAIN→FRONT separator:', {
+    console.log('[quadtych-splitter] Scanning for MAIN→FRONT edge (color variance detection):', {
       searchStart,
       searchEnd,
       range: `${searchStart}px - ${searchEnd}px`,
-      verticalSamples: verticalSamplePoints,
-      minWhiteLineWidth
+      verticalSamples: verticalSamplePoints
     });
 
-    // Scan for white separator line clusters
-    let currentWhiteStreak = 0;
-    let streakStartX = -1;
+    // Calculate color variance for each vertical column
+    for (let x = searchStart; x < searchEnd - 10; x++) {
+      let leftVariance = 0;
+      let rightVariance = 0;
 
-    for (let x = searchStart; x < searchEnd; x++) {
-      let whitePixelCount = 0;
-
-      // Sample vertical points along this column
+      // Sample 30 points vertically
       for (let sampleIdx = 0; sampleIdx < verticalSamplePoints; sampleIdx++) {
         const y = Math.floor((originalHeight / verticalSamplePoints) * sampleIdx);
-        const pixelIndex = (y * info.width + x) * channels;
 
-        const r = rawBuffer[pixelIndex];
-        const g = rawBuffer[pixelIndex + 1];
-        const b = rawBuffer[pixelIndex + 2];
+        // Left side (MAIN panel - should have HIGH variance)
+        const leftIdx = (y * info.width + x) * channels;
+        const leftR = rawBuffer[leftIdx];
+        const leftG = rawBuffer[leftIdx + 1];
+        const leftB = rawBuffer[leftIdx + 2];
 
-        // Check if pixel is white
-        if (r >= whiteThreshold && g >= whiteThreshold && b >= whiteThreshold) {
-          whitePixelCount++;
-        }
+        // Right side (FRONT panel - should have LOW variance, uniform white)
+        const rightIdx = (y * info.width + (x + 10)) * channels;
+        const rightR = rawBuffer[rightIdx];
+        const rightG = rawBuffer[rightIdx + 1];
+        const rightB = rawBuffer[rightIdx + 2];
+
+        // Calculate grayscale for variance
+        const leftGray = (leftR + leftG + leftB) / 3;
+        const rightGray = (rightR + rightG + rightB) / 3;
+
+        leftVariance += Math.abs(leftGray - 128); // Distance from mid-gray
+        rightVariance += Math.abs(rightGray - 255); // Distance from white
       }
 
-      const isWhiteLine = whitePixelCount >= verticalSamplePoints * 0.8;
+      // Edge score: high left variance + low right variance = likely edge
+      const edgeScore = leftVariance - rightVariance;
 
-      if (isWhiteLine) {
-        if (currentWhiteStreak === 0) {
-          streakStartX = x;
-        }
-        currentWhiteStreak++;
-      } else {
-        // End of white streak - record if valid
-        if (currentWhiteStreak >= minWhiteLineWidth) {
-          const centerX = streakStartX + Math.floor(currentWhiteStreak / 2);
-          const confidence = whitePixelCount / verticalSamplePoints;
-          whiteCandidates.push({
-            position: centerX,
-            width: currentWhiteStreak,
-            confidence
-          });
-          console.log('[quadtych-splitter] White line candidate found:', {
-            position: centerX,
-            width: currentWhiteStreak,
-            percentage: ((centerX / originalWidth) * 100).toFixed(1) + '%'
-          });
-        }
-        currentWhiteStreak = 0;
+      if (edgeScore > 1000) { // Threshold for significant edge
+        edgeCandidates.push({
+          position: x,
+          score: edgeScore
+        });
       }
     }
 
-    // Select the FIRST valid white line candidate (closest to MAIN panel end)
-    if (whiteCandidates.length > 0) {
-      const selectedCandidate = whiteCandidates[0]; // First = earliest position
-      separator1 = selectedCandidate.position;
-      console.log('[quadtych-splitter] ✅ MAIN→FRONT separator selected:', {
+    // Select edge with highest score in first half of search range
+    if (edgeCandidates.length > 0) {
+      // Sort by score (descending)
+      edgeCandidates.sort((a, b) => b.score - a.score);
+
+      // Pick highest-scoring edge in the 20-32% range (prefer earlier position)
+      const earlyRangeEnd = Math.floor(originalWidth * 0.32);
+      const earlyCandidate = edgeCandidates.find(c => c.position <= earlyRangeEnd);
+
+      const selectedEdge = earlyCandidate || edgeCandidates[0];
+      separator1 = selectedEdge.position;
+
+      console.log('[quadtych-splitter] ✅ MAIN→FRONT edge detected:', {
         position: separator1,
         percentage: ((separator1 / originalWidth) * 100).toFixed(1) + '%',
-        width: selectedCandidate.width,
-        totalCandidates: whiteCandidates.length
+        edgeScore: selectedEdge.score,
+        totalCandidates: edgeCandidates.length,
+        topScores: edgeCandidates.slice(0, 3).map(c => ({
+          pos: c.position,
+          pct: ((c.position / originalWidth) * 100).toFixed(1) + '%',
+          score: Math.round(c.score)
+        }))
       });
     } else {
-      console.log('[quadtych-splitter] ⚠️ No white line detected, using fallback:', {
+      console.log('[quadtych-splitter] ⚠️ No edge detected, using fallback:', {
         position: separator1,
         percentage: ((separator1 / originalWidth) * 100).toFixed(1) + '%'
       });
