@@ -83,22 +83,29 @@ export async function splitQuadtych(
       bufferSize: rawBuffer.length
     });
 
-    // Detect MAIN→FRONT separator (white line in 20-35% range)
+    // Detect MAIN→FRONT separator (white line in 20-40% range)
+    // Strategy: Find white line clusters (4px width), pick the earliest valid one
     const searchStart = Math.floor(originalWidth * 0.20);
-    const searchEnd = Math.floor(originalWidth * 0.35);
-    const verticalSamplePoints = 10;
+    const searchEnd = Math.floor(originalWidth * 0.40);
+    const verticalSamplePoints = 20; // Increased sampling for better accuracy
     const whiteThreshold = 240; // RGB values > 240 considered white
+    const minWhiteLineWidth = 3; // Minimum 3px wide white line
 
     let separator1 = Math.round(originalWidth * 0.276); // Fallback to percentage if detection fails
+    let whiteCandidates: Array<{ position: number; width: number; confidence: number }> = [];
 
     console.log('[quadtych-splitter] Scanning for MAIN→FRONT separator:', {
       searchStart,
       searchEnd,
       range: `${searchStart}px - ${searchEnd}px`,
-      verticalSamples: verticalSamplePoints
+      verticalSamples: verticalSamplePoints,
+      minWhiteLineWidth
     });
 
-    // Scan for white separator line
+    // Scan for white separator line clusters
+    let currentWhiteStreak = 0;
+    let streakStartX = -1;
+
     for (let x = searchStart; x < searchEnd; x++) {
       let whitePixelCount = 0;
 
@@ -117,16 +124,48 @@ export async function splitQuadtych(
         }
       }
 
-      // If 80%+ of sampled pixels are white, this is a separator
-      if (whitePixelCount >= verticalSamplePoints * 0.8) {
-        separator1 = x;
-        console.log('[quadtych-splitter] ✅ MAIN→FRONT separator detected at:', {
-          position: separator1,
-          percentage: ((separator1 / originalWidth) * 100).toFixed(1) + '%',
-          whitePixelRatio: `${whitePixelCount}/${verticalSamplePoints}`
-        });
-        break;
+      const isWhiteLine = whitePixelCount >= verticalSamplePoints * 0.8;
+
+      if (isWhiteLine) {
+        if (currentWhiteStreak === 0) {
+          streakStartX = x;
+        }
+        currentWhiteStreak++;
+      } else {
+        // End of white streak - record if valid
+        if (currentWhiteStreak >= minWhiteLineWidth) {
+          const centerX = streakStartX + Math.floor(currentWhiteStreak / 2);
+          const confidence = whitePixelCount / verticalSamplePoints;
+          whiteCandidates.push({
+            position: centerX,
+            width: currentWhiteStreak,
+            confidence
+          });
+          console.log('[quadtych-splitter] White line candidate found:', {
+            position: centerX,
+            width: currentWhiteStreak,
+            percentage: ((centerX / originalWidth) * 100).toFixed(1) + '%'
+          });
+        }
+        currentWhiteStreak = 0;
       }
+    }
+
+    // Select the FIRST valid white line candidate (closest to MAIN panel end)
+    if (whiteCandidates.length > 0) {
+      const selectedCandidate = whiteCandidates[0]; // First = earliest position
+      separator1 = selectedCandidate.position;
+      console.log('[quadtych-splitter] ✅ MAIN→FRONT separator selected:', {
+        position: separator1,
+        percentage: ((separator1 / originalWidth) * 100).toFixed(1) + '%',
+        width: selectedCandidate.width,
+        totalCandidates: whiteCandidates.length
+      });
+    } else {
+      console.log('[quadtych-splitter] ⚠️ No white line detected, using fallback:', {
+        position: separator1,
+        percentage: ((separator1 / originalWidth) * 100).toFixed(1) + '%'
+      });
     }
 
     // Calculate remaining separators by dividing the rest equally
