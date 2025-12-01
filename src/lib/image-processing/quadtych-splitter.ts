@@ -65,49 +65,50 @@ export async function splitQuadtych(
       expectedRatio: '2.33 (21:9)'
     });
 
-    // Calculate panel dimensions with trim ratio to remove white separator lines
-    // For 21:9 input (e.g., 2520x1080), each panel will be 630x1080 (which is ~9:15.5)
+    // Calculate panel dimensions - divide image into exactly 4 equal parts
+    // For 21:9 input (e.g., 1584x672), each panel will be 396x672
     // We'll resize to 9:16 (900x1600) for perfect mobile fit
 
-    // 1. Base panel width (1/4 of total width)
+    // 1. Base panel width (1/4 of total width) - no trimming to avoid overlap
     const basePanelWidth = Math.floor(originalWidth / 4);
     const panelHeight = originalHeight;
 
-    // 2. Trim setting: Remove white separator lines between panels
-    // 4% trim on each side removes the vertical white lines
-    const TRIM_RATIO = 0.04;
-    const trimPixels = Math.floor(basePanelWidth * TRIM_RATIO);
-
-    // 3. Actual crop width after trimming
-    const cropWidth = basePanelWidth - (trimPixels * 2);
-
-    // Calculate target width to maintain 9:16 aspect ratio
+    // 2. Calculate target width to maintain 9:16 aspect ratio
     const targetWidth = Math.floor(targetHeight * 9 / 16);
 
     console.log('[quadtych-splitter] Panel dimensions:', {
       originalWidth,
       originalHeight,
       basePanelWidth,
-      trimPixels,
-      cropWidth,
+      panelHeight,
       targetWidth,
       targetHeight,
-      trimRatio: `${TRIM_RATIO * 100}%`,
       outputAspectRatio: '9:16'
     });
 
-    // Extract 4 panels with auto-trim and resize
-    // Ensure extraction stays within bounds by clamping values
-    const safeExtract = (panelIndex: number) => {
-      const left = Math.max(0, Math.min((basePanelWidth * panelIndex) + trimPixels, originalWidth - cropWidth));
-      const width = Math.min(cropWidth, originalWidth - left);
-      return { left, top: 0, width, height: panelHeight };
+    // Extract 4 panels with precise boundaries (no trimming to avoid bleed)
+    // Each panel is exactly 1/4 of the total width
+    const getExtractRegion = (panelIndex: number) => {
+      const left = basePanelWidth * panelIndex;
+      const width = basePanelWidth;
+
+      // Ensure last panel doesn't exceed image bounds
+      const adjustedWidth = (left + width > originalWidth)
+        ? originalWidth - left
+        : width;
+
+      return {
+        left,
+        top: 0,
+        width: adjustedWidth,
+        height: panelHeight
+      };
     };
 
     const [mainBuffer, frontBuffer, sideBuffer, backBuffer] = await Promise.all([
       // PANEL 1: MAIN (Hero shot with editorial background)
       sharp(imageBuffer)
-        .extract(safeExtract(0))
+        .extract(getExtractRegion(0))
         .resize({
           width: targetWidth,
           height: targetHeight,
@@ -119,7 +120,7 @@ export async function splitQuadtych(
 
       // PANEL 2: FRONT (Technical spec on white background)
       sharp(imageBuffer)
-        .extract(safeExtract(1))
+        .extract(getExtractRegion(1))
         .trim({
           background: { r: 255, g: 255, b: 255 }, // White background
           threshold: 20 // Tolerance for background detection
@@ -134,7 +135,7 @@ export async function splitQuadtych(
 
       // PANEL 3: SIDE (90° profile on white background)
       sharp(imageBuffer)
-        .extract(safeExtract(2))
+        .extract(getExtractRegion(2))
         .trim({
           background: { r: 255, g: 255, b: 255 },
           threshold: 20
@@ -149,7 +150,7 @@ export async function splitQuadtych(
 
       // PANEL 4: BACK (Rear view on white background)
       sharp(imageBuffer)
-        .extract(safeExtract(3))
+        .extract(getExtractRegion(3))
         .trim({
           background: { r: 255, g: 255, b: 255 },
           threshold: 20
