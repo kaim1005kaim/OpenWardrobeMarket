@@ -65,26 +65,87 @@ export async function splitQuadtych(
       expectedRatio: '2.33 (21:9)'
     });
 
-    // Gemini generates 21:9 images with white line separators between panels
-    // For 1584x672, the separators are at approximately: 437px, 811px, 1189px (4px wide each)
-    // Panel widths: MAIN=437px, FRONT=370px, SIDE=374px, BACK=391px (unequal!)
+    // DYNAMIC SEPARATOR DETECTION (松案 - Optimal Solution)
+    // Gemini generates 21:9 images with white separators, but positions vary between generations
+    // Strategy: Detect MAIN→FRONT boundary (20-35% range), then split remaining equally
 
-    // Calculate approximate separator positions based on observed pattern
-    // MAIN panel is ~27.6% of width, other panels are ~23.4%, 23.6%, 24.7%
-    const separator1 = Math.round(originalWidth * 0.276);  // ~437px for 1584px
-    const separator2 = Math.round(originalWidth * 0.512);  // ~811px
-    const separator3 = Math.round(originalWidth * 0.750);  // ~1189px
+    const rawImage = await sharp(imageBuffer)
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const { data: rawBuffer, info } = rawImage;
+    const channels = info.channels;
+
+    console.log('[quadtych-splitter] Raw buffer info:', {
+      width: info.width,
+      height: info.height,
+      channels,
+      bufferSize: rawBuffer.length
+    });
+
+    // Detect MAIN→FRONT separator (white line in 20-35% range)
+    const searchStart = Math.floor(originalWidth * 0.20);
+    const searchEnd = Math.floor(originalWidth * 0.35);
+    const verticalSamplePoints = 10;
+    const whiteThreshold = 240; // RGB values > 240 considered white
+
+    let separator1 = Math.round(originalWidth * 0.276); // Fallback to percentage if detection fails
+
+    console.log('[quadtych-splitter] Scanning for MAIN→FRONT separator:', {
+      searchStart,
+      searchEnd,
+      range: `${searchStart}px - ${searchEnd}px`,
+      verticalSamples: verticalSamplePoints
+    });
+
+    // Scan for white separator line
+    for (let x = searchStart; x < searchEnd; x++) {
+      let whitePixelCount = 0;
+
+      // Sample vertical points along this column
+      for (let sampleIdx = 0; sampleIdx < verticalSamplePoints; sampleIdx++) {
+        const y = Math.floor((originalHeight / verticalSamplePoints) * sampleIdx);
+        const pixelIndex = (y * info.width + x) * channels;
+
+        const r = rawBuffer[pixelIndex];
+        const g = rawBuffer[pixelIndex + 1];
+        const b = rawBuffer[pixelIndex + 2];
+
+        // Check if pixel is white
+        if (r >= whiteThreshold && g >= whiteThreshold && b >= whiteThreshold) {
+          whitePixelCount++;
+        }
+      }
+
+      // If 80%+ of sampled pixels are white, this is a separator
+      if (whitePixelCount >= verticalSamplePoints * 0.8) {
+        separator1 = x;
+        console.log('[quadtych-splitter] ✅ MAIN→FRONT separator detected at:', {
+          position: separator1,
+          percentage: ((separator1 / originalWidth) * 100).toFixed(1) + '%',
+          whitePixelRatio: `${whitePixelCount}/${verticalSamplePoints}`
+        });
+        break;
+      }
+    }
+
+    // Calculate remaining separators by dividing the rest equally
+    const remainingWidth = originalWidth - separator1;
+    const panelWidth = Math.floor(remainingWidth / 3); // FRONT, SIDE, BACK are equal
     const separatorWidth = 4; // White line width
+
+    const separator2 = separator1 + panelWidth;
+    const separator3 = separator2 + panelWidth;
 
     const panelHeight = originalHeight;
     const targetWidth = Math.floor(targetHeight * 9 / 16);
 
-    console.log('[quadtych-splitter] Panel extraction coordinates:', {
+    console.log('[quadtych-splitter] Final panel extraction coordinates:', {
       originalWidth,
       originalHeight,
-      separator1,
-      separator2,
-      separator3,
+      separator1: `${separator1}px (${((separator1 / originalWidth) * 100).toFixed(1)}%)`,
+      separator2: `${separator2}px (${((separator2 / originalWidth) * 100).toFixed(1)}%)`,
+      separator3: `${separator3}px (${((separator3 / originalWidth) * 100).toFixed(1)}%)`,
       separatorWidth,
       mainWidth: separator1,
       frontWidth: separator2 - separator1 - separatorWidth,
