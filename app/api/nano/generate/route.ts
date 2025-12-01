@@ -8,6 +8,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { NodeHttpHandler } from '@aws-sdk/node-http-handler';
 import { randomUUID } from 'node:crypto';
 import { splitTriptych } from '../../../../src/lib/image-processing/triptych-splitter';
+import { splitQuadtych } from '../../../../src/lib/image-processing/quadtych-splitter';
 import https from 'https';
 import dns from 'dns';
 
@@ -96,7 +97,8 @@ export async function POST(req: NextRequest) {
       answers,
       dna,
       parentAssetId,
-      enableTriptych = false, // v2.0: Enable 3-panel generation
+      enableTriptych = false, // v2.0: Enable 3-panel generation (deprecated)
+      enableQuadtych = false, // v4.0: Enable 4-panel generation (MAIN + 3-view)
       fusionConcept // v2.0: Design philosophy for metadata
     } = body;
 
@@ -113,6 +115,7 @@ export async function POST(req: NextRequest) {
       aspectRatio,
       parentAssetId,
       enableTriptych,
+      enableQuadtych,
       fusionConcept: fusionConcept ? fusionConcept.substring(0, 100) + '...' : null
     });
 
@@ -123,8 +126,74 @@ export async function POST(req: NextRequest) {
       .trim();
 
     // v3.6: FUSION Character Sheet - Generate triptych WITHOUT text labels
+    // v4.0: FUSION Quadtych - Generate MAIN + 3-view WITHOUT text labels
     let fullPrompt: string;
-    if (enableTriptych) {
+    if (enableQuadtych) {
+      // v4.0: Quadtych format - MAIN hero shot + 3-view technical specs
+      fullPrompt = `
+Create a FASHION LOOKBOOK SPREAD in 21:9 ultra-wide format.
+Format: Horizontal 4-Panel Split (Quadtych) - MAIN + 3-View Specs.
+Aspect Ratio: 21:9 (Ultra Wide).
+
+[LAYOUT STRUCTURE]
+Split the image into 4 vertical panels of equal width.
+Separator: Thin white line between panels.
+
+-- PANEL 1 (Far Left): THE HERO SHOT (MAIN) --
+Subject: The model in a dynamic, editorial pose.
+Angle: Low angle or creative composition (street fashion photography style).
+Background: ${fusionConcept || 'Abstract, moody, or outdoor context matching the design theme'}.
+Lighting: Cinematic, dramatic, emotional lighting.
+Framing: Full body, engaging with the camera.
+Mood: High fashion editorial, runway energy.
+
+-- PANEL 2 (Middle Left): FRONT SPEC --
+Subject: Standing straight, arms at sides (A-pose), facing camera.
+Background: Plain white studio background.
+Lighting: Flat, even technical lighting.
+Framing: Full body from head to toe with padding.
+
+-- PANEL 3 (Middle Right): SIDE SPEC --
+Subject: 90-degree profile view, facing right, standing straight.
+Background: Plain white studio background.
+Lighting: Flat, even technical lighting.
+Framing: Full body from head to toe with padding.
+
+-- PANEL 4 (Far Right): BACK SPEC --
+Subject: Rear view, standing straight, back to camera.
+Background: Plain white studio background.
+Lighting: Flat, even technical lighting.
+Framing: Full body from head to toe with padding.
+
+[CRITICAL CONSISTENCY RULES]
+1. IDENTITY: The model MUST be the EXACT SAME person in all 4 panels.
+2. OUTFIT: The outfit MUST be IDENTICAL in every detail (material, cut, color, patterns) across all 4 panels.
+3. Panel 1 has a different pose/background/mood, but the CLOTHES are exactly the same.
+4. Maintain perfect facial features, body proportions, and skin tone across all panels.
+5. The fabric texture, color accuracy, and design details must be consistent.
+
+[FRAMING & COMPOSITION]
+- HEADROOM: Leave 15% empty space above the model's head in all panels.
+- FOOTROOM: Show the full feet and shoes with ground shadow.
+- DO NOT cut the head or feet in any panel.
+- VISUAL SEPARATION: Use thin white lines to separate the four panels.
+
+[CLEAN IMAGE RULES - CRITICAL]
+- NO TEXT. NO LABELS. NO TYPOGRAPHY. NO WATERMARKS.
+- DO NOT write "MAIN", "FRONT", "SIDE", "BACK" or any other text on the image.
+- Keep backgrounds clean and free of any writing or symbols.
+- NO logos, NO brand names, NO signatures, NO captions.
+
+[DESIGN SPECIFICATIONS]
+${prompt}
+
+[QUALITY]
+Hyper-realistic texture, 8k resolution, professional fashion photography.
+Panel 1: Editorial magazine quality with atmospheric lighting.
+Panels 2-4: Technical spec sheet quality with clean white backgrounds.
+Negative: text, label, word, writing, signature, watermark, typography, caption, title, letter, alphabet, logo, brand name, cropped head, cut off head, cut off feet, out of frame, close up, portrait shot, partial head, partial feet, zooming in${cleanNegative ? `, ${cleanNegative}` : ''}
+      `.trim();
+    } else if (enableTriptych) {
       // Fashion Character Sheet format for perfect identity consistency
       fullPrompt = `
 Create a photorealistic FASHION CHARACTER SHEET.
@@ -172,7 +241,8 @@ Negative: text, label, word, writing, signature, watermark, typography, caption,
     }
 
     // v3.0: For FUSION mode with triptych, generate 16:9 horizontal image
-    const targetAspectRatio = enableTriptych ? '16:9' : (aspectRatio || '3:4');
+    // v4.0: For FUSION mode with quadtych, generate 21:9 ultra-wide image
+    const targetAspectRatio = enableQuadtych ? '21:9' : (enableTriptych ? '16:9' : (aspectRatio || '3:4'));
 
     console.log('[nano/generate] Full prompt:', fullPrompt);
     console.log('[nano/generate] Target aspect ratio:', targetAspectRatio);
@@ -211,10 +281,59 @@ Negative: text, label, word, writing, signature, watermark, typography, caption,
     }
 
     // v2.0: If triptych mode, split the image into 3 panels
+    // v4.0: If quadtych mode, split the image into 4 panels
     let triptychPanels: any = null;
+    let quadtychPanels: any = null;
     let originalImageUrl: string | null = null;
 
-    if (enableTriptych) {
+    if (enableQuadtych) {
+      console.log('[nano/generate] Splitting into quadtych panels (MAIN + 3-view)...');
+      try {
+        // v4.0: Upload original 21:9 image to R2 for debugging
+        const originalImageBuffer = Buffer.from(inline.data, 'base64');
+        const originalKey = `fusion/${user.id}/debug/${Date.now()}-original-21x9.jpg`;
+
+        await r2.send(
+          new PutObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: originalKey,
+            Body: originalImageBuffer,
+            ContentType: 'image/jpeg',
+          })
+        );
+
+        originalImageUrl = `${R2_PUBLIC_BASE_URL}/${originalKey}`;
+        console.log('[nano/generate] 🖼️  ORIGINAL 21:9 IMAGE URL:', originalImageUrl);
+
+        const panels = await splitQuadtych(inline.data);
+        // Convert Buffers to base64
+        quadtychPanels = {
+          main: {
+            ...panels.main,
+            base64: panels.main.buffer.toString('base64'),
+          },
+          front: {
+            ...panels.front,
+            base64: panels.front.buffer.toString('base64'),
+          },
+          side: {
+            ...panels.side,
+            base64: panels.side.buffer.toString('base64'),
+          },
+          back: {
+            ...panels.back,
+            base64: panels.back.buffer.toString('base64'),
+          },
+        };
+        console.log('[nano/generate] Successfully split into 4 panels with base64 conversion');
+      } catch (error) {
+        console.error('[nano/generate] Failed to split quadtych:', error);
+        return NextResponse.json(
+          { error: 'Failed to split quadtych image' },
+          { status: 500 }
+        );
+      }
+    } else if (enableTriptych) {
       console.log('[nano/generate] Splitting into triptych panels...');
       try {
         // v3.3: Upload original 16:9 image to R2 for debugging
@@ -265,7 +384,28 @@ Negative: text, label, word, writing, signature, watermark, typography, caption,
 
     console.log('[nano/generate] Returning base64 image data (R2 upload bypassed due to Vercel SSL issues)');
 
-    if (enableTriptych && triptychPanels) {
+    if (enableQuadtych && quadtychPanels) {
+      // v4.0: Return quadtych panels as base64 (MAIN + 3-view)
+      return NextResponse.json({
+        success: true,
+        quadtych: true,
+        imageData: {
+          main: quadtychPanels.main.base64,
+          front: quadtychPanels.front.base64,
+          side: quadtychPanels.side.base64,
+          back: quadtychPanels.back.base64,
+        },
+        mimeType: 'image/jpeg',
+        metadata: {
+          prompt,
+          dna,
+          parentAssetId,
+          fusionConcept,
+          aspectRatio: targetAspectRatio,
+          originalImageUrl, // v4.0: Include original 21:9 image URL for debugging
+        },
+      });
+    } else if (enableTriptych && triptychPanels) {
       // Return triptych panels as base64
       return NextResponse.json({
         success: true,
