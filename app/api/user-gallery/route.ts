@@ -41,6 +41,7 @@ export async function GET(request: Request) {
     let data: any[] = [];
     let count = 0;
 
+    // Fetch generation_history items that have NOT been published or saved as drafts
     if (type === 'generated' || type === 'all') {
       const result = await supabase
         .from('generation_history')
@@ -52,33 +53,53 @@ export async function GET(request: Request) {
       if (result.error) {
         console.error('Error fetching generation history:', result.error);
       } else {
-        const generatedItems = (result.data || []).map((item) => ({
-          id: item.id,
-          title: item.generation_data?.title || 'Generated Design',
-          src: item.images?.[0]?.url || item.r2_url || '',
-          r2_url: item.r2_url,
-          tags: item.generation_data?.parameters?.tags || [],
-          colors: item.generation_data?.parameters?.colors || [],
-          width: 800,
-          height: 1200,
-          likes: 0,
-          created_at: item.created_at,
-          type: 'generated',
-          is_published: false,
-          original_prompt: item.prompt,
-          generation_params: item.generation_data?.parameters || {},
-          images: item.images || []
-        }));
+        // Fetch all published_items (including drafts) for this user to check for duplicates
+        const { data: publishedData } = await supabase
+          .from('published_items')
+          .select('id, original_url, poster_url')
+          .eq('user_id', userId);
+
+        const publishedUrls = new Set(
+          (publishedData || []).flatMap((item) => [item.original_url, item.poster_url])
+        );
+
+        // Filter out items that are already published or saved as drafts
+        const generatedItems = (result.data || [])
+          .filter((item) => {
+            const itemUrl = item.images?.[0]?.url || item.r2_url || '';
+            return itemUrl && !publishedUrls.has(itemUrl);
+          })
+          .map((item) => ({
+            id: item.id,
+            title: item.generation_data?.title || 'Generated Design',
+            src: item.images?.[0]?.url || item.r2_url || '',
+            r2_url: item.r2_url,
+            tags: item.generation_data?.parameters?.tags || [],
+            colors: item.generation_data?.parameters?.colors || [],
+            width: 800,
+            height: 1200,
+            likes: 0,
+            created_at: item.created_at,
+            type: 'generated',
+            is_published: false,
+            original_prompt: item.prompt,
+            generation_params: item.generation_data?.parameters || {},
+            images: item.images || []
+          }));
+
         data = [...data, ...generatedItems];
-        count += result.count || 0;
+        count += generatedItems.length;
       }
     }
 
     if (type === 'published' || type === 'all') {
+      // Fetch only published items (is_active = true AND sale_type != 'draft')
       const result = await supabase
         .from('published_items')
         .select('*', { count: 'exact' })
         .eq('user_id', userId)
+        .eq('is_active', true)
+        .neq('sale_type', 'draft')
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
@@ -115,6 +136,54 @@ export async function GET(request: Request) {
         }
 
         if (type === 'published') {
+          count = result.count || 0;
+        }
+      }
+    }
+
+    // NEW: Handle drafts separately (sale_type = 'draft')
+    if (type === 'drafts' || type === 'all') {
+      const result = await supabase
+        .from('published_items')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .eq('sale_type', 'draft')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (result.error) {
+        console.error('Error fetching draft items:', result.error);
+      } else {
+        const draftItems = (result.data || []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          src: item.original_url || item.poster_url || item.image_url || '',
+          r2_url: item.original_url || item.poster_url || item.image_url || '',
+          tags: item.tags || [],
+          colors: item.colors || [],
+          width: item.metadata?.width || 800,
+          height: item.metadata?.height || 1200,
+          likes: item.likes || 0,
+          views: item.views || 0,
+          created_at: item.created_at,
+          type: 'generated', // Treat drafts as 'generated' for UI filtering
+          is_published: false,
+          price: item.price,
+          status: item.status || 'draft',
+          description: item.description
+        }));
+
+        if (type === 'all') {
+          draftItems.forEach((item) => {
+            if (!data.find((d) => d.id === item.id)) {
+              data.push(item);
+            }
+          });
+        } else {
+          data = [...data, ...draftItems];
+        }
+
+        if (type === 'drafts') {
           count = result.count || 0;
         }
       }
