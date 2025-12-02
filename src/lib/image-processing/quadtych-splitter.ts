@@ -331,136 +331,47 @@ export async function splitQuadtych(
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // PANEL 2: FRONT (Technical spec on white background)
-      // Strategy: Extract → Aggressive trim → Add uniform white background
-      (async () => {
-        const extracted = await sharp(imageBuffer)
-          .extract(getExtractRegion(1))
-          .toBuffer();
-
-        // Aggressive trim: Remove ALL background (white/gray/beige)
-        const trimmed = await sharp(extracted)
-          .trim({
-            background: { r: 255, g: 255, b: 255 },
-            threshold: 30 // Higher threshold to remove separator lines
-          })
-          .toBuffer();
-
-        const trimmedMeta = await sharp(trimmed).metadata();
-
-        // Resize subject to fit target height
-        const resized = await sharp(trimmed)
-          .resize({
-            height: targetHeight,
-            fit: 'inside',
-            withoutEnlargement: false
-          })
-          .toBuffer();
-
-        const resizedMeta = await sharp(resized).metadata();
-
-        // Add uniform white background to center the subject
-        return sharp({
-          create: {
-            width: targetWidth,
-            height: targetHeight,
-            channels: 3,
-            background: { r: 255, g: 255, b: 255 } // Pure white background
-          }
+      // PANEL 2: FRONT (Technical spec - preserve generated white background)
+      // v5.2: Simplified extraction - preserve original background, exclude separators only
+      sharp(imageBuffer)
+        .extract(getExtractRegion(1))
+        .resize({
+          width: targetWidth,
+          height: targetHeight,
+          fit: 'contain', // Preserve original background
+          position: 'center',
+          background: { r: 255, g: 255, b: 255 } // Fill letterbox areas with white
         })
-          .composite([
-            {
-              input: resized,
-              gravity: 'center'
-            }
-          ])
-          .jpeg({ quality: 95 })
-          .toBuffer();
-      })(),
+        .jpeg({ quality: 95 })
+        .toBuffer(),
 
-      // PANEL 3: SIDE (90° profile on white background)
-      (async () => {
-        const extracted = await sharp(imageBuffer)
-          .extract(getExtractRegion(2))
-          .toBuffer();
-
-        // Aggressive trim: Remove ALL background
-        const trimmed = await sharp(extracted)
-          .trim({
-            background: { r: 255, g: 255, b: 255 },
-            threshold: 30
-          })
-          .toBuffer();
-
-        // Resize subject to fit target height
-        const resized = await sharp(trimmed)
-          .resize({
-            height: targetHeight,
-            fit: 'inside',
-            withoutEnlargement: false
-          })
-          .toBuffer();
-
-        // Add uniform white background
-        return sharp({
-          create: {
-            width: targetWidth,
-            height: targetHeight,
-            channels: 3,
-            background: { r: 255, g: 255, b: 255 }
-          }
+      // PANEL 3: SIDE (90° profile - preserve generated white background)
+      // v5.2: Simplified extraction - preserve original background, exclude separators only
+      sharp(imageBuffer)
+        .extract(getExtractRegion(2))
+        .resize({
+          width: targetWidth,
+          height: targetHeight,
+          fit: 'contain',
+          position: 'center',
+          background: { r: 255, g: 255, b: 255 }
         })
-          .composite([
-            {
-              input: resized,
-              gravity: 'center'
-            }
-          ])
-          .jpeg({ quality: 95 })
-          .toBuffer();
-      })(),
+        .jpeg({ quality: 95 })
+        .toBuffer(),
 
-      // PANEL 4: BACK (Rear view on white background)
-      (async () => {
-        const extracted = await sharp(imageBuffer)
-          .extract(getExtractRegion(3))
-          .toBuffer();
-
-        // Aggressive trim: Remove ALL background
-        const trimmed = await sharp(extracted)
-          .trim({
-            background: { r: 255, g: 255, b: 255 },
-            threshold: 30
-          })
-          .toBuffer();
-
-        // Resize subject to fit target height
-        const resized = await sharp(trimmed)
-          .resize({
-            height: targetHeight,
-            fit: 'inside',
-            withoutEnlargement: false
-          })
-          .toBuffer();
-
-        // Add uniform white background
-        return sharp({
-          create: {
-            width: targetWidth,
-            height: targetHeight,
-            channels: 3,
-            background: { r: 255, g: 255, b: 255 }
-          }
+      // PANEL 4: BACK (Rear view - preserve generated white background)
+      // v5.2: Simplified extraction - preserve original background, exclude separators only
+      sharp(imageBuffer)
+        .extract(getExtractRegion(3))
+        .resize({
+          width: targetWidth,
+          height: targetHeight,
+          fit: 'contain',
+          position: 'center',
+          background: { r: 255, g: 255, b: 255 }
         })
-          .composite([
-            {
-              input: resized,
-              gravity: 'center'
-            }
-          ])
-          .jpeg({ quality: 95 })
-          .toBuffer();
-      })()
+        .jpeg({ quality: 95 })
+        .toBuffer()
     ]);
 
     console.log('[quadtych-splitter] Successfully split into 4 panels:', {
