@@ -108,11 +108,18 @@ Return ONLY a JSON object in this exact format (no markdown, no explanation):
 
     console.log('[gemini/detect-split] Analyzing image with Gemini Flash...');
 
+    // Strip data URL prefix if present (Gemini expects raw base64 only)
+    const cleanBase64 = imageData.includes(',')
+      ? imageData.split(',')[1]
+      : imageData;
+
+    console.log('[gemini/detect-split] Base64 data length:', cleanBase64.length);
+
     const result = await model.generateContent([
       prompt,
       {
         inlineData: {
-          data: imageData,
+          data: cleanBase64,
           mimeType: mimeType || 'image/jpeg',
         },
       },
