@@ -129,9 +129,14 @@ export async function POST(req: NextRequest) {
     // v4.0: FUSION Quadtych - Generate MAIN + 3-view WITHOUT text labels
     // v5.2: Removed text labels from prompt structure to prevent rendering
     // v6.2: Rollback to stable v5.1 simple prompt (equal panels, thin white separators)
+    // v6.4: Add stylish color-coordinated background to PANEL 1
+
+    // Extract palette from DNA for background color suggestions
+    const paletteColors = dna?.palette?.map((c: any) => c.name || c.hex).join(', ') || 'garment colors';
+
     let fullPrompt: string;
     if (enableQuadtych) {
-      // v6.3: All panels equal weight (no hero shot distinction)
+      // v6.4: All panels equal weight + stylish color background for PANEL 1
       fullPrompt = `
 Create a fashion design reference sheet in 21:9 ultra-wide format showing the SAME outfit from 4 different angles.
 
@@ -145,8 +150,12 @@ CRITICAL LAYOUT RULES:
 
 PANEL 1 (Far Left) - Main View:
 - Full body shot, standing or casual pose
-- Background: Simple neutral background or minimal setting
-- Lighting: Even, natural lighting
+- Background: Stylish background that complements the garment's color palette
+  * Use colors from the outfit palette: ${paletteColors}
+  * Options: solid color wall, gradient backdrop, urban architecture, minimal interior, or abstract geometric shapes
+  * The background should enhance the design without overwhelming it
+  * Keep it clean and modern
+- Lighting: Even, natural lighting with slight drama
 - Framing: Full body from head to toe with 15% headroom, 10% footroom
 
 PANEL 2 (Middle Left) - Front View:
