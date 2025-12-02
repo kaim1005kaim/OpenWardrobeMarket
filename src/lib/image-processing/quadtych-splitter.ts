@@ -65,58 +65,52 @@ export async function splitQuadtych(
       expectedRatio: '2.33 (21:9)'
     });
 
-    // PANEL EXTRACTION STRATEGY (v6.7 - Trim all sides)
+    // PANEL EXTRACTION STRATEGY (v6.9 - Uniform Trim)
     //
     // ROLLBACK: v6.0-6.1のブラックセパレーター検出は不安定だった
     // - 頭や足が切れてしまう
     // - 黒線が残る
     //
-    // NEW STRATEGY: シンプルな均等4分割に戻す
+    // ROLLBACK: v6.7-6.8の非対称トリムも位置ずれを引き起こした
+    // - MAIN 5% vs SPEC 10%の差異がパネル境界のずれを生む
+    // - FRONTにMAINのコンテンツが混入
+    //
+    // NEW STRATEGY (v6.9): 全パネル統一トリムに戻す
     // - 21:9を4等分 (各パネル 5.25:9)
     // - セパレーター位置は固定（25%, 50%, 75%）
-    // - MAINも両側5%トリミング（黒い余白除去）
-    // - SPECは両側10%トリミング
+    // - 全パネル8%統一トリミング（セパレーター＋余白除去）
     // - fit: 'contain'で全身が必ず表示される
 
     const panelHeight = originalHeight;
     const targetWidth = Math.floor(targetHeight * 9 / 16);
 
-    // Simple 4-way division with different trim ratios for MAIN vs SPEC panels
+    // Simple 4-way division with UNIFORM trim for all panels
     const basePanelWidth = Math.floor(originalWidth / 4);
 
-    // MAIN panel: 5% trim on BOTH sides (to remove black margins)
-    const MAIN_TRIM_RATIO = 0.05;
-    const mainTrimPixels = Math.floor(basePanelWidth * MAIN_TRIM_RATIO);
+    // UNIFORM trim: 8% on BOTH sides for ALL panels
+    const TRIM_RATIO = 0.08;
+    const trimPixels = Math.floor(basePanelWidth * TRIM_RATIO);
 
-    // SPEC panels: 10% trim on each side (to remove separators and zoom in)
-    const SPEC_TRIM_RATIO = 0.10;
-    const specTrimPixels = Math.floor(basePanelWidth * SPEC_TRIM_RATIO);
-
-    console.log('[quadtych-splitter] Simple equal division (v6.7):', {
+    console.log('[quadtych-splitter] Uniform equal division (v6.9):', {
       totalWidth: originalWidth,
       totalHeight: originalHeight,
       basePanelWidth,
-      mainTrimPixels,
-      specTrimPixels,
-      mainPanelWidth: basePanelWidth - (mainTrimPixels * 2),
-      specPanelWidth: basePanelWidth - (specTrimPixels * 2)
+      trimPixels,
+      panelWidth: basePanelWidth - (trimPixels * 2)
     });
 
-    // Calculate panel dimensions
-    const mainWidth = basePanelWidth - (mainTrimPixels * 2); // Trim both sides (5% each)
-    const frontWidth = basePanelWidth - (specTrimPixels * 2); // Trim both sides (10% each)
-    const sideWidth = basePanelWidth - (specTrimPixels * 2); // Trim both sides (10% each)
-    const backWidth = basePanelWidth - (specTrimPixels * 2); // Trim both sides (10% each)
+    // Calculate panel dimensions (all identical)
+    const panelWidth = basePanelWidth - (trimPixels * 2); // Trim both sides (8% each) for ALL panels
 
-    // Extract 4 panels using simple equal division (v6.8)
-    // CRITICAL: All panels start from their base position, then apply trim
+    // Extract 4 panels using simple equal division (v6.9 - Uniform Trim)
+    // CRITICAL: All panels use IDENTICAL trim for perfect alignment
     const [mainBuffer, frontBuffer, sideBuffer, backBuffer] = await Promise.all([
       // PANEL 1: MAIN (Hero shot) - starts at 0
       sharp(imageBuffer)
         .extract({
-          left: mainTrimPixels,
+          left: 0 + trimPixels,
           top: 0,
-          width: mainWidth,
+          width: panelWidth,
           height: panelHeight
         })
         .resize({
@@ -131,9 +125,9 @@ export async function splitQuadtych(
       // PANEL 2: FRONT (Technical front view) - starts at basePanelWidth
       sharp(imageBuffer)
         .extract({
-          left: (basePanelWidth * 1) + specTrimPixels,
+          left: (basePanelWidth * 1) + trimPixels,
           top: 0,
-          width: frontWidth,
+          width: panelWidth,
           height: panelHeight
         })
         .resize({
@@ -148,9 +142,9 @@ export async function splitQuadtych(
       // PANEL 3: SIDE (Technical side profile) - starts at basePanelWidth * 2
       sharp(imageBuffer)
         .extract({
-          left: (basePanelWidth * 2) + specTrimPixels,
+          left: (basePanelWidth * 2) + trimPixels,
           top: 0,
-          width: sideWidth,
+          width: panelWidth,
           height: panelHeight
         })
         .resize({
@@ -165,9 +159,9 @@ export async function splitQuadtych(
       // PANEL 4: BACK (Technical rear view) - starts at basePanelWidth * 3
       sharp(imageBuffer)
         .extract({
-          left: (basePanelWidth * 3) + specTrimPixels,
+          left: (basePanelWidth * 3) + trimPixels,
           top: 0,
-          width: backWidth,
+          width: panelWidth,
           height: panelHeight
         })
         .resize({
