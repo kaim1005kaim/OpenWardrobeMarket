@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY server/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -29,7 +29,7 @@ RUN python -c "from transformers import CLIPProcessor, CLIPModel; \
     print('Model cached successfully')"
 
 # Copy application code
-COPY clip-server.py .
+COPY server/clip-server.py .
 
 # Expose Cloud Run port
 EXPOSE 8080
