@@ -136,69 +136,59 @@ export async function POST(req: NextRequest) {
 
     let fullPrompt: string;
     if (enableQuadtych) {
-      // v6.10: CONTACT SHEET approach with rigid equal-width columns
+      // v7.0: FILM STRIP approach with thick black bars for better separation
       fullPrompt = `
-[TASK] Generate a FASHION CONTACT SHEET in 21:9 ultra-wide format.
-This is a REFERENCE SHEET showing the SAME outfit from 4 different angles.
+[TASK]
+Generate a HIGH-END FASHION FILM STRIP.
+Format: 4 distinct vertical frames arranged horizontally.
+Aspect Ratio: 21:9 (Ultra-Wide).
 
 [STRICT LAYOUT RULES - CRITICAL]
-Format: 4 EXACTLY EQUAL-WIDTH vertical columns (1:1:1:1 ratio)
-- Think of this as a TABLE with 4 COLUMNS, NOT as 4 artistic panels
-- Aspect Ratio: 21:9 (ultra-wide horizontal, e.g., 2100px × 900px)
-- RIGID GRID DIVISION: Divide the width into 4 EQUAL columns (25% each)
-  * Column 1 (MAIN): pixels 0-525 (525px wide)
-  * Column 2 (FRONT): pixels 525-1050 (525px wide)
-  * Column 3 (SIDE): pixels 1050-1575 (525px wide)
-  * Column 4 (BACK): pixels 1575-2100 (525px wide)
-- Separators: THIN WHITE VERTICAL LINES (2-3 pixels) between columns
-- NO variable widths, NO emphasis on any column, ALL columns EQUAL
-- NO black bars, NO text labels, NO overlapping
+- Structure: A horizontal film strip with 4 ISOLATED FRAMES.
+- Division: Divide the width into 4 EXACTLY EQUAL columns (1:1:1:1 ratio).
+- Separators: **THICK BLACK VERTICAL BARS** (pixel width > 10px) between every panel.
+- The black bars must be solid, straight, and clearly visible.
+- NO overlapping images. Each panel must be contained within its borders.
 
-COLUMN 1 (MAIN - Editorial Shot):
-- CRITICAL CONSTRAINT: This image MUST fit within a VERTICAL column (narrow and tall)
-- DO NOT create a wide/cinematic composition - keep it STRICTLY VERTICAL
-- Framing: TIGHT vertical crop, portrait orientation feel
-- Pose: Standing straight or slight dynamic pose (NOT walking wide)
-- Background: Stylish background that complements the garment's color palette
+[COLUMN 1 (Far Left): THE CAMPAIGN HERO SHOT]
+- **VIBE**: Editorial Street Snap / High Fashion Lookbook.
+- **COMPOSITION**: STRICTLY VERTICAL portrait crop (9:16 ratio feel).
+- **SUBJECT**: Model in dynamic pose (standing, leaning, or slight movement). NOT walking wide.
+- **BACKGROUND**: Stylish background that complements the garment's color palette
   * Use colors from the outfit palette: ${paletteColors}
-  * Options: solid color wall, gradient backdrop, minimal architectural element, or abstract shapes
-  * Keep background SIMPLE - avoid wide horizontal elements
-- Lighting: Even, natural lighting with slight drama
-- Full body from head to toe with 15% headroom, 10% footroom
+  * Real world context: urban setting, architectural element, or studio with depth
+  * Blurred background with depth of field
+  * Keep composition VERTICAL - avoid wide horizontal elements
+- **LIGHTING**: Natural, Cinematic, or Moody. High contrast, editorial quality.
+- **CRITICAL CONSTRAINT**: Do not let this image spill into Column 2. Keep it narrow and strictly vertical.
+- **FRAMING**: Full body from head to toe with 15% headroom, 10% footroom
 
-COLUMN 2 (FRONT - Technical Front View):
-- Standing straight, arms at sides, facing camera
-- Background: Clean light gray or white studio background
-- Lighting: Even, flat lighting
-- Framing: Full body from head to toe with 15% headroom, 10% footroom
+[COLUMN 2 (Mid-Left): FRONT SPEC]
+- Subject: Standing straight, arms at sides (A-pose), facing camera
+- Background: Plain white studio background
+- Lighting: Flat technical lighting
+- Full body from head to toe with 15% headroom, 10% footroom
 - This column has THE SAME WIDTH as Column 1
 
-COLUMN 3 (SIDE - Technical Side Profile):
-- 90-degree side profile, facing right
-- Standing straight, arms at sides
-- Background: Clean light gray or white studio background
-- Lighting: Even, flat lighting
-- Framing: Full body from head to toe with 15% headroom, 10% footroom
+[COLUMN 3 (Mid-Right): SIDE SPEC]
+- Subject: 90-degree profile view facing right, standing straight, arms at sides
+- Background: Plain white studio background
+- Lighting: Flat technical lighting
+- Full body from head to toe with 15% headroom, 10% footroom
 - This column has THE SAME WIDTH as Columns 1 and 2
 
-COLUMN 4 (BACK - Technical Rear View):
-- Rear view (facing away), standing straight
-- Background: Clean light gray or white studio background
-- Lighting: Even, flat lighting
-- Framing: Full body from head to toe with 15% headroom, 10% footroom
+[COLUMN 4 (Far Right): BACK SPEC]
+- Subject: Rear view, standing straight, arms at sides, facing away
+- Background: Plain white studio background
+- Lighting: Flat technical lighting
+- Full body from head to toe with 15% headroom, 10% footroom
 - This column has THE SAME WIDTH as all other columns
 
-CONSISTENCY REQUIREMENTS:
-1. SAME PERSON in all 4 panels (identical face, body, skin tone)
-2. SAME OUTFIT in all 4 panels (identical garment, colors, patterns, details)
-3. ALL 4 PANELS have EQUAL WIDTH and EQUAL TREATMENT
-4. NO cropping of head or feet in ANY panel
-
-[FRAMING & COMPOSITION]
-- HEADROOM: Leave 15% empty space above the model's head in all panels.
-- FOOTROOM: Show the full feet and shoes with ground shadow.
-- DO NOT cut the head or feet in any panel.
-- VISUAL SEPARATION: Use thin white lines to separate the four panels.
+[CRITICAL CONSISTENCY]
+- The model MUST be the EXACT SAME person in all 4 columns (identical face, body, skin tone)
+- The outfit MUST be IDENTICAL in every detail (material, cut, color, patterns) across all 4 columns
+- Panel 1 has different lighting/pose, but the CLOTHES are the same
+- NO cropping of head or feet in ANY panel
 
 [CLEAN IMAGE RULES - CRITICAL]
 - NO TEXT. NO LABELS. NO TYPOGRAPHY. NO WATERMARKS.
@@ -210,10 +200,10 @@ CONSISTENCY REQUIREMENTS:
 ${prompt}
 
 [QUALITY]
-Hyper-realistic texture, 8k resolution, professional fashion photography.
+8k resolution, photorealistic, masterpiece quality.
 Panel 1: Editorial magazine quality with atmospheric lighting.
 Panels 2-4: Technical spec sheet quality with clean white backgrounds.
-Negative: text, label, word, writing, signature, watermark, typography, caption, title, letter, alphabet, logo, brand name, cropped head, cut off head, cut off feet, out of frame, close up, portrait shot, partial head, partial feet, zooming in${cleanNegative ? `, ${cleanNegative}` : ''}
+Negative: text, label, word, writing, signature, watermark, logo, brand name, split screen error, merged bodies, different clothes, cropped head, cut off head, cut off feet, out of frame, close up, portrait shot, partial head, partial feet, zooming in, wide angle distortion${cleanNegative ? `, ${cleanNegative}` : ''}
       `.trim();
     } else if (enableTriptych) {
       // Fashion Character Sheet format for perfect identity consistency
