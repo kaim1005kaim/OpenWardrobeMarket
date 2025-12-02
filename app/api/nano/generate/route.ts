@@ -146,8 +146,9 @@ Aspect Ratio: 21:9 (Ultra-Wide).
 [STRICT LAYOUT RULES - CRITICAL]
 - Structure: A horizontal film strip with 4 ISOLATED FRAMES.
 - Division: Divide the width into 4 EXACTLY EQUAL columns (1:1:1:1 ratio).
-- Separators: **THICK BLACK VERTICAL BARS** (pixel width > 10px) between every panel.
-- The black bars must be solid, straight, and clearly visible.
+- Separators: **THICK BLACK VERTICAL BARS** (pixel width > 10px) between every panel ONLY.
+- The black bars must be solid, straight, and clearly visible VERTICALLY between panels.
+- NO BLACK BARS on top or bottom edges - keep top and bottom edges clean.
 - NO overlapping images. Each panel must be contained within its borders.
 
 [COLUMN 1 (Far Left): THE CAMPAIGN HERO SHOT]
