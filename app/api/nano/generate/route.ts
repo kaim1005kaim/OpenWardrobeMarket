@@ -136,15 +136,19 @@ export async function POST(req: NextRequest) {
 
     let fullPrompt: string;
     if (enableQuadtych) {
-      // v6.4: All panels equal weight + stylish color background for PANEL 1
+      // v6.5: Strict numerical width specification to ensure equal panels
       fullPrompt = `
 Create a fashion design reference sheet in 21:9 ultra-wide format showing the SAME outfit from 4 different angles.
 
-CRITICAL LAYOUT RULES:
-- Format: 4 EQUAL-WIDTH vertical panels side by side (like a film strip)
-- Aspect Ratio: 21:9 (ultra-wide horizontal)
-- Each panel: EXACTLY SAME WIDTH (divide total width by 4)
-- All panels: EQUAL IMPORTANCE (no panel is special or larger)
+CRITICAL LAYOUT RULES - FOLLOW EXACTLY:
+- Format: 4 vertical panels side by side (like a film strip)
+- Aspect Ratio: 21:9 (ultra-wide horizontal, e.g., 2100px × 900px)
+- STRICT WIDTH ALLOCATION: If image is 2100px wide:
+  * Panel 1: pixels 0-525 (525px wide, 25% of total)
+  * Panel 2: pixels 525-1050 (525px wide, 25% of total)
+  * Panel 3: pixels 1050-1575 (525px wide, 25% of total)
+  * Panel 4: pixels 1575-2100 (525px wide, 25% of total)
+- Each panel MUST occupy EXACTLY 25% of the total width
 - Separators: THIN WHITE LINES (2-3 pixels) between panels
 - NO black bars, NO text labels, NO overlapping
 
