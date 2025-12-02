@@ -137,13 +137,16 @@ export async function POST(req: NextRequest) {
         : 'Modern architectural space with dynamic interplay of light and shadow, contemporary urban atmosphere';
 
       fullPrompt = `
-Create a HIGH-END FASHION CAMPAIGN SPREAD in 21:9 ultra-wide format.
-Format: Horizontal 4-Panel Split (Quadtych) - Campaign hero shot + 3-view technical specifications.
+Create a FASHION FILM STRIP in 21:9 ultra-wide format.
+Format: 4 EQUAL-SIZED vertical frames arranged horizontally like a film contact sheet.
 Aspect Ratio: 21:9 (Ultra Wide).
 
-[LAYOUT STRUCTURE]
-Split the image into 4 vertical panels of equal width.
-Separator: Thin white line between panels.
+[LAYOUT STRUCTURE - CRITICAL]
+- Divide the image into 4 EXACTLY EQUAL-WIDTH vertical panels.
+- Each panel MUST be the same width (21 ÷ 4 = 5.25 units wide, 9 units tall).
+- Separators: THICK BLACK VERTICAL BARS (8-10 pixels wide) between panels.
+- The separators ensure clean isolation between frames.
+- NO overlapping content between panels.
 
 ═══════════════════════════════════════════════════════════
 FIRST PANEL (Far Left) - CAMPAIGN HERO SHOT
