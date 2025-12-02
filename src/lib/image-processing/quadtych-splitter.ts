@@ -306,43 +306,40 @@ export async function splitQuadtych(
         .toBuffer(),
 
       // PANEL 2: FRONT (Technical spec - preserve generated background)
-      // v5.3: Person-centered extraction - Gemini ensures equal left/right padding
+      // v5.4: Cover crop to fill 9:16 frame, preserving generated background
       sharp(imageBuffer)
         .extract(getExtractRegion('front'))
         .resize({
           width: targetWidth,
           height: targetHeight,
-          fit: 'contain', // Preserve original background
-          position: 'center',
-          background: { r: 250, g: 250, b: 250 } // Match light gray background
+          fit: 'cover', // Fill frame completely, crop if needed
+          position: 'center'
         })
         .jpeg({ quality: 95 })
         .toBuffer(),
 
       // PANEL 3: SIDE (90° profile - preserve generated background)
-      // v5.3: Person-centered extraction - Gemini ensures equal left/right padding
+      // v5.4: Cover crop to fill 9:16 frame, preserving generated background
       sharp(imageBuffer)
         .extract(getExtractRegion('side'))
         .resize({
           width: targetWidth,
           height: targetHeight,
-          fit: 'contain',
-          position: 'center',
-          background: { r: 250, g: 250, b: 250 }
+          fit: 'cover',
+          position: 'center'
         })
         .jpeg({ quality: 95 })
         .toBuffer(),
 
       // PANEL 4: BACK (Rear view - preserve generated background)
-      // v5.3: Person-centered extraction - Gemini ensures equal left/right padding
+      // v5.4: Cover crop to fill 9:16 frame, preserving generated background
       sharp(imageBuffer)
         .extract(getExtractRegion('back'))
         .resize({
           width: targetWidth,
           height: targetHeight,
-          fit: 'contain',
-          position: 'center',
-          background: { r: 250, g: 250, b: 250 }
+          fit: 'cover',
+          position: 'center'
         })
         .jpeg({ quality: 95 })
         .toBuffer()
