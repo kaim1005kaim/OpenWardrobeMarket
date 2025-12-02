@@ -131,23 +131,23 @@ export async function POST(req: NextRequest) {
     // v6.2: Rollback to stable v5.1 simple prompt (equal panels, thin white separators)
     let fullPrompt: string;
     if (enableQuadtych) {
-      // v6.2: Stable simple quadtych prompt (no cinematic complexity)
+      // v6.3: All panels equal weight (no hero shot distinction)
       fullPrompt = `
 Create a fashion design reference sheet in 21:9 ultra-wide format showing the SAME outfit from 4 different angles.
 
 CRITICAL LAYOUT RULES:
 - Format: 4 EQUAL-WIDTH vertical panels side by side (like a film strip)
 - Aspect Ratio: 21:9 (ultra-wide horizontal)
-- Each panel: SAME WIDTH (divide total width by 4 exactly)
+- Each panel: EXACTLY SAME WIDTH (divide total width by 4)
+- All panels: EQUAL IMPORTANCE (no panel is special or larger)
 - Separators: THIN WHITE LINES (2-3 pixels) between panels
 - NO black bars, NO text labels, NO overlapping
 
-PANEL 1 (Far Left) - Editorial Hero Shot:
-- Full body shot with interesting pose (leaning, walking, sitting, or standing casually)
-- Background: Interesting location (urban architecture, minimalist interior, or natural landscape)
-- Lighting: Natural, atmospheric lighting
-- Mood: Fashion editorial style, confident and stylish
-- Framing: Full body visible from head to toe with padding
+PANEL 1 (Far Left) - Main View:
+- Full body shot, standing or casual pose
+- Background: Simple neutral background or minimal setting
+- Lighting: Even, natural lighting
+- Framing: Full body from head to toe with 15% headroom, 10% footroom
 
 PANEL 2 (Middle Left) - Front View:
 - Standing straight, arms at sides, facing camera
@@ -171,7 +171,7 @@ PANEL 4 (Far Right) - Back View:
 CONSISTENCY REQUIREMENTS:
 1. SAME PERSON in all 4 panels (identical face, body, skin tone)
 2. SAME OUTFIT in all 4 panels (identical garment, colors, patterns, details)
-3. Only pose and background differ between panels
+3. ALL 4 PANELS have EQUAL WIDTH and EQUAL TREATMENT
 4. NO cropping of head or feet in ANY panel
 
 [FRAMING & COMPOSITION]
