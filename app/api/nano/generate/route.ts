@@ -128,112 +128,51 @@ export async function POST(req: NextRequest) {
     // v3.6: FUSION Character Sheet - Generate triptych WITHOUT text labels
     // v4.0: FUSION Quadtych - Generate MAIN + 3-view WITHOUT text labels
     // v5.2: Removed text labels from prompt structure to prevent rendering
-    // v6.0: Atmospheric Campaign Mode - Dynamic MAIN panel based on fusion_concept
+    // v6.2: Rollback to stable v5.1 simple prompt (equal panels, thin white separators)
     let fullPrompt: string;
     if (enableQuadtych) {
-      // v6.0: Enhanced quadtych with campaign-quality MAIN panel
-      const campaignConcept = fusionConcept && fusionConcept.length > 20
-        ? fusionConcept
-        : 'Modern architectural space with dynamic interplay of light and shadow, contemporary urban atmosphere';
-
+      // v6.2: Stable simple quadtych prompt (no cinematic complexity)
       fullPrompt = `
-Create a FASHION FILM STRIP in 21:9 ultra-wide format.
-Format: 4 EQUAL-SIZED vertical frames arranged horizontally like a film contact sheet.
-Aspect Ratio: 21:9 (Ultra Wide).
+Create a fashion design reference sheet in 21:9 ultra-wide format showing the SAME outfit from 4 different angles.
 
-[LAYOUT STRUCTURE - CRITICAL]
-- Divide the image into 4 EXACTLY EQUAL-WIDTH vertical panels.
-- Each panel MUST be the same width (21 ÷ 4 = 5.25 units wide, 9 units tall).
-- Separators: THICK BLACK VERTICAL BARS (8-10 pixels wide) between panels.
-- The separators ensure clean isolation between frames.
-- NO overlapping content between panels.
+CRITICAL LAYOUT RULES:
+- Format: 4 EQUAL-WIDTH vertical panels side by side (like a film strip)
+- Aspect Ratio: 21:9 (ultra-wide horizontal)
+- Each panel: SAME WIDTH (divide total width by 4 exactly)
+- Separators: THIN WHITE LINES (2-3 pixels) between panels
+- NO black bars, NO text labels, NO overlapping
 
-═══════════════════════════════════════════════════════════
-FIRST PANEL (Far Left) - CAMPAIGN HERO SHOT
-═══════════════════════════════════════════════════════════
+PANEL 1 (Far Left) - Editorial Hero Shot:
+- Full body shot with interesting pose (leaning, walking, sitting, or standing casually)
+- Background: Interesting location (urban architecture, minimalist interior, or natural landscape)
+- Lighting: Natural, atmospheric lighting
+- Mood: Fashion editorial style, confident and stylish
+- Framing: Full body visible from head to toe with padding
 
-[AESTHETIC & VISUAL CONCEPT]
-Design Philosophy: ${campaignConcept}
-Style: Contemporary high fashion editorial, authentic and cinematic.
-Texture: Shot on 35mm film (Kodak Portra 400 or Fuji Pro 400H), subtle film grain, organic color depth.
-Atmosphere: Raw, candid, "caught in the moment" energy. NOT posed or stiff.
+PANEL 2 (Middle Left) - Front View:
+- Standing straight, arms at sides, facing camera
+- Background: Clean light gray or white studio background
+- Lighting: Even, flat lighting
+- Framing: Full body from head to toe with 15% headroom, 10% footroom
 
-[CAMERA & COMPOSITION]
-- Focal Length: 35mm or 50mm lens (natural perspective, slight compression).
-- Depth of Field: Shallow (f/1.4 - f/2.8). Background should have beautiful bokeh, slightly out of focus.
-- Framing: Dynamic full-body shot. Consider low angle, Dutch angle, or off-center composition for visual impact.
-- Camera Position: NOT eye-level. Use creative angles that convey emotion and energy.
+PANEL 3 (Middle Right) - Side View:
+- 90-degree side profile, facing right
+- Standing straight, arms at sides
+- Background: Clean light gray or white studio background
+- Lighting: Even, flat lighting
+- Framing: Full body from head to toe with 15% headroom, 10% footroom
 
-[SUBJECT & POSE]
-- Action: The model is IN MOTION or in a candid moment. Examples:
-  * Walking confidently through the space
-  * Leaning casually against a surface
-  * Sitting in a relaxed, asymmetric pose
-  * Looking away from camera, lost in thought
-  * Mid-stride, fabric flowing naturally
-- Expression: Cool, effortless, confident. Fashion editorial gaze (non-smiling, strong presence).
-- Interaction: The clothing should show natural movement - fabric draping, wrinkles forming, garment in its natural state.
-- AVOID: Standing still with arms at sides. NO rigid posing. NO direct stare at camera.
+PANEL 4 (Far Right) - Back View:
+- Rear view (facing away), standing straight
+- Background: Clean light gray or white studio background
+- Lighting: Even, flat lighting
+- Framing: Full body from head to toe with 15% headroom, 10% footroom
 
-[LIGHTING & ENVIRONMENT]
-- Lighting Direction: Natural, directional light with clear shadows. Examples:
-  * Golden hour sunlight (warm, soft, angled)
-  * Overcast daylight (diffused, even, gentle)
-  * Dramatic side lighting (high contrast, moody)
-  * Backlit silhouette with rim light
-  * Window light with soft falloff
-- Light Quality: Soft to medium contrast. NOT harsh studio flash. Authentic, real-world lighting.
-- Shadows: Present and intentional. Use shadows to create depth and drama.
-- Environment: Real-world location that embodies the design philosophy. NOT a white void. Examples:
-  * Concrete brutalist architecture
-  * Minimalist gallery space
-  * Urban street with textured walls
-  * Natural landscape (desert, beach, forest)
-  * Industrial interior with large windows
-- Background Depth: Background should be visible but slightly blurred (bokeh). Creates sense of place without distraction.
-
-[COLOR & MOOD]
-- Color Grading: Cinematic color palette. Slightly desaturated or warm-toned. Film-like color science.
-- Mood: Matches the design philosophy. Can be moody, serene, energetic, melancholic, powerful - whatever the concept demands.
-- Contrast: Medium to high. NOT flat or low-contrast.
-
-[CRITICAL QUALITY STANDARDS]
-- This panel must look like a REAL FASHION CAMPAIGN PHOTO, not AI-generated.
-- Think: Acne Studios, Jacquemus, Loewe, Balenciaga editorial campaigns.
-- The image should feel AUTHENTIC, LIVED-IN, and EMOTIONALLY RESONANT.
-- NO artificial perfection. Embrace natural imperfections (film grain, slight motion blur, organic light).
-
-═══════════════════════════════════════════════════════════
-PANELS 2-4: TECHNICAL SPECIFICATION VIEWS
-═══════════════════════════════════════════════════════════
-
-SECOND PANEL (Middle Left) - Technical Front View:
-Subject: Standing straight, arms relaxed at sides (A-pose), facing camera directly.
-Background: Clean white studio background (RGB 255,255,255).
-Lighting: Flat, even technical lighting. NO shadows, NO drama.
-Framing: Full body from head to toe with generous padding (15% headroom, 10% footroom).
-Pose: Static, neutral, reference-quality. Purpose: show garment construction clearly.
-
-THIRD PANEL (Middle Right) - Technical Side Profile:
-Subject: 90-degree profile view, facing right, standing straight.
-Background: Clean white studio background (RGB 255,255,255).
-Lighting: Flat, even technical lighting. NO shadows, NO drama.
-Framing: Full body from head to toe with generous padding (15% headroom, 10% footroom).
-Pose: Static, neutral, reference-quality. Purpose: show side seam construction and silhouette.
-
-FOURTH PANEL (Far Right) - Technical Rear View:
-Subject: Rear view (180 degrees), standing straight, back to camera.
-Background: Clean white studio background (RGB 255,255,255).
-Lighting: Flat, even technical lighting. NO shadows, NO drama.
-Framing: Full body from head to toe with generous padding (15% headroom, 10% footroom).
-Pose: Static, neutral, reference-quality. Purpose: show back construction and details.
-
-[CRITICAL CONSISTENCY RULES]
-1. IDENTITY: The model MUST be the EXACT SAME person in all 4 panels.
-2. OUTFIT: The outfit MUST be IDENTICAL in every detail (material, cut, color, patterns) across all 4 panels.
-3. Panel 1 has a different pose/background/mood, but the CLOTHES are exactly the same.
-4. Maintain perfect facial features, body proportions, and skin tone across all panels.
-5. The fabric texture, color accuracy, and design details must be consistent.
+CONSISTENCY REQUIREMENTS:
+1. SAME PERSON in all 4 panels (identical face, body, skin tone)
+2. SAME OUTFIT in all 4 panels (identical garment, colors, patterns, details)
+3. Only pose and background differ between panels
+4. NO cropping of head or feet in ANY panel
 
 [FRAMING & COMPOSITION]
 - HEADROOM: Leave 15% empty space above the model's head in all panels.
