@@ -127,43 +127,103 @@ export async function POST(req: NextRequest) {
 
     // v3.6: FUSION Character Sheet - Generate triptych WITHOUT text labels
     // v4.0: FUSION Quadtych - Generate MAIN + 3-view WITHOUT text labels
+    // v5.2: Removed text labels from prompt structure to prevent rendering
+    // v6.0: Atmospheric Campaign Mode - Dynamic MAIN panel based on fusion_concept
     let fullPrompt: string;
     if (enableQuadtych) {
-      // v4.0: Quadtych format - MAIN hero shot + 3-view technical specs
+      // v6.0: Enhanced quadtych with campaign-quality MAIN panel
+      const campaignConcept = fusionConcept && fusionConcept.length > 20
+        ? fusionConcept
+        : 'Modern architectural space with dynamic interplay of light and shadow, contemporary urban atmosphere';
+
       fullPrompt = `
-Create a FASHION LOOKBOOK SPREAD in 21:9 ultra-wide format.
-Format: Horizontal 4-Panel Split (Quadtych) - MAIN + 3-View Specs.
+Create a HIGH-END FASHION CAMPAIGN SPREAD in 21:9 ultra-wide format.
+Format: Horizontal 4-Panel Split (Quadtych) - Campaign hero shot + 3-view technical specifications.
 Aspect Ratio: 21:9 (Ultra Wide).
 
 [LAYOUT STRUCTURE]
 Split the image into 4 vertical panels of equal width.
 Separator: Thin white line between panels.
 
--- PANEL 1 (Far Left): THE HERO SHOT (MAIN) --
-Subject: The model in a dynamic, editorial pose.
-Angle: Low angle or creative composition (street fashion photography style).
-Background: ${fusionConcept || 'Abstract, moody, or outdoor context matching the design theme'}.
-Lighting: Cinematic, dramatic, emotional lighting.
-Framing: Full body, engaging with the camera.
-Mood: High fashion editorial, runway energy.
+═══════════════════════════════════════════════════════════
+FIRST PANEL (Far Left) - CAMPAIGN HERO SHOT
+═══════════════════════════════════════════════════════════
 
--- PANEL 2 (Middle Left): FRONT SPEC --
-Subject: Standing straight, arms at sides (A-pose), facing camera.
-Background: Plain white studio background.
-Lighting: Flat, even technical lighting.
-Framing: Full body from head to toe with padding.
+[AESTHETIC & VISUAL CONCEPT]
+Design Philosophy: ${campaignConcept}
+Style: Contemporary high fashion editorial, authentic and cinematic.
+Texture: Shot on 35mm film (Kodak Portra 400 or Fuji Pro 400H), subtle film grain, organic color depth.
+Atmosphere: Raw, candid, "caught in the moment" energy. NOT posed or stiff.
 
--- PANEL 3 (Middle Right): SIDE SPEC --
+[CAMERA & COMPOSITION]
+- Focal Length: 35mm or 50mm lens (natural perspective, slight compression).
+- Depth of Field: Shallow (f/1.4 - f/2.8). Background should have beautiful bokeh, slightly out of focus.
+- Framing: Dynamic full-body shot. Consider low angle, Dutch angle, or off-center composition for visual impact.
+- Camera Position: NOT eye-level. Use creative angles that convey emotion and energy.
+
+[SUBJECT & POSE]
+- Action: The model is IN MOTION or in a candid moment. Examples:
+  * Walking confidently through the space
+  * Leaning casually against a surface
+  * Sitting in a relaxed, asymmetric pose
+  * Looking away from camera, lost in thought
+  * Mid-stride, fabric flowing naturally
+- Expression: Cool, effortless, confident. Fashion editorial gaze (non-smiling, strong presence).
+- Interaction: The clothing should show natural movement - fabric draping, wrinkles forming, garment in its natural state.
+- AVOID: Standing still with arms at sides. NO rigid posing. NO direct stare at camera.
+
+[LIGHTING & ENVIRONMENT]
+- Lighting Direction: Natural, directional light with clear shadows. Examples:
+  * Golden hour sunlight (warm, soft, angled)
+  * Overcast daylight (diffused, even, gentle)
+  * Dramatic side lighting (high contrast, moody)
+  * Backlit silhouette with rim light
+  * Window light with soft falloff
+- Light Quality: Soft to medium contrast. NOT harsh studio flash. Authentic, real-world lighting.
+- Shadows: Present and intentional. Use shadows to create depth and drama.
+- Environment: Real-world location that embodies the design philosophy. NOT a white void. Examples:
+  * Concrete brutalist architecture
+  * Minimalist gallery space
+  * Urban street with textured walls
+  * Natural landscape (desert, beach, forest)
+  * Industrial interior with large windows
+- Background Depth: Background should be visible but slightly blurred (bokeh). Creates sense of place without distraction.
+
+[COLOR & MOOD]
+- Color Grading: Cinematic color palette. Slightly desaturated or warm-toned. Film-like color science.
+- Mood: Matches the design philosophy. Can be moody, serene, energetic, melancholic, powerful - whatever the concept demands.
+- Contrast: Medium to high. NOT flat or low-contrast.
+
+[CRITICAL QUALITY STANDARDS]
+- This panel must look like a REAL FASHION CAMPAIGN PHOTO, not AI-generated.
+- Think: Acne Studios, Jacquemus, Loewe, Balenciaga editorial campaigns.
+- The image should feel AUTHENTIC, LIVED-IN, and EMOTIONALLY RESONANT.
+- NO artificial perfection. Embrace natural imperfections (film grain, slight motion blur, organic light).
+
+═══════════════════════════════════════════════════════════
+PANELS 2-4: TECHNICAL SPECIFICATION VIEWS
+═══════════════════════════════════════════════════════════
+
+SECOND PANEL (Middle Left) - Technical Front View:
+Subject: Standing straight, arms relaxed at sides (A-pose), facing camera directly.
+Background: Clean white studio background (RGB 255,255,255).
+Lighting: Flat, even technical lighting. NO shadows, NO drama.
+Framing: Full body from head to toe with generous padding (15% headroom, 10% footroom).
+Pose: Static, neutral, reference-quality. Purpose: show garment construction clearly.
+
+THIRD PANEL (Middle Right) - Technical Side Profile:
 Subject: 90-degree profile view, facing right, standing straight.
-Background: Plain white studio background.
-Lighting: Flat, even technical lighting.
-Framing: Full body from head to toe with padding.
+Background: Clean white studio background (RGB 255,255,255).
+Lighting: Flat, even technical lighting. NO shadows, NO drama.
+Framing: Full body from head to toe with generous padding (15% headroom, 10% footroom).
+Pose: Static, neutral, reference-quality. Purpose: show side seam construction and silhouette.
 
--- PANEL 4 (Far Right): BACK SPEC --
-Subject: Rear view, standing straight, back to camera.
-Background: Plain white studio background.
-Lighting: Flat, even technical lighting.
-Framing: Full body from head to toe with padding.
+FOURTH PANEL (Far Right) - Technical Rear View:
+Subject: Rear view (180 degrees), standing straight, back to camera.
+Background: Clean white studio background (RGB 255,255,255).
+Lighting: Flat, even technical lighting. NO shadows, NO drama.
+Framing: Full body from head to toe with generous padding (15% headroom, 10% footroom).
+Pose: Static, neutral, reference-quality. Purpose: show back construction and details.
 
 [CRITICAL CONSISTENCY RULES]
 1. IDENTITY: The model MUST be the EXACT SAME person in all 4 panels.

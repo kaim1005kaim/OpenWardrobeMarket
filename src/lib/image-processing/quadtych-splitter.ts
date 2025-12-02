@@ -65,135 +65,224 @@ export async function splitQuadtych(
       expectedRatio: '2.33 (21:9)'
     });
 
-    // DYNAMIC SEPARATOR DETECTION (松案 - Optimal Solution)
-    // Gemini generates 21:9 images with white separators, but positions vary between generations
-    // Strategy: Detect MAIN→FRONT boundary (20-35% range), then split remaining equally
+    // HYBRID SEPARATOR DETECTION (v5.0 - AI + Fallback)
+    // Strategy 1 (Primary): Use Gemini 1.5 Flash for semantic boundary detection
+    // Strategy 2 (Fallback): Pixel-based variance detection with expanded search range (20-60%)
 
-    const rawImage = await sharp(imageBuffer)
-      .raw()
-      .toBuffer({ resolveWithObject: true });
+    let separator1: number;
+    let separator2: number;
+    let separator3: number;
+    let detectionMethod: 'gemini' | 'pixel' | 'fallback' = 'fallback';
+    const separatorWidth = 4; // Expected separator width
 
-    const { data: rawBuffer, info } = rawImage;
-    const channels = info.channels;
+    // STRATEGY 1: Try Gemini Flash detection first
+    try {
+      console.log('[quadtych-splitter] Attempting Gemini Flash detection...');
 
-    console.log('[quadtych-splitter] Raw buffer info:', {
-      width: info.width,
-      height: info.height,
-      channels,
-      bufferSize: rawBuffer.length
-    });
-
-    // EDGE DETECTION APPROACH (色変化検出)
-    // Strategy: Detect transition from complex MAIN background to white/uniform FRONT background
-    const searchStart = Math.floor(originalWidth * 0.20);
-    const searchEnd = Math.floor(originalWidth * 0.40);
-    const verticalSamplePoints = 30; // High-res vertical sampling
-
-    let separator1 = Math.round(originalWidth * 0.276); // Fallback
-    let edgeCandidates: Array<{ position: number; score: number }> = [];
-
-    console.log('[quadtych-splitter] Scanning for MAIN→FRONT edge (color variance detection):', {
-      searchStart,
-      searchEnd,
-      range: `${searchStart}px - ${searchEnd}px`,
-      verticalSamples: verticalSamplePoints
-    });
-
-    // Calculate color variance for each vertical column
-    for (let x = searchStart; x < searchEnd - 10; x++) {
-      let leftVariance = 0;
-      let rightVariance = 0;
-
-      // Sample 30 points vertically
-      for (let sampleIdx = 0; sampleIdx < verticalSamplePoints; sampleIdx++) {
-        const y = Math.floor((originalHeight / verticalSamplePoints) * sampleIdx);
-
-        // Left side (MAIN panel - should have HIGH variance)
-        const leftIdx = (y * info.width + x) * channels;
-        const leftR = rawBuffer[leftIdx];
-        const leftG = rawBuffer[leftIdx + 1];
-        const leftB = rawBuffer[leftIdx + 2];
-
-        // Right side (FRONT panel - should have LOW variance, uniform white)
-        const rightIdx = (y * info.width + (x + 10)) * channels;
-        const rightR = rawBuffer[rightIdx];
-        const rightG = rawBuffer[rightIdx + 1];
-        const rightB = rawBuffer[rightIdx + 2];
-
-        // Calculate grayscale for variance
-        const leftGray = (leftR + leftG + leftB) / 3;
-        const rightGray = (rightR + rightG + rightB) / 3;
-
-        leftVariance += Math.abs(leftGray - 128); // Distance from mid-gray
-        rightVariance += Math.abs(rightGray - 255); // Distance from white
-      }
-
-      // Edge score: high left variance + low right variance = likely edge
-      const edgeScore = leftVariance - rightVariance;
-
-      if (edgeScore > 1000) { // Threshold for significant edge
-        edgeCandidates.push({
-          position: x,
-          score: edgeScore
-        });
-      }
-    }
-
-    // Select edge with highest score in first half of search range
-    if (edgeCandidates.length > 0) {
-      // Sort by score (descending)
-      edgeCandidates.sort((a, b) => b.score - a.score);
-
-      // Pick highest-scoring edge in the 20-32% range (prefer earlier position)
-      const earlyRangeEnd = Math.floor(originalWidth * 0.32);
-      const earlyCandidate = edgeCandidates.find(c => c.position <= earlyRangeEnd);
-
-      const selectedEdge = earlyCandidate || edgeCandidates[0];
-      separator1 = selectedEdge.position;
-
-      console.log('[quadtych-splitter] ✅ MAIN→FRONT edge detected:', {
-        position: separator1,
-        percentage: ((separator1 / originalWidth) * 100).toFixed(1) + '%',
-        edgeScore: selectedEdge.score,
-        totalCandidates: edgeCandidates.length,
-        topScores: edgeCandidates.slice(0, 3).map(c => ({
-          pos: c.position,
-          pct: ((c.position / originalWidth) * 100).toFixed(1) + '%',
-          score: Math.round(c.score)
-        }))
+      const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const geminiResponse = await fetch(`${apiUrl}/api/gemini/detect-split`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageData: cleanBase64,
+          mimeType: 'image/jpeg'
+        }),
+        signal: AbortSignal.timeout(15000) // 15s timeout
       });
-    } else {
-      console.log('[quadtych-splitter] ⚠️ No edge detected, using fallback:', {
-        position: separator1,
-        percentage: ((separator1 / originalWidth) * 100).toFixed(1) + '%'
+
+      if (geminiResponse.ok) {
+        const geminiResult = await geminiResponse.json();
+
+        if (geminiResult.success && geminiResult.confidence !== 'low') {
+          separator1 = geminiResult.separator1;
+          separator2 = geminiResult.separator2;
+          separator3 = geminiResult.separator3;
+          detectionMethod = 'gemini';
+
+          console.log('[quadtych-splitter] ✅ Gemini Flash detection successful:', {
+            separator1: `${separator1}px (${((separator1 / originalWidth) * 100).toFixed(1)}%)`,
+            separator2: `${separator2}px (${((separator2 / originalWidth) * 100).toFixed(1)}%)`,
+            separator3: `${separator3}px (${((separator3 / originalWidth) * 100).toFixed(1)}%)`,
+            confidence: geminiResult.confidence,
+            reasoning: geminiResult.reasoning
+          });
+        } else {
+          throw new Error('Low confidence Gemini detection');
+        }
+      } else {
+        throw new Error(`Gemini API failed: ${geminiResponse.status}`);
+      }
+    } catch (geminiError) {
+      console.warn('[quadtych-splitter] Gemini detection failed, falling back to pixel analysis:', geminiError);
+
+      // STRATEGY 2: Fallback to pixel-based detection
+      const rawImage = await sharp(imageBuffer)
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      const { data: rawBuffer, info } = rawImage;
+      const channels = info.channels;
+
+      console.log('[quadtych-splitter] Raw buffer info:', {
+        width: info.width,
+        height: info.height,
+        channels,
+        bufferSize: rawBuffer.length
+      });
+
+      // VERTICAL SEPARATOR LINE DETECTION (独立検出法 - Enhanced)
+      // Strategy: Detect all 3 separator lines independently by finding vertical bands with uniform color
+      // This works for white, gray, black, or any other separator color
+      const verticalSamplePoints = 50; // Very high-res vertical sampling
+
+      console.log('[quadtych-splitter] Scanning for vertical separator lines (pixel-based detection):', {
+        verticalSamples: verticalSamplePoints,
+        expectedSeparators: 3
+      });
+
+      // Function to calculate "separator score" for a vertical column
+      // Higher score = more likely to be a separator (uniform color from top to bottom)
+      const getColumnScore = (x: number, expectedPosition: number): number => {
+        let rSum = 0, gSum = 0, bSum = 0;
+        let rSqSum = 0, gSqSum = 0, bSqSum = 0;
+        const samples = verticalSamplePoints;
+
+        // Sample vertical line at regular intervals
+        for (let i = 0; i < samples; i++) {
+          const y = Math.floor((originalHeight / samples) * i);
+          const idx = (y * info.width + x) * channels;
+          const r = rawBuffer[idx];
+          const g = rawBuffer[idx + 1];
+          const b = rawBuffer[idx + 2];
+
+          rSum += r; gSum += g; bSum += b;
+          rSqSum += r * r; gSqSum += g * g; bSqSum += b * b;
+        }
+
+        // Calculate variance for each RGB channel
+        const rVar = (rSqSum / samples) - Math.pow(rSum / samples, 2);
+        const gVar = (gSqSum / samples) - Math.pow(gSum / samples, 2);
+        const bVar = (bSqSum / samples) - Math.pow(bSum / samples, 2);
+
+        const totalVariance = rVar + gVar + bVar;
+
+        // Score: lower variance = higher score (more uniform = more likely separator)
+        // +1 prevents division by zero
+        let score = 10000 / (totalVariance + 1);
+
+        // BRIGHTNESS FILTER: Ignore lines that are too dark (e.g., black clothes, shadows)
+        // This prevents false positives from dark vertical elements in MAIN panel
+        const avgBrightness = (rSum + gSum + bSum) / (3 * samples);
+        if (avgBrightness < 50) {
+          score = 0; // Too dark, not a separator
+        }
+
+        // POSITION PENALTY: Prefer positions closer to expected location
+        // This prevents detecting edges at image boundaries
+        const distFromExpected = Math.abs(x - expectedPosition);
+        const positionPenalty = 1 / (1 + (distFromExpected * 0.05));
+
+        return score * positionPenalty;
+      };
+
+      // Expected separator positions (EXPANDED RANGE for v5.0)
+      // MAIN panel can now be 20-60% instead of just ~27%
+      const expectedPositions = [
+        Math.round(originalWidth * 0.40), // MAIN→FRONT (~40% - wider range)
+        Math.round(originalWidth * 0.62), // FRONT→SIDE (~62%)
+        Math.round(originalWidth * 0.81)  // SIDE→BACK (~81%)
+      ];
+
+      // EXPANDED search window: ±20% for first separator, ±10% for others
+      const searchWindows = [
+        Math.floor(originalWidth * 0.20), // MAIN: 20-60% search range
+        Math.floor(originalWidth * 0.10), // FRONT: ±10%
+        Math.floor(originalWidth * 0.10)  // SIDE: ±10%
+      ];
+
+      // Find best separator for each expected position
+      const findBestSeparator = (expectedPos: number, searchWindow: number): { position: number; score: number } => {
+        const startX = Math.max(0, expectedPos - searchWindow);
+        const endX = Math.min(originalWidth - 1, expectedPos + searchWindow);
+
+        let bestX = expectedPos; // Fallback to expected position
+        let maxScore = -1;
+
+        for (let x = startX; x <= endX; x++) {
+          const score = getColumnScore(x, expectedPos);
+
+          if (score > maxScore) {
+            maxScore = score;
+            bestX = x;
+          }
+        }
+
+        return { position: bestX, score: maxScore };
+      };
+
+      const sep1Result = findBestSeparator(expectedPositions[0], searchWindows[0]);
+      const sep2Result = findBestSeparator(expectedPositions[1], searchWindows[1]);
+      const sep3Result = findBestSeparator(expectedPositions[2], searchWindows[2]);
+
+      separator1 = sep1Result.position;
+      separator2 = sep2Result.position;
+      separator3 = sep3Result.position;
+
+      // Validation: If score is too low (< 50), use expected position as fallback
+      if (sep1Result.score < 50) {
+        separator1 = expectedPositions[0];
+        detectionMethod = 'fallback';
+      } else {
+        detectionMethod = 'pixel';
+      }
+      if (sep2Result.score < 50) separator2 = expectedPositions[1];
+      if (sep3Result.score < 50) separator3 = expectedPositions[2];
+
+      console.log('[quadtych-splitter] ✅ Pixel-based separators detected:', {
+        separator1: {
+          position: separator1,
+          percentage: ((separator1 / originalWidth) * 100).toFixed(1) + '%',
+          score: Math.round(sep1Result.score),
+          status: sep1Result.score >= 50 ? 'detected' : 'fallback'
+        },
+        separator2: {
+          position: separator2,
+          percentage: ((separator2 / originalWidth) * 100).toFixed(1) + '%',
+          score: Math.round(sep2Result.score),
+          status: sep2Result.score >= 50 ? 'detected' : 'fallback'
+        },
+        separator3: {
+          position: separator3,
+          percentage: ((separator3 / originalWidth) * 100).toFixed(1) + '%',
+          score: Math.round(sep3Result.score),
+          status: sep3Result.score >= 50 ? 'detected' : 'fallback'
+        }
       });
     }
-
-    // Calculate remaining separators by dividing the rest equally
-    const remainingWidth = originalWidth - separator1;
-    const panelWidth = Math.floor(remainingWidth / 3); // FRONT, SIDE, BACK are equal
-    const separatorWidth = 4; // White line width
-
-    const separator2 = separator1 + panelWidth;
-    const separator3 = separator2 + panelWidth;
 
     const panelHeight = originalHeight;
     const targetWidth = Math.floor(targetHeight * 9 / 16);
 
     console.log('[quadtych-splitter] Final panel extraction coordinates:', {
+      detectionMethod, // v5.0: Shows which method was used (gemini/pixel/fallback)
       originalWidth,
       originalHeight,
-      separator1: `${separator1}px (${((separator1 / originalWidth) * 100).toFixed(1)}%)`,
-      separator2: `${separator2}px (${((separator2 / originalWidth) * 100).toFixed(1)}%)`,
-      separator3: `${separator3}px (${((separator3 / originalWidth) * 100).toFixed(1)}%)`,
-      separatorWidth,
-      mainWidth: separator1,
-      frontWidth: separator2 - separator1 - separatorWidth,
-      sideWidth: separator3 - separator2 - separatorWidth,
-      backWidth: originalWidth - separator3 - separatorWidth,
-      targetWidth,
-      targetHeight,
-      outputAspectRatio: '9:16'
+      separators: {
+        sep1: `${separator1}px (${((separator1 / originalWidth) * 100).toFixed(1)}%)`,
+        sep2: `${separator2}px (${((separator2 / originalWidth) * 100).toFixed(1)}%)`,
+        sep3: `${separator3}px (${((separator3 / originalWidth) * 100).toFixed(1)}%)`
+      },
+      panelWidths: {
+        main: `${separator1}px`,
+        front: `${separator2 - separator1 - separatorWidth}px`,
+        side: `${separator3 - separator2 - separatorWidth}px`,
+        back: `${originalWidth - separator3 - separatorWidth}px`
+      },
+      output: {
+        targetWidth,
+        targetHeight,
+        aspectRatio: '9:16'
+      }
     });
 
     // Extract 4 panels with precise separator boundaries
@@ -243,49 +332,135 @@ export async function splitQuadtych(
         .toBuffer(),
 
       // PANEL 2: FRONT (Technical spec on white background)
-      sharp(imageBuffer)
-        .extract(getExtractRegion(1))
-        .trim({
-          background: { r: 255, g: 255, b: 255 }, // White background
-          threshold: 20 // Tolerance for background detection
+      // Strategy: Extract → Aggressive trim → Add uniform white background
+      (async () => {
+        const extracted = await sharp(imageBuffer)
+          .extract(getExtractRegion(1))
+          .toBuffer();
+
+        // Aggressive trim: Remove ALL background (white/gray/beige)
+        const trimmed = await sharp(extracted)
+          .trim({
+            background: { r: 255, g: 255, b: 255 },
+            threshold: 30 // Higher threshold to remove separator lines
+          })
+          .toBuffer();
+
+        const trimmedMeta = await sharp(trimmed).metadata();
+
+        // Resize subject to fit target height
+        const resized = await sharp(trimmed)
+          .resize({
+            height: targetHeight,
+            fit: 'inside',
+            withoutEnlargement: false
+          })
+          .toBuffer();
+
+        const resizedMeta = await sharp(resized).metadata();
+
+        // Add uniform white background to center the subject
+        return sharp({
+          create: {
+            width: targetWidth,
+            height: targetHeight,
+            channels: 3,
+            background: { r: 255, g: 255, b: 255 } // Pure white background
+          }
         })
-        .resize({
-          height: targetHeight,
-          fit: 'inside',
-          withoutEnlargement: false
-        })
-        .jpeg({ quality: 95 })
-        .toBuffer(),
+          .composite([
+            {
+              input: resized,
+              gravity: 'center'
+            }
+          ])
+          .jpeg({ quality: 95 })
+          .toBuffer();
+      })(),
 
       // PANEL 3: SIDE (90° profile on white background)
-      sharp(imageBuffer)
-        .extract(getExtractRegion(2))
-        .trim({
-          background: { r: 255, g: 255, b: 255 },
-          threshold: 20
+      (async () => {
+        const extracted = await sharp(imageBuffer)
+          .extract(getExtractRegion(2))
+          .toBuffer();
+
+        // Aggressive trim: Remove ALL background
+        const trimmed = await sharp(extracted)
+          .trim({
+            background: { r: 255, g: 255, b: 255 },
+            threshold: 30
+          })
+          .toBuffer();
+
+        // Resize subject to fit target height
+        const resized = await sharp(trimmed)
+          .resize({
+            height: targetHeight,
+            fit: 'inside',
+            withoutEnlargement: false
+          })
+          .toBuffer();
+
+        // Add uniform white background
+        return sharp({
+          create: {
+            width: targetWidth,
+            height: targetHeight,
+            channels: 3,
+            background: { r: 255, g: 255, b: 255 }
+          }
         })
-        .resize({
-          height: targetHeight,
-          fit: 'inside',
-          withoutEnlargement: false
-        })
-        .jpeg({ quality: 95 })
-        .toBuffer(),
+          .composite([
+            {
+              input: resized,
+              gravity: 'center'
+            }
+          ])
+          .jpeg({ quality: 95 })
+          .toBuffer();
+      })(),
 
       // PANEL 4: BACK (Rear view on white background)
-      sharp(imageBuffer)
-        .extract(getExtractRegion(3))
-        .trim({
-          background: { r: 255, g: 255, b: 255 },
-          threshold: 20
+      (async () => {
+        const extracted = await sharp(imageBuffer)
+          .extract(getExtractRegion(3))
+          .toBuffer();
+
+        // Aggressive trim: Remove ALL background
+        const trimmed = await sharp(extracted)
+          .trim({
+            background: { r: 255, g: 255, b: 255 },
+            threshold: 30
+          })
+          .toBuffer();
+
+        // Resize subject to fit target height
+        const resized = await sharp(trimmed)
+          .resize({
+            height: targetHeight,
+            fit: 'inside',
+            withoutEnlargement: false
+          })
+          .toBuffer();
+
+        // Add uniform white background
+        return sharp({
+          create: {
+            width: targetWidth,
+            height: targetHeight,
+            channels: 3,
+            background: { r: 255, g: 255, b: 255 }
+          }
         })
-        .resize({
-          height: targetHeight,
-          fit: 'inside',
-          withoutEnlargement: false
-        })
-        .jpeg({ quality: 95 })
-        .toBuffer()
+          .composite([
+            {
+              input: resized,
+              gravity: 'center'
+            }
+          ])
+          .jpeg({ quality: 95 })
+          .toBuffer();
+      })()
     ]);
 
     console.log('[quadtych-splitter] Successfully split into 4 panels:', {
