@@ -108,9 +108,10 @@ export async function splitQuadtych(
     const sideWidth = basePanelWidth - (specTrimPixels * 2); // Trim both sides (10% each)
     const backWidth = basePanelWidth - (specTrimPixels * 2); // Trim both sides (10% each)
 
-    // Extract 4 panels using simple equal division (v6.7)
+    // Extract 4 panels using simple equal division (v6.8)
+    // CRITICAL: All panels start from their base position, then apply trim
     const [mainBuffer, frontBuffer, sideBuffer, backBuffer] = await Promise.all([
-      // PANEL 1: MAIN (Hero shot)
+      // PANEL 1: MAIN (Hero shot) - starts at 0
       sharp(imageBuffer)
         .extract({
           left: mainTrimPixels,
@@ -127,10 +128,10 @@ export async function splitQuadtych(
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // PANEL 2: FRONT (Technical front view)
+      // PANEL 2: FRONT (Technical front view) - starts at basePanelWidth
       sharp(imageBuffer)
         .extract({
-          left: basePanelWidth + specTrimPixels,
+          left: (basePanelWidth * 1) + specTrimPixels,
           top: 0,
           width: frontWidth,
           height: panelHeight
@@ -144,7 +145,7 @@ export async function splitQuadtych(
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // PANEL 3: SIDE (Technical side profile)
+      // PANEL 3: SIDE (Technical side profile) - starts at basePanelWidth * 2
       sharp(imageBuffer)
         .extract({
           left: (basePanelWidth * 2) + specTrimPixels,
@@ -161,7 +162,7 @@ export async function splitQuadtych(
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // PANEL 4: BACK (Technical rear view)
+      // PANEL 4: BACK (Technical rear view) - starts at basePanelWidth * 3
       sharp(imageBuffer)
         .extract({
           left: (basePanelWidth * 3) + specTrimPixels,
