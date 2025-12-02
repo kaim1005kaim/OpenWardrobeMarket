@@ -184,3 +184,4 @@ npx vercel --prod
 ---
 
 **Open Wardrobe Market** - AI Powered Fashion Design Platform
+# CLIP Server Deployment
