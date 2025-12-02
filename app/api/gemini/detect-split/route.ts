@@ -40,47 +40,65 @@ export async function POST(req: NextRequest) {
 
 Panel Layout (left to right):
 1. MAIN Panel: Editorial/cinematic shot with complex background (buildings, studio, landscape, etc.)
-2. FRONT Panel: Technical front view on WHITE background
-3. SIDE Panel: 90° profile view on WHITE background
-4. BACK Panel: Rear view on WHITE background
+2. FRONT Panel: Technical front view on light gray/white background
+3. SIDE Panel: 90° profile view on light gray/white background
+4. BACK Panel: Rear view on light gray/white background
 
 These panels are separated by thin vertical separator lines (white, gray, beige, or other neutral colors).
 
 YOUR TASK:
-Identify the X-coordinates (in pixels) where each panel BEGINS (not where the separator starts).
-We need to exclude the separator lines completely from each panel.
+Identify the LEFT and RIGHT boundaries for each of the 4 panels, so that:
+- Each panel can be extracted cleanly without separator lines
+- MAIN panel captures the full editorial shot with background
+- FRONT/SIDE/BACK panels are centered on the person with equal background padding on left/right
 
 Detection Strategy:
-- Separator 1 (MAIN→FRONT boundary):
-  * Find where the complex/colored MAIN background ends
-  * Look for the first pixel AFTER the separator line where the white FRONT background begins
-  * This is usually between 20-60% of image width
-  * Return the X coordinate where the FRONT panel's white background starts (人物が始まる位置)
 
-- Separator 2 (FRONT→SIDE boundary):
-  * Find the separator line between FRONT and SIDE panels
-  * Return the X coordinate where the SIDE panel's white background starts (人物が始まる位置)
-  * Usually around 50-55% of image width
+PANEL 1 (MAIN - Editorial Shot):
+- left: 0 (start of image)
+- right: Find where the MAIN panel ends (before the first separator line)
+  * Look for the transition from complex editorial background to separator line
+  * Usually around 20-40% of image width
 
-- Separator 3 (SIDE→BACK boundary):
-  * Find the separator line between SIDE and BACK panels
-  * Return the X coordinate where the BACK panel's white background starts (人物が始まる位置)
-  * Usually around 75-80% of image width
+PANEL 2 (FRONT - Technical Front View):
+- left: Find where the FRONT panel begins (after first separator, with background padding)
+  * Skip past the separator line completely
+  * Start where there's clean background (light gray/white) on the left side of the person
+- right: Find where the FRONT panel ends (before second separator)
+  * End where there's clean background on the right side of the person
+  * Panel should be centered on the person with equal padding
+
+PANEL 3 (SIDE - Technical Side View):
+- left: Find where the SIDE panel begins (after second separator, with background padding)
+  * Skip past the separator line completely
+  * Start where there's clean background on the left side of the person
+- right: Find where the SIDE panel ends (before third separator)
+  * End where there's clean background on the right side of the person
+  * Panel should be centered on the person with equal padding
+
+PANEL 4 (BACK - Technical Rear View):
+- left: Find where the BACK panel begins (after third separator, with background padding)
+  * Skip past the separator line completely
+  * Start where there's clean background on the left side of the person
+- right: End of image (or just before right edge)
+  * Panel should be centered on the person
 
 CRITICAL REQUIREMENTS:
-- Return coordinates where each panel's CONTENT begins (NOT where separator starts)
-- Separator lines should be EXCLUDED from all panels
-- If a separator line is 4-10px wide, skip past it entirely
+- Separator lines must be COMPLETELY EXCLUDED from all panels
+- For FRONT/SIDE/BACK: Left/right boundaries should have EQUAL background padding
+  * Person should be CENTERED within each panel
+  * Background (light gray/white) should be visible on both sides
+  * NO person cutoff on left or right edges
+- MAIN panel should capture the full editorial composition
 - Measure from the LEFT edge of the image (x=0)
 - Return pixel coordinates, not percentages
-- MAIN panel is typically wider (25-50% of total width)
-- FRONT/SIDE/BACK panels are typically equal width (each ~15-25% of total width)
 
 Return ONLY a JSON object in this exact format (no markdown, no explanation):
 {
-  "separator1": number,
-  "separator2": number,
-  "separator3": number,
+  "main": { "left": 0, "right": number },
+  "front": { "left": number, "right": number },
+  "side": { "left": number, "right": number },
+  "back": { "left": number, "right": number },
   "total_width": number,
   "confidence": "high" | "medium" | "low",
   "reasoning": "Brief explanation of what you detected"

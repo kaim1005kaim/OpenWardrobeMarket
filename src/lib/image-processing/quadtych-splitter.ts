@@ -65,19 +65,23 @@ export async function splitQuadtych(
       expectedRatio: '2.33 (21:9)'
     });
 
-    // HYBRID SEPARATOR DETECTION (v5.0 - AI + Fallback)
-    // Strategy 1 (Primary): Use Gemini 1.5 Flash for semantic boundary detection
+    // PANEL BOUNDARY DETECTION (v5.3 - Person-Centered Extraction)
+    // Strategy 1 (Primary): Use Gemini 1.5 Flash for semantic panel boundary detection
     // Strategy 2 (Fallback): Pixel-based variance detection with expanded search range (20-60%)
 
-    let separator1: number;
-    let separator2: number;
-    let separator3: number;
+    interface PanelBounds {
+      main: { left: number; right: number };
+      front: { left: number; right: number };
+      side: { left: number; right: number };
+      back: { left: number; right: number };
+    }
+
+    let panelBounds: PanelBounds;
     let detectionMethod: 'gemini' | 'pixel' | 'fallback' = 'fallback';
-    const separatorWidth = 4; // Expected separator width
 
     // STRATEGY 1: Try Gemini Flash detection first
     try {
-      console.log('[quadtych-splitter] Attempting Gemini Flash detection...');
+      console.log('[quadtych-splitter] Attempting Gemini Flash panel detection...');
 
       const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const geminiResponse = await fetch(`${apiUrl}/api/gemini/detect-split`, {
@@ -94,15 +98,19 @@ export async function splitQuadtych(
         const geminiResult = await geminiResponse.json();
 
         if (geminiResult.success && geminiResult.confidence !== 'low') {
-          separator1 = geminiResult.separator1;
-          separator2 = geminiResult.separator2;
-          separator3 = geminiResult.separator3;
+          panelBounds = {
+            main: geminiResult.main,
+            front: geminiResult.front,
+            side: geminiResult.side,
+            back: geminiResult.back
+          };
           detectionMethod = 'gemini';
 
           console.log('[quadtych-splitter] ✅ Gemini Flash detection successful:', {
-            separator1: `${separator1}px (${((separator1 / originalWidth) * 100).toFixed(1)}%)`,
-            separator2: `${separator2}px (${((separator2 / originalWidth) * 100).toFixed(1)}%)`,
-            separator3: `${separator3}px (${((separator3 / originalWidth) * 100).toFixed(1)}%)`,
+            main: `${panelBounds.main.left}-${panelBounds.main.right}px (width: ${panelBounds.main.right - panelBounds.main.left}px)`,
+            front: `${panelBounds.front.left}-${panelBounds.front.right}px (width: ${panelBounds.front.right - panelBounds.front.left}px)`,
+            side: `${panelBounds.side.left}-${panelBounds.side.right}px (width: ${panelBounds.side.right - panelBounds.side.left}px)`,
+            back: `${panelBounds.back.left}-${panelBounds.back.right}px (width: ${panelBounds.back.right - panelBounds.back.left}px)`,
             confidence: geminiResult.confidence,
             reasoning: geminiResult.reasoning
           });
@@ -224,38 +232,35 @@ export async function splitQuadtych(
       const sep2Result = findBestSeparator(expectedPositions[1], searchWindows[1]);
       const sep3Result = findBestSeparator(expectedPositions[2], searchWindows[2]);
 
-      separator1 = sep1Result.position;
-      separator2 = sep2Result.position;
-      separator3 = sep3Result.position;
+      const separator1 = sep1Result.position;
+      const separator2 = sep2Result.position;
+      const separator3 = sep3Result.position;
+
+      // Convert separator positions to panel bounds (fallback method)
+      const separatorWidth = 4;
+      panelBounds = {
+        main: { left: 0, right: separator1 },
+        front: { left: separator1 + separatorWidth, right: separator2 },
+        side: { left: separator2 + separatorWidth, right: separator3 },
+        back: { left: separator3 + separatorWidth, right: originalWidth }
+      };
 
       // Validation: If score is too low (< 50), use expected position as fallback
       if (sep1Result.score < 50) {
-        separator1 = expectedPositions[0];
         detectionMethod = 'fallback';
       } else {
         detectionMethod = 'pixel';
       }
-      if (sep2Result.score < 50) separator2 = expectedPositions[1];
-      if (sep3Result.score < 50) separator3 = expectedPositions[2];
 
-      console.log('[quadtych-splitter] ✅ Pixel-based separators detected:', {
-        separator1: {
-          position: separator1,
-          percentage: ((separator1 / originalWidth) * 100).toFixed(1) + '%',
-          score: Math.round(sep1Result.score),
-          status: sep1Result.score >= 50 ? 'detected' : 'fallback'
-        },
-        separator2: {
-          position: separator2,
-          percentage: ((separator2 / originalWidth) * 100).toFixed(1) + '%',
-          score: Math.round(sep2Result.score),
-          status: sep2Result.score >= 50 ? 'detected' : 'fallback'
-        },
-        separator3: {
-          position: separator3,
-          percentage: ((separator3 / originalWidth) * 100).toFixed(1) + '%',
-          score: Math.round(sep3Result.score),
-          status: sep3Result.score >= 50 ? 'detected' : 'fallback'
+      console.log('[quadtych-splitter] ✅ Pixel-based panel bounds detected:', {
+        main: `${panelBounds.main.left}-${panelBounds.main.right}px (width: ${panelBounds.main.right - panelBounds.main.left}px)`,
+        front: `${panelBounds.front.left}-${panelBounds.front.right}px (width: ${panelBounds.front.right - panelBounds.front.left}px)`,
+        side: `${panelBounds.side.left}-${panelBounds.side.right}px (width: ${panelBounds.side.right - panelBounds.side.left}px)`,
+        back: `${panelBounds.back.left}-${panelBounds.back.right}px (width: ${panelBounds.back.right - panelBounds.back.left}px)`,
+        scores: {
+          sep1: Math.round(sep1Result.score),
+          sep2: Math.round(sep2Result.score),
+          sep3: Math.round(sep3Result.score)
         }
       });
     }
@@ -264,20 +269,10 @@ export async function splitQuadtych(
     const targetWidth = Math.floor(targetHeight * 9 / 16);
 
     console.log('[quadtych-splitter] Final panel extraction coordinates:', {
-      detectionMethod, // v5.0: Shows which method was used (gemini/pixel/fallback)
+      detectionMethod, // v5.3: Shows which method was used (gemini/pixel/fallback)
       originalWidth,
       originalHeight,
-      separators: {
-        sep1: `${separator1}px (${((separator1 / originalWidth) * 100).toFixed(1)}%)`,
-        sep2: `${separator2}px (${((separator2 / originalWidth) * 100).toFixed(1)}%)`,
-        sep3: `${separator3}px (${((separator3 / originalWidth) * 100).toFixed(1)}%)`
-      },
-      panelWidths: {
-        main: `${separator1}px`,
-        front: `${separator2 - separator1 - separatorWidth}px`,
-        side: `${separator3 - separator2 - separatorWidth}px`,
-        back: `${originalWidth - separator3 - separatorWidth}px`
-      },
+      panelBounds,
       output: {
         targetWidth,
         targetHeight,
@@ -285,43 +280,22 @@ export async function splitQuadtych(
       }
     });
 
-    // Extract 4 panels with precise separator boundaries
-    const getExtractRegion = (panelIndex: number) => {
-      let left: number, width: number;
-
-      switch (panelIndex) {
-        case 0: // MAIN
-          left = 0;
-          width = separator1;
-          break;
-        case 1: // FRONT
-          left = separator1 + separatorWidth;
-          width = separator2 - separator1 - separatorWidth;
-          break;
-        case 2: // SIDE
-          left = separator2 + separatorWidth;
-          width = separator3 - separator2 - separatorWidth;
-          break;
-        case 3: // BACK
-          left = separator3 + separatorWidth;
-          width = originalWidth - separator3 - separatorWidth;
-          break;
-        default:
-          throw new Error(`Invalid panel index: ${panelIndex}`);
-      }
-
+    // Extract 4 panels with person-centered boundaries (v5.3)
+    const getExtractRegion = (panelName: 'main' | 'front' | 'side' | 'back') => {
+      const bounds = panelBounds[panelName];
       return {
-        left,
+        left: bounds.left,
         top: 0,
-        width,
+        width: bounds.right - bounds.left,
         height: panelHeight
       };
     };
 
     const [mainBuffer, frontBuffer, sideBuffer, backBuffer] = await Promise.all([
       // PANEL 1: MAIN (Hero shot with editorial background)
+      // v5.3: Person-centered extraction with Gemini Flash boundaries
       sharp(imageBuffer)
-        .extract(getExtractRegion(0))
+        .extract(getExtractRegion('main'))
         .resize({
           width: targetWidth,
           height: targetHeight,
@@ -331,44 +305,44 @@ export async function splitQuadtych(
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // PANEL 2: FRONT (Technical spec - preserve generated white background)
-      // v5.2: Simplified extraction - preserve original background, exclude separators only
+      // PANEL 2: FRONT (Technical spec - preserve generated background)
+      // v5.3: Person-centered extraction - Gemini ensures equal left/right padding
       sharp(imageBuffer)
-        .extract(getExtractRegion(1))
+        .extract(getExtractRegion('front'))
         .resize({
           width: targetWidth,
           height: targetHeight,
           fit: 'contain', // Preserve original background
           position: 'center',
-          background: { r: 255, g: 255, b: 255 } // Fill letterbox areas with white
+          background: { r: 250, g: 250, b: 250 } // Match light gray background
         })
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // PANEL 3: SIDE (90° profile - preserve generated white background)
-      // v5.2: Simplified extraction - preserve original background, exclude separators only
+      // PANEL 3: SIDE (90° profile - preserve generated background)
+      // v5.3: Person-centered extraction - Gemini ensures equal left/right padding
       sharp(imageBuffer)
-        .extract(getExtractRegion(2))
+        .extract(getExtractRegion('side'))
         .resize({
           width: targetWidth,
           height: targetHeight,
           fit: 'contain',
           position: 'center',
-          background: { r: 255, g: 255, b: 255 }
+          background: { r: 250, g: 250, b: 250 }
         })
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // PANEL 4: BACK (Rear view - preserve generated white background)
-      // v5.2: Simplified extraction - preserve original background, exclude separators only
+      // PANEL 4: BACK (Rear view - preserve generated background)
+      // v5.3: Person-centered extraction - Gemini ensures equal left/right padding
       sharp(imageBuffer)
-        .extract(getExtractRegion(3))
+        .extract(getExtractRegion('back'))
         .resize({
           width: targetWidth,
           height: targetHeight,
           fit: 'contain',
           position: 'center',
-          background: { r: 255, g: 255, b: 255 }
+          background: { r: 250, g: 250, b: 250 }
         })
         .jpeg({ quality: 95 })
         .toBuffer()
