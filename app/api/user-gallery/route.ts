@@ -122,7 +122,10 @@ export async function GET(request: Request) {
           is_published: true,
           price: item.price,
           status: item.status,
-          description: item.description
+          description: item.description,
+          quadtych_urls: item.quadtych_urls,
+          fusion_spec: item.fusion_spec,
+          metadata: item.metadata
         }));
 
         if (type === 'all') {
@@ -170,7 +173,10 @@ export async function GET(request: Request) {
           is_published: false,
           price: item.price,
           status: item.status || 'draft',
-          description: item.description
+          description: item.description,
+          quadtych_urls: item.quadtych_urls,
+          fusion_spec: item.fusion_spec,
+          metadata: item.metadata
         }));
 
         if (type === 'all') {
