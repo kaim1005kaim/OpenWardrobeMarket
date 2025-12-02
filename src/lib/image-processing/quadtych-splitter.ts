@@ -27,17 +27,32 @@ export interface QuadtychResult {
   back: QuadtychPanel;
 }
 
+export interface PanelCoordinates {
+  left: number;
+  right: number;
+}
+
+export interface DetectionCoordinates {
+  main: PanelCoordinates;
+  front: PanelCoordinates;
+  side: PanelCoordinates;
+  back: PanelCoordinates;
+  total_width: number;
+}
+
 /**
  * Split a 21:9 ultra-wide image into 4 equal vertical panels
  * Each panel will be approximately 5.25:9 → resized to 9:16 (mobile-friendly)
  *
  * @param base64Image - Base64-encoded image data (with or without data URL prefix)
  * @param targetHeight - Target height for output images (default: 1600px)
+ * @param coordinates - Optional Gemini-detected panel coordinates (v7.0 - AI-based detection)
  * @returns Object with 4 panel buffers
  */
 export async function splitQuadtych(
   base64Image: string,
-  targetHeight: number = 1600
+  targetHeight: number = 1600,
+  coordinates?: DetectionCoordinates
 ): Promise<QuadtychResult> {
   try {
     // Remove data URL prefix if present
@@ -65,71 +80,104 @@ export async function splitQuadtych(
       expectedRatio: '2.33 (21:9)'
     });
 
-    // PANEL EXTRACTION STRATEGY (v6.9 - Uniform Trim)
+    // PANEL EXTRACTION STRATEGY (v7.0 - AI-based Detection)
     //
-    // ROLLBACK: v6.0-6.1のブラックセパレーター検出は不安定だった
-    // - 頭や足が切れてしまう
-    // - 黒線が残る
+    // NEW STRATEGY (v7.0): Use Gemini AI to detect black separator bars
+    // - Gemini Flash analyzes the 21:9 image
+    // - Detects THICK BLACK VERTICAL BARS (>10px)
+    // - Returns precise left/right coordinates for each panel
+    // - Completely excludes black bars from extracted panels
+    // - Fallback to v6.9 uniform trim if detection fails
     //
-    // ROLLBACK: v6.7-6.8の非対称トリムも位置ずれを引き起こした
-    // - MAIN 5% vs SPEC 10%の差異がパネル境界のずれを生む
-    // - FRONTにMAINのコンテンツが混入
-    //
-    // NEW STRATEGY (v6.9): 全パネル統一トリムに戻す
-    // - 21:9を4等分 (各パネル 5.25:9)
-    // - セパレーター位置は固定（25%, 50%, 75%）
-    // - 全パネル8%統一トリミング（セパレーター＋余白除去）
-    // - fit: 'contain'で全身が必ず表示される
+    // ROLLBACK HISTORY:
+    // v6.9: Uniform 8% trim - black bars remained
+    // v6.7-6.8: Asymmetric trim - content misalignment
+    // v6.0-6.1: First AI detection attempt - unstable
 
     const panelHeight = originalHeight;
     const targetWidth = Math.floor(targetHeight * 9 / 16);
 
-    // Simple 4-way division with UNIFORM trim for all panels
-    const basePanelWidth = Math.floor(originalWidth / 4);
+    let mainExtract, frontExtract, sideExtract, backExtract;
 
-    // UNIFORM trim: 8% on BOTH sides for ALL panels
-    const TRIM_RATIO = 0.08;
-    const trimPixels = Math.floor(basePanelWidth * TRIM_RATIO);
+    if (coordinates) {
+      // v7.0: Use Gemini-detected coordinates
+      console.log('[quadtych-splitter] Using AI-detected coordinates (v7.0):', {
+        main: `left: ${coordinates.main.left}px, right: ${coordinates.main.right}px`,
+        front: `left: ${coordinates.front.left}px, right: ${coordinates.front.right}px`,
+        side: `left: ${coordinates.side.left}px, right: ${coordinates.side.right}px`,
+        back: `left: ${coordinates.back.left}px, right: ${coordinates.back.right}px`,
+      });
 
-    console.log('[quadtych-splitter] Uniform equal division (v6.9):', {
-      totalWidth: originalWidth,
-      totalHeight: originalHeight,
-      basePanelWidth,
-      trimPixels,
-      panelWidth: basePanelWidth - (trimPixels * 2)
-    });
+      mainExtract = {
+        left: coordinates.main.left,
+        top: 0,
+        width: coordinates.main.right - coordinates.main.left,
+        height: panelHeight
+      };
 
-    // Calculate panel dimensions (all identical)
-    const panelWidth = basePanelWidth - (trimPixels * 2); // Trim both sides (8% each) for ALL panels
+      frontExtract = {
+        left: coordinates.front.left,
+        top: 0,
+        width: coordinates.front.right - coordinates.front.left,
+        height: panelHeight
+      };
 
-    // Extract 4 panels using simple equal division (v6.9 - Uniform Trim)
-    // CRITICAL: All panels use IDENTICAL trim for perfect alignment
+      sideExtract = {
+        left: coordinates.side.left,
+        top: 0,
+        width: coordinates.side.right - coordinates.side.left,
+        height: panelHeight
+      };
+
+      backExtract = {
+        left: coordinates.back.left,
+        top: 0,
+        width: coordinates.back.right - coordinates.back.left,
+        height: panelHeight
+      };
+    } else {
+      // v6.9: Fallback to uniform trim
+      console.log('[quadtych-splitter] Falling back to uniform trim (v6.9)');
+
+      const basePanelWidth = Math.floor(originalWidth / 4);
+      const TRIM_RATIO = 0.08;
+      const trimPixels = Math.floor(basePanelWidth * TRIM_RATIO);
+      const panelWidth = basePanelWidth - (trimPixels * 2);
+
+      mainExtract = {
+        left: 0 + trimPixels,
+        top: 0,
+        width: panelWidth,
+        height: panelHeight
+      };
+
+      frontExtract = {
+        left: (basePanelWidth * 1) + trimPixels,
+        top: 0,
+        width: panelWidth,
+        height: panelHeight
+      };
+
+      sideExtract = {
+        left: (basePanelWidth * 2) + trimPixels,
+        top: 0,
+        width: panelWidth,
+        height: panelHeight
+      };
+
+      backExtract = {
+        left: (basePanelWidth * 3) + trimPixels,
+        top: 0,
+        width: panelWidth,
+        height: panelHeight
+      };
+    }
+
+    // Extract 4 panels using detected or fallback coordinates
     const [mainBuffer, frontBuffer, sideBuffer, backBuffer] = await Promise.all([
-      // PANEL 1: MAIN (Hero shot) - starts at 0
+      // PANEL 1: MAIN (Hero shot)
       sharp(imageBuffer)
-        .extract({
-          left: 0 + trimPixels,
-          top: 0,
-          width: panelWidth,
-          height: panelHeight
-        })
-        .resize({
-          width: targetWidth,
-          height: targetHeight,
-          fit: 'contain',  // 全身が確実に表示される（letterbox許容）
-          background: { r: 245, g: 245, b: 245 } // 薄いグレー背景
-        })
-        .jpeg({ quality: 95 })
-        .toBuffer(),
-
-      // PANEL 2: FRONT (Technical front view) - starts at basePanelWidth
-      sharp(imageBuffer)
-        .extract({
-          left: (basePanelWidth * 1) + trimPixels,
-          top: 0,
-          width: panelWidth,
-          height: panelHeight
-        })
+        .extract(mainExtract)
         .resize({
           width: targetWidth,
           height: targetHeight,
@@ -139,14 +187,9 @@ export async function splitQuadtych(
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // PANEL 3: SIDE (Technical side profile) - starts at basePanelWidth * 2
+      // PANEL 2: FRONT (Technical front view)
       sharp(imageBuffer)
-        .extract({
-          left: (basePanelWidth * 2) + trimPixels,
-          top: 0,
-          width: panelWidth,
-          height: panelHeight
-        })
+        .extract(frontExtract)
         .resize({
           width: targetWidth,
           height: targetHeight,
@@ -156,14 +199,21 @@ export async function splitQuadtych(
         .jpeg({ quality: 95 })
         .toBuffer(),
 
-      // PANEL 4: BACK (Technical rear view) - starts at basePanelWidth * 3
+      // PANEL 3: SIDE (Technical side profile)
       sharp(imageBuffer)
-        .extract({
-          left: (basePanelWidth * 3) + trimPixels,
-          top: 0,
-          width: panelWidth,
-          height: panelHeight
+        .extract(sideExtract)
+        .resize({
+          width: targetWidth,
+          height: targetHeight,
+          fit: 'contain',
+          background: { r: 245, g: 245, b: 245 }
         })
+        .jpeg({ quality: 95 })
+        .toBuffer(),
+
+      // PANEL 4: BACK (Technical rear view)
+      sharp(imageBuffer)
+        .extract(backExtract)
         .resize({
           width: targetWidth,
           height: targetHeight,

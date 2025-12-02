@@ -318,7 +318,48 @@ Negative: text, label, word, writing, signature, watermark, typography, caption,
         originalImageUrl = `${R2_PUBLIC_BASE_URL}/${originalKey}`;
         console.log('[nano/generate] 🖼️  ORIGINAL 21:9 IMAGE URL:', originalImageUrl);
 
-        const panels = await splitQuadtych(inline.data);
+        // v7.0: Call Gemini to detect black separator bar positions
+        console.log('[nano/generate] Calling Gemini to detect panel split points...');
+        let detectionCoordinates = null;
+
+        try {
+          const detectionResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://open-wardrobe-market.vercel.app'}/api/gemini/detect-split`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              imageData: `data:image/jpeg;base64,${inline.data}`,
+            }),
+          });
+
+          if (detectionResponse.ok) {
+            const detectionResult = await detectionResponse.json();
+            if (detectionResult.success) {
+              detectionCoordinates = {
+                main: detectionResult.main,
+                front: detectionResult.front,
+                side: detectionResult.side,
+                back: detectionResult.back,
+                total_width: detectionResult.total_width,
+              };
+              console.log('[nano/generate] ✅ Gemini detection successful:', {
+                main: `${detectionResult.main.left}-${detectionResult.main.right}px`,
+                front: `${detectionResult.front.left}-${detectionResult.front.right}px`,
+                side: `${detectionResult.side.left}-${detectionResult.side.right}px`,
+                back: `${detectionResult.back.left}-${detectionResult.back.right}px`,
+              });
+            } else {
+              console.warn('[nano/generate] ⚠️  Gemini detection failed, falling back to uniform trim');
+            }
+          } else {
+            console.warn('[nano/generate] ⚠️  Gemini detection API error:', detectionResponse.status);
+          }
+        } catch (detectionError) {
+          console.error('[nano/generate] ⚠️  Gemini detection error (falling back):', detectionError);
+        }
+
+        const panels = await splitQuadtych(inline.data, 1600, detectionCoordinates);
         // Convert Buffers to base64
         quadtychPanels = {
           main: {
