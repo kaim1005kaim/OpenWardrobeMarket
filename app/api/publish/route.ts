@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
       category,
       price,
       generation_data,
-      saleType
+      saleType,
+      quadtych_urls // FUSION quadtych URLs (MAIN/FRONT/SIDE/BACK views)
     } = body;
 
     // Support both old and new formats
@@ -244,6 +245,7 @@ export async function POST(req: NextRequest) {
           original_url: finalImageUrl,
           poster_url: finalPosterUrl,
           sale_type: saleType || 'buyout',
+          quadtych_urls: quadtych_urls, // FUSION quadtych URLs for MAIN/FRONT/SIDE/BACK views
           metadata: metadata // Include variants
         })
         .select()
