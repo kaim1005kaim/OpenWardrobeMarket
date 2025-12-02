@@ -136,50 +136,57 @@ export async function POST(req: NextRequest) {
 
     let fullPrompt: string;
     if (enableQuadtych) {
-      // v6.5: Strict numerical width specification to ensure equal panels
+      // v6.10: CONTACT SHEET approach with rigid equal-width columns
       fullPrompt = `
-Create a fashion design reference sheet in 21:9 ultra-wide format showing the SAME outfit from 4 different angles.
+[TASK] Generate a FASHION CONTACT SHEET in 21:9 ultra-wide format.
+This is a REFERENCE SHEET showing the SAME outfit from 4 different angles.
 
-CRITICAL LAYOUT RULES - FOLLOW EXACTLY:
-- Format: 4 vertical panels side by side (like a film strip)
+[STRICT LAYOUT RULES - CRITICAL]
+Format: 4 EXACTLY EQUAL-WIDTH vertical columns (1:1:1:1 ratio)
+- Think of this as a TABLE with 4 COLUMNS, NOT as 4 artistic panels
 - Aspect Ratio: 21:9 (ultra-wide horizontal, e.g., 2100px × 900px)
-- STRICT WIDTH ALLOCATION: If image is 2100px wide:
-  * Panel 1: pixels 0-525 (525px wide, 25% of total)
-  * Panel 2: pixels 525-1050 (525px wide, 25% of total)
-  * Panel 3: pixels 1050-1575 (525px wide, 25% of total)
-  * Panel 4: pixels 1575-2100 (525px wide, 25% of total)
-- Each panel MUST occupy EXACTLY 25% of the total width
-- Separators: THIN WHITE LINES (2-3 pixels) between panels
+- RIGID GRID DIVISION: Divide the width into 4 EQUAL columns (25% each)
+  * Column 1 (MAIN): pixels 0-525 (525px wide)
+  * Column 2 (FRONT): pixels 525-1050 (525px wide)
+  * Column 3 (SIDE): pixels 1050-1575 (525px wide)
+  * Column 4 (BACK): pixels 1575-2100 (525px wide)
+- Separators: THIN WHITE VERTICAL LINES (2-3 pixels) between columns
+- NO variable widths, NO emphasis on any column, ALL columns EQUAL
 - NO black bars, NO text labels, NO overlapping
 
-PANEL 1 (Far Left) - Main View:
-- Full body shot, standing or casual pose
+COLUMN 1 (MAIN - Editorial Shot):
+- CRITICAL CONSTRAINT: This image MUST fit within a VERTICAL column (narrow and tall)
+- DO NOT create a wide/cinematic composition - keep it STRICTLY VERTICAL
+- Framing: TIGHT vertical crop, portrait orientation feel
+- Pose: Standing straight or slight dynamic pose (NOT walking wide)
 - Background: Stylish background that complements the garment's color palette
   * Use colors from the outfit palette: ${paletteColors}
-  * Options: solid color wall, gradient backdrop, urban architecture, minimal interior, or abstract geometric shapes
-  * The background should enhance the design without overwhelming it
-  * Keep it clean and modern
+  * Options: solid color wall, gradient backdrop, minimal architectural element, or abstract shapes
+  * Keep background SIMPLE - avoid wide horizontal elements
 - Lighting: Even, natural lighting with slight drama
-- Framing: Full body from head to toe with 15% headroom, 10% footroom
+- Full body from head to toe with 15% headroom, 10% footroom
 
-PANEL 2 (Middle Left) - Front View:
+COLUMN 2 (FRONT - Technical Front View):
 - Standing straight, arms at sides, facing camera
 - Background: Clean light gray or white studio background
 - Lighting: Even, flat lighting
 - Framing: Full body from head to toe with 15% headroom, 10% footroom
+- This column has THE SAME WIDTH as Column 1
 
-PANEL 3 (Middle Right) - Side View:
+COLUMN 3 (SIDE - Technical Side Profile):
 - 90-degree side profile, facing right
 - Standing straight, arms at sides
 - Background: Clean light gray or white studio background
 - Lighting: Even, flat lighting
 - Framing: Full body from head to toe with 15% headroom, 10% footroom
+- This column has THE SAME WIDTH as Columns 1 and 2
 
-PANEL 4 (Far Right) - Back View:
+COLUMN 4 (BACK - Technical Rear View):
 - Rear view (facing away), standing straight
 - Background: Clean light gray or white studio background
 - Lighting: Even, flat lighting
 - Framing: Full body from head to toe with 15% headroom, 10% footroom
+- This column has THE SAME WIDTH as all other columns
 
 CONSISTENCY REQUIREMENTS:
 1. SAME PERSON in all 4 panels (identical face, body, skin tone)
