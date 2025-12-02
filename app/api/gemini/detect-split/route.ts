@@ -36,19 +36,19 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    const prompt = `You are analyzing a fashion design image that contains 4 vertical panels arranged horizontally:
+    const prompt = `You are analyzing a fashion design FILM STRIP image that contains 4 vertical panels arranged horizontally:
 
 Panel Layout (left to right):
-1. MAIN Panel: Editorial/cinematic shot with complex background (buildings, studio, landscape, etc.)
+1. MAIN Panel: Editorial street snap / high fashion lookbook shot with stylish background
 2. FRONT Panel: Technical front view on light gray/white background
 3. SIDE Panel: 90° profile view on light gray/white background
 4. BACK Panel: Rear view on light gray/white background
 
-These panels are separated by thin vertical separator lines (white, gray, beige, or other neutral colors).
+These panels are separated by THICK BLACK VERTICAL BARS (>10px width).
 
 YOUR TASK:
 Identify the LEFT and RIGHT boundaries for each of the 4 panels, so that:
-- Each panel can be extracted cleanly without separator lines
+- Each panel can be extracted cleanly WITHOUT any black separator bars
 - MAIN panel captures the full editorial shot with background
 - FRONT/SIDE/BACK panels are centered on the person with equal background padding on left/right
 
@@ -56,35 +56,36 @@ Detection Strategy:
 
 PANEL 1 (MAIN - Editorial Shot):
 - left: 0 (start of image)
-- right: Find where the MAIN panel ends (before the first separator line)
-  * Look for the transition from complex editorial background to separator line
-  * Usually around 20-40% of image width
+- right: Find where the MAIN panel ends (before the first BLACK BAR)
+  * Look for the thick black vertical bar (>10px wide)
+  * The MAIN panel ends just before this black bar starts
+  * Usually around 20-30% of image width
 
 PANEL 2 (FRONT - Technical Front View):
-- left: Find where the FRONT panel begins (after first separator, with background padding)
-  * Skip past the separator line completely
+- left: Find where the FRONT panel begins (after first BLACK BAR, with background padding)
+  * Skip past the thick black bar completely
   * Start where there's clean background (light gray/white) on the left side of the person
-- right: Find where the FRONT panel ends (before second separator)
+- right: Find where the FRONT panel ends (before second BLACK BAR)
   * End where there's clean background on the right side of the person
   * Panel should be centered on the person with equal padding
 
 PANEL 3 (SIDE - Technical Side View):
-- left: Find where the SIDE panel begins (after second separator, with background padding)
-  * Skip past the separator line completely
+- left: Find where the SIDE panel begins (after second BLACK BAR, with background padding)
+  * Skip past the thick black bar completely
   * Start where there's clean background on the left side of the person
-- right: Find where the SIDE panel ends (before third separator)
+- right: Find where the SIDE panel ends (before third BLACK BAR)
   * End where there's clean background on the right side of the person
   * Panel should be centered on the person with equal padding
 
 PANEL 4 (BACK - Technical Rear View):
-- left: Find where the BACK panel begins (after third separator, with background padding)
-  * Skip past the separator line completely
+- left: Find where the BACK panel begins (after third BLACK BAR, with background padding)
+  * Skip past the thick black bar completely
   * Start where there's clean background on the left side of the person
 - right: End of image (or just before right edge)
   * Panel should be centered on the person
 
 CRITICAL REQUIREMENTS:
-- Separator lines must be COMPLETELY EXCLUDED from all panels
+- THICK BLACK BARS must be COMPLETELY EXCLUDED from all panels
 - For FRONT/SIDE/BACK: Left/right boundaries should have EQUAL background padding
   * Person should be CENTERED within each panel
   * Background (light gray/white) should be visible on both sides
@@ -92,6 +93,7 @@ CRITICAL REQUIREMENTS:
 - MAIN panel should capture the full editorial composition
 - Measure from the LEFT edge of the image (x=0)
 - Return pixel coordinates, not percentages
+- The black bars are VERY VISIBLE (>10px wide) so they should be easy to detect
 
 Return ONLY a JSON object in this exact format (no markdown, no explanation):
 {
@@ -126,26 +128,27 @@ Return ONLY a JSON object in this exact format (no markdown, no explanation):
     const detectionResult = JSON.parse(jsonStr);
 
     console.log('[gemini/detect-split] ✅ Detection result:', {
-      separator1: `${detectionResult.separator1}px (${((detectionResult.separator1 / detectionResult.total_width) * 100).toFixed(1)}%)`,
-      separator2: `${detectionResult.separator2}px (${((detectionResult.separator2 / detectionResult.total_width) * 100).toFixed(1)}%)`,
-      separator3: `${detectionResult.separator3}px (${((detectionResult.separator3 / detectionResult.total_width) * 100).toFixed(1)}%)`,
+      main: `left: ${detectionResult.main.left}px, right: ${detectionResult.main.right}px (${((detectionResult.main.right / detectionResult.total_width) * 100).toFixed(1)}%)`,
+      front: `left: ${detectionResult.front.left}px, right: ${detectionResult.front.right}px`,
+      side: `left: ${detectionResult.side.left}px, right: ${detectionResult.side.right}px`,
+      back: `left: ${detectionResult.back.left}px, right: ${detectionResult.back.right}px`,
       confidence: detectionResult.confidence,
       reasoning: detectionResult.reasoning
     });
 
     // Validation: Check if coordinates are reasonable
-    const { separator1, separator2, separator3, total_width } = detectionResult;
+    const { main, front, side, back, total_width } = detectionResult;
 
     if (
-      separator1 < 0 || separator1 >= total_width ||
-      separator2 < 0 || separator2 >= total_width ||
-      separator3 < 0 || separator3 >= total_width ||
-      separator1 >= separator2 ||
-      separator2 >= separator3
+      main.left !== 0 ||
+      main.right <= 0 || main.right >= total_width ||
+      front.left <= main.right || front.right <= front.left || front.right >= total_width ||
+      side.left <= front.right || side.right <= side.left || side.right >= total_width ||
+      back.left <= side.right || back.right <= back.left || back.right > total_width
     ) {
       console.error('[gemini/detect-split] ❌ Invalid coordinates detected:', detectionResult);
       return NextResponse.json(
-        { error: 'Invalid separator coordinates detected', details: detectionResult },
+        { error: 'Invalid panel coordinates detected', details: detectionResult },
         { status: 400 }
       );
     }
