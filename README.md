@@ -75,6 +75,8 @@
 ### AI・外部API
 - **DeepSeek AI**: 自然言語プロンプト生成
 - **ImagineAPI**: 画像生成エンジン
+- **CLIP (OpenAI)**: ベクトル検索用画像埋め込み生成
+- **Google Cloud Run**: CLIPサーバーホスティング
 - **Webhook システム**: リアルタイム生成ステータス更新
 - **Sharp**: サーバーサイド画像処理
 
@@ -131,9 +133,10 @@
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_key
 
-# AI Services  
+# AI Services
 DEEPSEEK_API_KEY=your_deepseek_key
 IMAGINEAPI_BEARER=your_imagine_token
+CLIP_SERVER_URL=your_clip_server_url  # Cloud Run CLIP server
 
 # Storage
 R2_ACCESS_KEY_ID=your_r2_access_key
@@ -181,7 +184,90 @@ npx vercel --prod
 
 このプロジェクトは MIT ライセンスの下で公開されています。
 
+## 🔍 CLIP Server & ベクトル検索
+
+### 概要
+Open Wardrobe Marketは、OpenAI CLIPモデルを使用したベクトル検索により、視覚的に類似したアイテムを推薦します。
+
+### アーキテクチャ
+```
+[ユーザー生成画像]
+    ↓
+[Cloudflare R2] ← 画像ストレージ
+    ↓
+[Google Cloud Run] ← CLIPサーバー (vit-b-32, 512次元)
+    ↓
+[Supabase pgvector] ← ベクトル検索
+```
+
+### CLIP Server 仕様
+- **モデル**: OpenAI CLIP vit-b-32
+- **埋め込み次元**: 512次元
+- **デバイス**: CPU (Cloud Run)
+- **メモリ**: 4GB
+- **CPU**: 2コア
+- **エンドポイント**:
+  - `GET /health` - ヘルスチェック
+  - `POST /embed` - 画像埋め込み生成
+  - `POST /embed/batch` - バッチ埋め込み生成
+
+### デプロイ方法
+
+#### 1. CLIP Serverのデプロイ
+```bash
+# Cloud Buildが自動的にデプロイ (GitHub push時)
+git push origin master
+
+# または手動でトリガー
+gcloud run services deploy openwadrobemarket \
+  --region europe-west1 \
+  --source . \
+  --dockerfile Dockerfile.cloudrun
+```
+
+#### 2. Vercel環境変数の設定
+```bash
+# CLIP Server URLを設定
+vercel env add CLIP_SERVER_URL production
+# 値: https://openwadrobemarket-xxxxx-ew.a.run.app
+```
+
+#### 3. 既存アイテムのembedding生成
+```bash
+# 既存の全アイテムにembeddingを生成
+cd scripts
+npx tsx generate-embeddings-cloudrun.ts
+```
+
+### コスト見積もり
+
+#### 月間1,000リクエストの場合
+- Cloud Run: 約$0.30/月
+- Cloudflare R2: 約$0.015/GB
+- Supabase: 無料枠内
+
+#### 月間10,000リクエストの場合
+- Cloud Run: 約$3-5/月
+- Cloudflare R2: 約$0.15/GB
+- **合計**: 約$5-10/月
+
+### トラブルシューティング
+
+#### CLIPサーバーが応答しない
+```bash
+# ヘルスチェック
+curl https://your-clip-server.run.app/health
+
+# ログ確認
+gcloud run services logs read openwadrobemarket --region europe-west1
+```
+
+#### Embeddingの再生成
+```bash
+# 特定アイテムのembeddingを削除して再生成
+npm run generate-embeddings
+```
+
 ---
 
 **Open Wardrobe Market** - AI Powered Fashion Design Platform
-# CLIP Server Deployment
