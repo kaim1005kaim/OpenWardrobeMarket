@@ -164,9 +164,12 @@ export async function GET(request: Request) {
         title: cleanTitle.length > 60 ? `${cleanTitle.substring(0, 60)}...` : cleanTitle || 'Catalog Design',
         tags,
         colors: [],
+        price: null,
         likes: 0,
         isUserGenerated: false,
         createdAt: row.created_at || new Date().toISOString(),
+        userName: null,
+        userAvatar: null,
         metadata: {},
       };
     });
