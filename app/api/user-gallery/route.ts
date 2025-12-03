@@ -26,7 +26,7 @@ export async function OPTIONS() {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get('user_id');
-  const type = searchParams.get('type') ?? 'all';
+  const type = searchParams.get('type') ?? 'published'; // Default to published instead of 'all'
   const limit = parseInt(searchParams.get('limit') ?? '50', 10);
   const offset = parseInt(searchParams.get('offset') ?? '0', 10);
 
@@ -41,8 +41,9 @@ export async function GET(request: Request) {
     let data: any[] = [];
     let count = 0;
 
+    // Optimization: Only fetch the specific type requested, not 'all' types
     // Fetch generation_history items that have NOT been published or saved as drafts
-    if (type === 'generated' || type === 'all') {
+    if (type === 'generated') {
       const result = await supabase
         .from('generation_history')
         .select('*', { count: 'exact' })
@@ -92,7 +93,7 @@ export async function GET(request: Request) {
       }
     }
 
-    if (type === 'published' || type === 'all') {
+    if (type === 'published') {
       // Fetch only published items (is_active = true AND sale_type != 'draft')
       const result = await supabase
         .from('published_items')
@@ -128,24 +129,13 @@ export async function GET(request: Request) {
           metadata: item.metadata
         }));
 
-        if (type === 'all') {
-          publishedItems.forEach((item) => {
-            if (!data.find((d) => d.id === item.id)) {
-              data.push(item);
-            }
-          });
-        } else {
-          data = publishedItems;
-        }
-
-        if (type === 'published') {
-          count = result.count || 0;
-        }
+        data = publishedItems;
+        count = result.count || 0;
       }
     }
 
     // NEW: Handle drafts separately (sale_type = 'draft')
-    if (type === 'drafts' || type === 'all') {
+    if (type === 'drafts') {
       const result = await supabase
         .from('published_items')
         .select('*', { count: 'exact' })
@@ -179,19 +169,8 @@ export async function GET(request: Request) {
           metadata: item.metadata
         }));
 
-        if (type === 'all') {
-          draftItems.forEach((item) => {
-            if (!data.find((d) => d.id === item.id)) {
-              data.push(item);
-            }
-          });
-        } else {
-          data = [...data, ...draftItems];
-        }
-
-        if (type === 'drafts') {
-          count = result.count || 0;
-        }
+        data = draftItems;
+        count = result.count || 0;
       }
     }
 
