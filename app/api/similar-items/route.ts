@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       // Fallback: if no auto_tags, return random items from same category
       const { data: fallbackItems } = await supabase
         .from('published_items')
-        .select('id, title, image_id, auto_tags, tags, category')
+        .select('id, title, image_id, poster_url, original_url, auto_tags, tags, category')
         .eq('is_active', true)
         .neq('id', itemId)
         .eq('category', targetCategory || '')
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     // We'll fetch all items and filter in memory to avoid PostgreSQL type errors
     const { data: allItems, error: fetchError } = await supabase
       .from('published_items')
-      .select('id, title, image_id, auto_tags, tags, category')
+      .select('id, title, image_id, poster_url, original_url, auto_tags, tags, category')
       .eq('is_active', true)
       .neq('id', itemId) // Exclude the target item itself
       .limit(500); // Get a large pool of candidates
