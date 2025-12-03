@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       .from('published_items')
       .select('*', { count: 'exact' })
       .eq('is_active', true)
+      .not('poster_url', 'is', null)  // Filter out items without poster_url
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -43,13 +44,18 @@ export async function GET(request: Request) {
       throw error;
     }
 
-    console.log('[showcase] Found', data?.length || 0, 'published items');
+    // Additional filter: remove items where poster_url AND original_url are both null
+    const filteredData = (data || []).filter(item =>
+      item.poster_url || item.original_url
+    );
+
+    console.log('[showcase] Found', filteredData.length, 'published items (filtered from', data?.length || 0, ')');
 
     return new Response(
       JSON.stringify({
         success: true,
-        items: data || [],
-        total: count || 0
+        items: filteredData || [],
+        total: filteredData.length
       }),
       {
         status: 200,
